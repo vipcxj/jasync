@@ -1,8 +1,9 @@
 package io.github.vipcxj.asyncjava;
 
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.*;
 
 public interface Promise<T> {
 
@@ -22,10 +23,48 @@ public interface Promise<T> {
             return null;
         });
     }
-    <O> Promise<O> doCatch(Class<? extends Throwable>[] exceptionsType, Function<Throwable, Promise<O>> reject);
-    <O> Promise<O> doCatch(Class<? extends Throwable>[] exceptionsType, Supplier<Promise<O>> reject);
-    Promise<T> doCatch(Class<? extends Throwable>[] exceptionsType, Consumer<Throwable> reject);
-    <O> Promise<O> doFinally(Supplier<Promise<O>> block);
+    Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, Function<Throwable, Promise<T>> reject);
+    default Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, Supplier<Promise<T>> reject) {
+        return this.doCatch(exceptionsType, ignored -> {
+            return reject.get();
+        });
+    }
+    default Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, Consumer<Throwable> reject) {
+        return this.doCatch(exceptionsType, t -> {
+            reject.accept(t);
+            return null;
+        });
+    }
+    default Promise<T> doCatch(Function<Throwable, Promise<T>> reject) {
+        return this.doCatch(Collections.singletonList(Throwable.class), reject);
+    }
+    default Promise<T> doCatch(Supplier<Promise<T>> reject) {
+        return this.doCatch(Collections.singletonList(Throwable.class), ignored -> {
+            return reject.get();
+        });
+    }
+    default Promise<T> doCatch(Consumer<Throwable> reject) {
+        return this.doCatch(Collections.singletonList(Throwable.class), t -> {
+            reject.accept(t);
+            return null;
+        });
+    }
     Promise<T> doFinally(Runnable block);
-    <I> I unwrap(Class<I> type);
+    Handle async();
+    Promise<T> doWhile(BooleanSupplier predicate, Function<T, Promise<T>> block);
+    Promise<Void> doWhile(BooleanSupplier predicate, Supplier<Promise<Void>> block);
+    Promise<T> awaitWhile(Supplier<Promise<Boolean>> predicate, Function<T, Promise<T>> block);
+    Promise<Void> awaitWhile(Supplier<Promise<Boolean>> predicate, Supplier<Promise<Void>> block);
+    <O> Promise<O> doReturn();
+    T block();
+    T block(Duration duration);
+    <I> I unwrap();
+
+    static void doBreak() {
+        throw new BreakException();
+    }
+
+    static void doReturn(Object v) {
+        throw new ReturnException(v);
+    }
 }
