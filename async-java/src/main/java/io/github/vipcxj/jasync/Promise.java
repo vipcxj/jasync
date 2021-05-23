@@ -1,4 +1,6 @@
-package io.github.vipcxj.asyncjava;
+package io.github.vipcxj.jasync;
+
+import io.github.vipcxj.jasync.spi.PromiseProvider;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -7,21 +9,15 @@ import java.util.function.*;
 
 public interface Promise<T> {
 
+    PromiseProvider provider = Utils.getProvider();
+
     default T await() {
         throw new UnsupportedOperationException();
     }
 
     <O> Promise<O> then(Function<T, Promise<O>> resolver);
     default <O> Promise<O> then(Supplier<Promise<O>> resolver) {
-        return this.then(ignored -> {
-            return resolver.get();
-        });
-    }
-    default Promise<Void> then(Consumer<T> resolver) {
-        return this.then(v -> {
-            resolver.accept(v);
-            return null;
-        });
+        return this.then(ignored -> resolver.get());
     }
     Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, Function<Throwable, Promise<T>> reject);
     default Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, Supplier<Promise<T>> reject) {
@@ -49,22 +45,48 @@ public interface Promise<T> {
             return null;
         });
     }
-    Promise<T> doFinally(Runnable block);
-    Handle async();
+    Promise<T> doFinally(Supplier<Promise<T>> block);
     Promise<T> doWhile(BooleanSupplier predicate, Function<T, Promise<T>> block);
-    Promise<Void> doWhile(BooleanSupplier predicate, Supplier<Promise<Void>> block);
-    Promise<T> awaitWhile(Supplier<Promise<Boolean>> predicate, Function<T, Promise<T>> block);
-    Promise<Void> awaitWhile(Supplier<Promise<Boolean>> predicate, Supplier<Promise<Void>> block);
+    Promise<Void> doWhileVoid(BooleanSupplier predicate, Supplier<Promise<Void>> block);
     <O> Promise<O> doReturn();
+    Handle async();
     T block();
     T block(Duration duration);
     <I> I unwrap();
+
+    static void doContinue() {
+        throw new ContinueException();
+    }
 
     static void doBreak() {
         throw new BreakException();
     }
 
-    static void doReturn(Object v) {
-        throw new ReturnException(v);
+    static <T, O> Promise<T> doReturn(Promise<O> promise) {
+        if (promise != null) {
+            return promise.then(v -> {
+                throw new ReturnException(v);
+            });
+        } else {
+            throw new ReturnException(null);
+        }
+    }
+
+    static <T> Promise<T> just(T value) {
+        if (provider == null) {
+            throw new IllegalStateException("No provider of PromiseProvider found");
+        }
+        return provider.just(value);
+    }
+
+    static Promise<Void> just() {
+        return just(null);
+    }
+
+    static  <T> Promise<T> defer(Supplier<Promise<T>> block) {
+        if (provider == null) {
+            throw new IllegalStateException("No provider of PromiseProvider found");
+        }
+        return provider.defer(block);
     }
 }

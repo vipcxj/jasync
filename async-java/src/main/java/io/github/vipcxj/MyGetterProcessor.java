@@ -4,7 +4,6 @@ import com.google.auto.service.AutoService;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Flags;
-import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
@@ -44,6 +43,7 @@ public class MyGetterProcessor extends AbstractProcessor {
         elementsAnnotatedWith.forEach(e -> {
             JCTree tree = javacTrees.getTree(e);
             tree.accept(new TreeTranslator() {
+
                 @Override
                 public void visitClassDef(JCTree.JCClassDecl jcClassDecl) {
                     List<JCTree.JCVariableDecl> jcVariableDeclList = List.nil();

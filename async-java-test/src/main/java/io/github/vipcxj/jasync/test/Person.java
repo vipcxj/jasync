@@ -1,4 +1,4 @@
-package io.github.vipcx.asyncjava.test;
+package io.github.vipcxj.jasync.test;
 
 import io.github.vipcxj.MyGetter;
 

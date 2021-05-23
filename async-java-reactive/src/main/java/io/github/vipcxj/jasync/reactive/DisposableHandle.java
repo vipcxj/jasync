@@ -1,6 +1,6 @@
-package io.github.vipcxj.asyncjava.reactive;
+package io.github.vipcxj.jasync.reactive;
 
-import io.github.vipcxj.asyncjava.Handle;
+import io.github.vipcxj.jasync.Handle;
 import reactor.core.Disposable;
 
 public class DisposableHandle implements Handle {

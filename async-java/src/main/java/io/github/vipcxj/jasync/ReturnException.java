@@ -1,4 +1,4 @@
-package io.github.vipcxj.asyncjava;
+package io.github.vipcxj.jasync;
 
 public class ReturnException extends RuntimeException {
 

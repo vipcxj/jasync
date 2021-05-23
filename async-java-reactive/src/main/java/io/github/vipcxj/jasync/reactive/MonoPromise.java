@@ -1,9 +1,6 @@
-package io.github.vipcxj.asyncjava.reactive;
+package io.github.vipcxj.jasync.reactive;
 
-import io.github.vipcxj.asyncjava.BreakException;
-import io.github.vipcxj.asyncjava.Handle;
-import io.github.vipcxj.asyncjava.Promise;
-import io.github.vipcxj.asyncjava.ReturnException;
+import io.github.vipcxj.jasync.*;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -56,16 +53,21 @@ public class MonoPromise<T> implements Promise<T> {
     }
 
     @Override
-    public Promise<T> doFinally(Runnable block) {
+    public Promise<T> doFinally(Supplier<Promise<T>> block) {
         AtomicReference<Boolean> isCatch = new AtomicReference<>(false);
         return doCatch(t -> {
             isCatch.set(true);
-            block.run();
+            Promise<T> promise = block.get();
+            promise = promise != null ? promise : just(null);
+            return promise.then(() -> new MonoPromise<>(Mono.error(t)));
         }).then(v -> {
             if (!isCatch.get()) {
-                block.run();
+                Promise<T> promise = block.get();
+                promise = promise != null ? promise : just(null);
+                return promise.then(() -> just(v));
+            } else {
+                return just(v);
             }
-            return new MonoPromise<>(Mono.justOrEmpty(v));
         });
     }
 
@@ -73,9 +75,9 @@ public class MonoPromise<T> implements Promise<T> {
     public Promise<T> doWhile(BooleanSupplier predicate, Function<T, Promise<T>> block) {
         return this.then(v -> {
             if (predicate.getAsBoolean()) {
-                Promise<T> res = block.apply(v);
-                res = res != null ? res : MonoPromise.just(null);
-                return res.doWhile(predicate, block);
+                return Promise.defer(() -> block.apply(v))
+                        .doCatch(Collections.singletonList(ContinueException.class), e -> {})
+                        .doWhile(predicate, block);
             } else {
                 return null;
             }
@@ -83,46 +85,16 @@ public class MonoPromise<T> implements Promise<T> {
     }
 
     @Override
-    public Promise<Void> doWhile(BooleanSupplier predicate, Supplier<Promise<Void>> block) {
+    public Promise<Void> doWhileVoid(BooleanSupplier predicate, Supplier<Promise<Void>> block) {
         return this.then(() -> {
             if (predicate.getAsBoolean()) {
-                Promise<Void> res = block.get();
-                res = res != null ? res : MonoPromise.just();
-                return res.doWhile(predicate, block);
+                return Promise.defer(block)
+                        .doCatch(Collections.singletonList(ContinueException.class), e -> {})
+                        .doWhileVoid(predicate, block);
             } else {
                 return null;
             }
-        });
-    }
-
-    @Override
-    public Promise<T> awaitWhile(Supplier<Promise<Boolean>> predicate, Function<T, Promise<T>> block) {
-        return this.then(v -> {
-            return predicate.get().then(test -> {
-                if (test) {
-                    Promise<T> res = block.apply(v);
-                    res = res != null ? res : MonoPromise.just(null);
-                    return res.awaitWhile(predicate, block);
-                } else {
-                    return null;
-                }
-            });
-        });
-    }
-
-    @Override
-    public Promise<Void> awaitWhile(Supplier<Promise<Boolean>> predicate, Supplier<Promise<Void>> block) {
-        return this.then(v -> {
-            return predicate.get().then(test -> {
-                if (test) {
-                    Promise<Void> res = block.get();
-                    res = res != null ? res : MonoPromise.just();
-                    return res.awaitWhile(predicate, block);
-                } else {
-                    return null;
-                }
-            });
-        });
+        }).doCatch(Collections.singletonList(BreakException.class), e -> {});
     }
 
     @Override

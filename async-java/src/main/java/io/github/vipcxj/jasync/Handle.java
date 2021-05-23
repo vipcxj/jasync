@@ -1,4 +1,4 @@
-package io.github.vipcxj.asyncjava;
+package io.github.vipcxj.jasync;
 
 public interface Handle {
 
