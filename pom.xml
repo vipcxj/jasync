@@ -5,13 +5,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.github.vipcxj</groupId>
-    <artifactId>async-java-parent</artifactId>
+    <artifactId>jasync-parent</artifactId>
     <packaging>pom</packaging>
     <version>1.0.0-SNAPSHOT</version>
     <modules>
-        <module>async-java</module>
-        <module>async-java-test</module>
-        <module>async-java-reactive</module>
+        <module>jasync-core</module>
+        <module>jasync-reactive</module>
+        <module>jasync-test</module>
+        <module>jasync-spec</module>
     </modules>
 
     <properties>
