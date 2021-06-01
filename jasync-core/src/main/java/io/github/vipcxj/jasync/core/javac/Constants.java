@@ -7,6 +7,10 @@ public class Constants {
     public static final String DEFER_VOID = "deferVoid";
     public static final String PROMISE_DEFER_VOID = PROMISE + "." + DEFER_VOID;
     public static final String THEN_VOID = "thenVoid";
+    public static final String DO_RETURN = "doReturn";
+    public static final String PROMISE_DO_RETURN = PROMISE + "." + DO_RETURN;
+    public static final String ERROR = "error";
+    public static final String PROMISE_ERROR = PROMISE + "." + ERROR;
 
     public static final String REFERENCE_GET = "getValue";
     public static final String REFERENCE_ASSIGN = "setAndGet";

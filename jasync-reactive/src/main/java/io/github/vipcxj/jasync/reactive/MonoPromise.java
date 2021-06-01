@@ -1,6 +1,10 @@
 package io.github.vipcxj.jasync.reactive;
 
 import io.github.vipcxj.jasync.spec.*;
+import io.github.vipcxj.jasync.spec.functional.BooleanSupplier;
+import io.github.vipcxj.jasync.spec.functional.PromiseFunction;
+import io.github.vipcxj.jasync.spec.functional.PromiseSupplier;
+import io.github.vipcxj.jasync.spec.functional.VoidPromiseSupplier;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -8,9 +12,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BooleanSupplier;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 public class MonoPromise<T> implements Promise<T> {
     private final Mono<T> mono;
@@ -20,15 +21,25 @@ public class MonoPromise<T> implements Promise<T> {
     }
 
     @Override
-    public <O> Promise<O> then(Function<T, Promise<O>> resolver) {
+    public <O> Promise<O> then(PromiseFunction<T, O> resolver) {
         AtomicReference<Boolean> empty = new AtomicReference<>(true);
         return new MonoPromise<>(mono.<O>flatMap(v -> {
             empty.set(false);
-            Promise<O> res = resolver.apply(v);
+            Promise<O> res;
+            try {
+                res = resolver.apply(v);
+            } catch (Throwable t) {
+                return Mono.error(t);
+            }
             return res != null ? res.unwrap() : Mono.empty();
         }).switchIfEmpty(Mono.defer(() -> {
             if (empty.get()) {
-                Promise<O> res = resolver.apply(null);
+                Promise<O> res;
+                try {
+                    res = resolver.apply(null);
+                } catch (Throwable t) {
+                    return Mono.error(t);
+                }
                 return res != null ? res.unwrap() : Mono.empty();
             } else {
                 return Mono.empty();
@@ -37,12 +48,20 @@ public class MonoPromise<T> implements Promise<T> {
     }
 
     @Override
-    public Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, Function<Throwable, Promise<T>> reject) {
+    public Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, PromiseFunction<Throwable, T> reject) {
         return new MonoPromise<>(mono
                 .onErrorResume(
                         t -> exceptionsType.stream().anyMatch(e -> e.isAssignableFrom(t.getClass())),
                         t -> {
-                            Promise<T> res = reject.apply(t);
+                            if (Promise.mustRethrowException(t, exceptionsType)) {
+                                return Mono.error(t);
+                            }
+                            Promise<T> res;
+                            try {
+                                res = reject.apply(t);
+                            } catch (Throwable e) {
+                                return Mono.error(e);
+                            }
                             if (res == null) {
                                 return Mono.empty();
                             } else {
@@ -53,7 +72,7 @@ public class MonoPromise<T> implements Promise<T> {
     }
 
     @Override
-    public Promise<T> doFinally(Supplier<Promise<T>> block) {
+    public Promise<T> doFinally(PromiseSupplier<T> block) {
         AtomicReference<Boolean> isCatch = new AtomicReference<>(false);
         return doCatch(t -> {
             isCatch.set(true);
@@ -72,7 +91,7 @@ public class MonoPromise<T> implements Promise<T> {
     }
 
     @Override
-    public Promise<T> doWhile(BooleanSupplier predicate, Function<T, Promise<T>> block) {
+    public Promise<T> doWhile(BooleanSupplier predicate, PromiseFunction<T, T> block) {
         return this.then(v -> {
             if (predicate.getAsBoolean()) {
                 return Promise.defer(() -> block.apply(v))
@@ -85,7 +104,7 @@ public class MonoPromise<T> implements Promise<T> {
     }
 
     @Override
-    public Promise<Void> doWhileVoid(BooleanSupplier predicate, Supplier<Promise<Void>> block) {
+    public Promise<Void> doWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block) {
         return this.then(() -> {
             if (predicate.getAsBoolean()) {
                 return Promise.defer(block)
@@ -98,7 +117,7 @@ public class MonoPromise<T> implements Promise<T> {
     }
 
     @Override
-    public Promise<T> doWhile(Supplier<Promise<Boolean>> predicate, Function<T, Promise<T>> block) {
+    public Promise<T> doWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block) {
         return this.then(v -> {
             Promise<Boolean> booleanPromise = predicate.get();
             if (booleanPromise == null) {
@@ -118,7 +137,7 @@ public class MonoPromise<T> implements Promise<T> {
     }
 
     @Override
-    public Promise<Void> doWhileVoid(Supplier<Promise<Boolean>> predicate, Supplier<Promise<Void>> block) {
+    public Promise<Void> doWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block) {
         return this.then(() -> {
             Promise<Boolean> booleanPromise = predicate.get();
             if (booleanPromise == null) {
@@ -180,7 +199,4 @@ public class MonoPromise<T> implements Promise<T> {
         return new MonoPromise<>(Mono.justOrEmpty(value));
     }
 
-    public static MonoPromise<Void> just() {
-        return just(null);
-    }
 }

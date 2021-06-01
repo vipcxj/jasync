@@ -1,11 +1,12 @@
 package io.github.vipcxj.jasync.spec;
 
+import io.github.vipcxj.jasync.spec.functional.*;
 import io.github.vipcxj.jasync.spec.spi.PromiseProvider;
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.*;
+import java.util.Objects;
 
 public interface Promise<T> {
 
@@ -15,67 +16,67 @@ public interface Promise<T> {
         throw new UnsupportedOperationException();
     }
 
-    <O> Promise<O> then(Function<T, Promise<O>> resolver);
-    default <O> Promise<O> then(Supplier<Promise<O>> resolver) {
+    <O> Promise<O> then(PromiseFunction<T, O> resolver);
+    default <O> Promise<O> then(PromiseSupplier<O> resolver) {
         return this.then(ignored -> resolver.get());
     }
-    default Promise<Void> thenVoid(Function<T, Promise<Void>> resolver) {
+    default Promise<Void> thenVoid(VoidPromiseFunction<T> resolver) {
         return this.then(resolver);
     }
-    default Promise<Void> thenVoid(Supplier<Promise<Void>> resolver) {
+    default Promise<Void> thenVoid(VoidPromiseSupplier resolver) {
         return this.then(resolver);
     }
     default Promise<Void> thenVoid() {
         return this.then(() -> null);
     }
-    Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, Function<Throwable, Promise<T>> reject);
-    default Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, Supplier<Promise<T>> reject) {
+    Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, PromiseFunction<Throwable, T> reject);
+    default Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, PromiseSupplier<T> reject) {
         return this.doCatch(exceptionsType, ignored -> {
             return reject.get();
         });
     }
-    default Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, Consumer<Throwable> reject) {
+    default Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, ThrowableConsumer<Throwable> reject) {
         return this.doCatch(exceptionsType, t -> {
             reject.accept(t);
             return null;
         });
     }
-    default <E extends Throwable> Promise<T> doCatch(Class<E> exceptionType, Function<E, Promise<T>> reject) {
+    default <E extends Throwable> Promise<T> doCatch(Class<E> exceptionType, PromiseFunction<E, T> reject) {
         return doCatch(Collections.singletonList(exceptionType), t -> {
             //noinspection unchecked
             return reject.apply((E) t);
         });
     }
-    default <E extends Throwable> Promise<T> doCatch(Class<E> exceptionType, Supplier<Promise<T>> reject) {
+    default <E extends Throwable> Promise<T> doCatch(Class<E> exceptionType, PromiseSupplier<T> reject) {
         return this.doCatch(exceptionType, ignored -> {
             return reject.get();
         });
     }
-    default <E extends Throwable> Promise<T> doCatch(Class<E> exceptionType, Consumer<E> reject) {
+    default <E extends Throwable> Promise<T> doCatch(Class<E> exceptionType, ThrowableConsumer<E> reject) {
         return this.doCatch(exceptionType, t -> {
             reject.accept(t);
             return null;
         });
     }
-    default Promise<T> doCatch(Function<Throwable, Promise<T>> reject) {
+    default Promise<T> doCatch(PromiseFunction<Throwable, T> reject) {
         return this.doCatch(Collections.singletonList(Throwable.class), reject);
     }
-    default Promise<T> doCatch(Supplier<Promise<T>> reject) {
+    default Promise<T> doCatch(PromiseSupplier<T> reject) {
         return this.doCatch(Collections.singletonList(Throwable.class), ignored -> {
             return reject.get();
         });
     }
-    default Promise<T> doCatch(Consumer<Throwable> reject) {
+    default Promise<T> doCatch(ThrowableConsumer<Throwable> reject) {
         return this.doCatch(Collections.singletonList(Throwable.class), t -> {
             reject.accept(t);
             return null;
         });
     }
-    Promise<T> doFinally(Supplier<Promise<T>> block);
-    Promise<T> doWhile(BooleanSupplier predicate, Function<T, Promise<T>> block);
-    Promise<Void> doWhileVoid(BooleanSupplier predicate, Supplier<Promise<Void>> block);
-    Promise<T> doWhile(Supplier<Promise<Boolean>> predicate, Function<T, Promise<T>> block);
-    Promise<Void> doWhileVoid(Supplier<Promise<Boolean>> predicate, Supplier<Promise<Void>> block);
+    Promise<T> doFinally(PromiseSupplier<T> block);
+    Promise<T> doWhile(BooleanSupplier predicate, PromiseFunction<T, T> block);
+    Promise<Void> doWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block);
+    Promise<T> doWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block);
+    Promise<Void> doWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block);
     <O> Promise<O> catchReturn();
     Handle async();
     T block();
@@ -111,14 +112,14 @@ public interface Promise<T> {
         return just(null);
     }
 
-    static <T> Promise<T> defer(Supplier<Promise<T>> block) {
+    static <T> Promise<T> defer(PromiseSupplier<T> block) {
         if (provider == null) {
             throw new IllegalStateException("No provider of PromiseProvider found");
         }
         return provider.defer(block);
     }
 
-    static Promise<Void> deferVoid(Supplier<Promise<Void>> block) {
+    static Promise<Void> deferVoid(VoidPromiseSupplier block) {
         return defer(block);
     }
 
@@ -127,5 +128,18 @@ public interface Promise<T> {
             throw new IllegalStateException("No provider of PromiseProvider found");
         }
         return provider.error(t);
+    }
+
+    static boolean mustRethrowException(Throwable t, List<Class<? extends Throwable>> exceptionsType) {
+        if (t instanceof ReturnException) {
+            return exceptionsType.stream().noneMatch(ReturnException.class::equals);
+        }
+        if (t instanceof BreakException) {
+            return exceptionsType.stream().noneMatch(BreakException.class::equals);
+        }
+        if (t instanceof ContinueException) {
+            return exceptionsType.stream().noneMatch(ContinueException.class::equals);
+        }
+        return false;
     }
 }

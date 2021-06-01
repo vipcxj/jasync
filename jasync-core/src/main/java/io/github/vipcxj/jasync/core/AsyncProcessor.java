@@ -8,13 +8,11 @@ import com.sun.tools.javac.tree.JCTree;
 import io.github.vipcxj.jasync.core.javac.*;
 
 import javax.annotation.processing.*;
-import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import java.io.StringWriter;
 import java.util.Set;
 
-@SupportedSourceVersion(SourceVersion.RELEASE_8)
 @SupportedAnnotationTypes("io.github.vipcxj.jasync.spec.annotations.Async")
 @AutoService(Processor.class)
 public class AsyncProcessor extends AbstractProcessor {
@@ -26,6 +24,7 @@ public class AsyncProcessor extends AbstractProcessor {
         super.init(processingEnv);
         System.out.println("AsyncProcessor init.");
         this.context = new JAsyncContext(processingEnv);
+        System.out.println("Source version: " + processingEnv.getSourceVersion());
     }
 
     @Override
@@ -42,8 +41,10 @@ public class AsyncProcessor extends AbstractProcessor {
                     tree.accept(new PosVisitor(writer, false));
                     System.out.println(writer.toString());
                     System.out.println();
+                    tree.body.accept(new TryWithResourceTranslator(cuContext));
+                    tree.body.accept(new ReturnTranslator(cuContext));
                     new PromiseTranslator(cuContext, false).reshape(tree);
-                    tree.accept(new SimplifiedTranslator());
+                    tree.body.accept(new SimplifiedTranslator());
                     writer = new StringWriter();
                     tree.accept(new PosVisitor(writer, false));
                     System.out.println(writer.toString());

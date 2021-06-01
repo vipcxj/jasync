@@ -23,10 +23,8 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContext {
-    private static final AtomicInteger iter = new AtomicInteger(0);
 
     private final IJAsyncCuContext context;
     private ACTION action;
@@ -110,6 +108,11 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
             return t;
         }
         return super.translate(t);
+    }
+
+    @Override
+    public void visitTopLevel(JCTree.JCCompilationUnit jcCompilationUnit) {
+        super.visitTopLevel(jcCompilationUnit);
     }
 
     private JCTree.JCExpression unwrap(JCTree.JCMethodInvocation jcMethodInvocation) {
@@ -202,10 +205,7 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
         if (jcTry == toReshape) {
             jcTry.resources = translate(jcTry.resources);
             if (!complete) {
-                if (copy().reshape(jcTry.body) || copy().visitCatches(jcTry.catchers) || copy().reshape(jcTry.finalizer)) {
-                    copy().reshape(jcTry.body);
-                    copy().visitCatches(jcTry.catchers);
-                    copy().reshape(jcTry.finalizer);
+                if (copyReshaped().reshape(jcTry.body) || copyReshaped().visitCatches(jcTry.catchers) || copyReshaped().reshape(jcTry.finalizer)) {
                     this.action = ACTION.RESHAPE_TRY;
                     this.complete = true;
                 }
@@ -264,7 +264,7 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
         List<JCTree.JCStatement> heads = List.nil();
         List<JCTree.JCStatement> tails = List.nil();
         List<JCTree.JCStatement> newStatements;
-        JCTree.JCExpression reshapedExpr = null;
+        JCTree.JCExpression reshapedExpr;
         boolean append = false;
         JCTree.JCStatement current = null;
         while (iterator.hasNext()){
@@ -286,7 +286,6 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
             return statements;
         }
         if (action == ACTION.RESHAPE_AWAIT) {
-            int currentPos = current.pos;
             if (current instanceof JCTree.JCExpressionStatement) {
                 if (((JCTree.JCExpressionStatement) current).expr instanceof JCTree.JCIdent) {
                     current = null;
@@ -295,11 +294,7 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
             if (current != null) {
                 tails = tails.prepend(current);
             }
-            if (!reshaped) {
-                tails = ReturnTranslator.translateReturn(this, tails);
-            }
             int prePos = treeMaker.pos;
-            JCTree.JCExpression expression;
             if (tails.isEmpty()) {
                 reshapedExpr = treeMaker.at(unwrap).Apply(
                         null,
@@ -307,33 +302,26 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
                         List.nil()
                 );
             } else {
-                reshapedExpr = treeMaker.at(currentPos).Apply(
+                reshapedExpr = treeMaker.at(unwrap).Apply(
                         null,
-                        treeMaker.at(tails.head).Select(unwrap, names.fromString(Constants.THEN_VOID)),
-                        List.of(treeMaker.Lambda(
-                                List.of(treeMaker.VarDef(
-                                        treeMaker.Modifiers(8589934592L),
-                                        names.fromString(replacedVar),
-                                        null,
-                                        null
-                                )),
+                        treeMaker.Select(unwrap, names.fromString(Constants.THEN_VOID)),
+                        List.of(JavacUtils.createVoidPromiseFunction(
+                                context,
                                 JavacUtils.forceBlockReturn(
                                         treeMaker,
                                         treeMaker.Block(
                                                 0L,
                                                 copyReshaped().reshapeStatements(tails)
                                         )
-                                )
+                                ),
+                                awaitType,
+                                replacedVar
                         ))
                 );
             }
             treeMaker.pos = prePos;
         } else if (action == ACTION.RESHAPE_TRY) {
             JCTree.JCTry jcTry = (JCTree.JCTry) current;
-            if (!reshaped) {
-                jcTry = (JCTree.JCTry) ReturnTranslator.translateReturn(this, jcTry);
-                tails = ReturnTranslator.translateReturn(this, tails);
-            }
             int prePos = treeMaker.pos;
             treeMaker.pos = current.pos;
             reshapedExpr = JavacUtils.createPromiseThen(
@@ -345,10 +333,6 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
             );
             treeMaker.pos = prePos;
         } else if (action == ACTION.RESHAPE_STATEMENT) {
-            if (!reshaped) {
-                current = ReturnTranslator.translateReturn(this, current);
-                tails = ReturnTranslator.translateReturn(this, tails);
-            }
             int prePos = treeMaker.pos;
             reshapedExpr = treeMaker.at(current).Apply(
                     List.nil(),
@@ -412,7 +396,7 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
         return newStatements;
     }
 
-    public static enum ACTION {
+    public enum ACTION {
         NO_OP, RESHAPE_STATEMENT, RESHAPE_AWAIT, RESHAPE_TRY
     }
 }

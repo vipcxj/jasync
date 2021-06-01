@@ -1,12 +1,8 @@
 package io.github.vipcxj.jasync.test;
 
 import io.github.vipcxj.jasync.spec.Promise;
-import io.github.vipcxj.jasync.spec.annotations.Async;
-import io.github.vipcxj.jasync.reactive.Promises;
-import reactor.core.publisher.Mono;
 
-import java.time.Duration;
-import java.util.function.Supplier;
+import java.io.StringWriter;
 
 public class Apple1 {
 
@@ -18,6 +14,10 @@ public class Apple1 {
 
     private void m() {
 
+    }
+
+    private Promise<StringWriter> getWriter() {
+        return Promise.just(new StringWriter());
     }
 
     private Promise<String> say(String message) {

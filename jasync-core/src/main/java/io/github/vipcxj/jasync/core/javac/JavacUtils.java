@@ -12,13 +12,13 @@ import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.functional.VoidPromiseFunction;
+import io.github.vipcxj.jasync.spec.functional.VoidPromiseSupplier;
 import io.github.vipcxj.jasync.spec.helpers.*;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public class JavacUtils {
 
@@ -66,13 +66,15 @@ public class JavacUtils {
         JCTree.JCMethodInvocation result = treeMaker.at(thenBlock).Apply(
                 List.nil(),
                 JavacUtils.createQualifiedIdent(treeMaker, names, Constants.PROMISE_DEFER_VOID),
-                List.of(treeMaker.Lambda(
-                        List.nil(),
-                        forceBlockReturn(
-                                treeMaker,
-                                thenBlock
+                List.of(
+                        JavacUtils.createVoidPromiseSupplier(
+                                context,
+                                forceBlockReturn(
+                                        treeMaker,
+                                        thenBlock
+                                )
                         )
-                ))
+                )
         );
         if (catchBlocks != null) {
             for (JCTree.JCCatch jcCatch : catchBlocks) {
@@ -198,13 +200,7 @@ public class JavacUtils {
         JCTree.JCExpression expression = treeMaker.NewClass(
                 null,
                 List.nil(),
-                treeMaker.TypeApply(
-                        createQualifiedIdent(treeMaker, names, Supplier.class.getCanonicalName()),
-                        List.of(treeMaker.TypeApply(
-                                createQualifiedIdent(treeMaker, names, Promise.class.getCanonicalName()),
-                                List.of(createQualifiedIdent(treeMaker, names, Void.class.getCanonicalName()))
-                        ))
-                ),
+                createQualifiedIdent(treeMaker, names, VoidPromiseSupplier.class.getCanonicalName()),
                 List.nil(),
                 treeMaker.ClassDef(
                         treeMaker.Modifiers(0),
@@ -228,7 +224,7 @@ public class JavacUtils {
                                 List.nil(),
                                 null,
                                 List.nil(),
-                                List.nil(),
+                                List.of(createQualifiedIdent(treeMaker, names, Throwable.class.getCanonicalName())),
                                 body,
                                 null
                         ))
@@ -238,7 +234,7 @@ public class JavacUtils {
         return expression;
     }
 
-    public static JCTree.JCExpression createVoidPromiseFunction(IJAsyncContext context, JCTree.JCBlock body, String type, String var) {
+    public static JCTree.JCExpression createVoidPromiseFunction(IJAsyncContext context, JCTree.JCBlock body, Type type, String var) {
         TreeMaker treeMaker = context.getTreeMaker();
         Names names = context.getNames();
         int prePos = treeMaker.pos;
@@ -246,14 +242,8 @@ public class JavacUtils {
                 null,
                 List.nil(),
                 treeMaker.TypeApply(
-                        createQualifiedIdent(treeMaker, names, Function.class.getCanonicalName()),
-                        List.of(
-                                createQualifiedIdent(treeMaker, names, type),
-                                treeMaker.TypeApply(
-                                        createQualifiedIdent(treeMaker, names, Promise.class.getCanonicalName()),
-                                        List.of(createQualifiedIdent(treeMaker, names, Void.class.getCanonicalName()))
-                                )
-                        )
+                        createQualifiedIdent(treeMaker, names, VoidPromiseFunction.class.getCanonicalName()),
+                        List.of(treeMaker.Type(type))
                 ),
                 List.nil(),
                 treeMaker.ClassDef(
@@ -280,10 +270,10 @@ public class JavacUtils {
                                 List.of(treeMaker.VarDef(
                                         treeMaker.Modifiers(8589934592L),
                                         names.fromString(var),
-                                        createQualifiedIdent(treeMaker, names, type),
+                                        treeMaker.Type(type),
                                         null
                                 )),
-                                List.nil(),
+                                List.of(createQualifiedIdent(treeMaker, names, Throwable.class.getCanonicalName())),
                                 body,
                                 null
                         ))
