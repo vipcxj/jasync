@@ -1,10 +1,14 @@
-package io.github.vipcxj.jasync.core.javac;
+package io.github.vipcxj.jasync.core.javac.visitor;
 
 import com.sun.tools.javac.api.JavacScope;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeScanner;
 import com.sun.tools.javac.util.List;
+import io.github.vipcxj.jasync.core.javac.IJAsyncCuContext;
+import io.github.vipcxj.jasync.core.javac.model.VarInfo;
+import io.github.vipcxj.jasync.core.javac.model.VarKey;
+import io.github.vipcxj.jasync.core.javac.model.VarUseState;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;

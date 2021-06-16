@@ -1,4 +1,4 @@
-package io.github.vipcxj.jasync.core.javac;
+package io.github.vipcxj.jasync.core.javac.model;
 
 import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Symbol;

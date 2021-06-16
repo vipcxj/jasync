@@ -1,6 +1,7 @@
 package io.github.vipcxj.jasync.reactive;
 
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JAsync;
+import io.github.vipcxj.jasync.spec.helpers.IntReference;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
@@ -32,36 +33,36 @@ public class MonoPromiseTest {
     public void test1() {
         Promises.from(Mono.just(6).delayElement(Duration.ofSeconds(1))).then(a ->
                 Promises.from(Mono.just(8).delayElement(Duration.ofSeconds(1))).then(b ->
-                        Promise.defer(() -> {
-                            AtomicInteger iRef = new AtomicInteger(0);
-                            return Promise.just().doWhileVoid(
-                                    () -> iRef.get() < 10,
-                                    () -> Promise.defer(() -> {
-                                        if (iRef.get() % 2 == 0) {
-                                            Promise.doContinue();
+                        JAsync.deferVoid(() -> {
+                            IntReference iRef = new IntReference(0);
+                            return JAsync.just().doWhileVoid(
+                                    () -> iRef.getValue() < 10,
+                                    () -> JAsync.deferVoid(() -> {
+                                        if (iRef.getValue() % 2 == 0) {
+                                            JAsync.doContinue();
                                         }
-                                        System.out.println(iRef.get());
-                                        return Promise.just();
+                                        System.out.println(iRef.getValue());
+                                        return JAsync.just();
                                     }).doFinally(() -> {
-                                        iRef.set(iRef.get() + 1);
-                                        return Promise.just();
+                                        iRef.incrementAndGetValue();
+                                        return JAsync.just();
                                     })
                             );
                         }).then(() ->
-                                Promise.defer(() -> {
+                                JAsync.deferVoid(() -> {
                                     AtomicInteger iRef = new AtomicInteger(0);
-                                    return Promise.just().doWhileVoid(
+                                    return JAsync.just().doWhileVoid(
                                             () -> iRef.get() < a,
-                                            () -> Promise.defer(() -> {
+                                            () -> JAsync.defer(() -> {
                                                 AtomicInteger jRef = new AtomicInteger(0);
-                                                return Promise.just().doWhileVoid(
+                                                return JAsync.just().doWhileVoid(
                                                         () -> jRef.get() < b,
-                                                        () -> Promise.defer(() -> Promises.from(Mono.just(iRef.get() * jRef.get()).delayElement(Duration.ofSeconds(1))).<Void>then(t0 -> {
+                                                        () -> JAsync.defer(() -> Promises.from(Mono.just(iRef.get() * jRef.get()).delayElement(Duration.ofSeconds(1))).<Void>then(t0 -> {
                                                             System.out.println(iRef.get() + " * " + jRef.get() + " = " + t0);
                                                             if (iRef.get() == 5) {
-                                                                Promise.doBreak();
+                                                                JAsync.doBreak();
                                                             } else if (iRef.get() == 3 && jRef.get() == 4) {
-                                                                return Promise.doReturn(null);
+                                                                return JAsync.doReturn(null);
                                                             }
                                                             return null;
                                                         })).doFinally(() -> {

@@ -1,7 +1,9 @@
-package io.github.vipcxj.jasync.core.javac;
+package io.github.vipcxj.jasync.core.javac.translator;
 
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeTranslator;
+import io.github.vipcxj.jasync.core.javac.Constants;
+import io.github.vipcxj.jasync.core.javac.JavacUtils;
 
 import java.util.Objects;
 
@@ -66,7 +68,7 @@ public class SimplifiedTranslator extends TreeTranslator {
         JCTree.JCExpression methodSelect = jcMethodInvocation.getMethodSelect();
         if (methodSelect instanceof JCTree.JCFieldAccess) {
             JCTree.JCFieldAccess fieldAccess = (JCTree.JCFieldAccess) methodSelect;
-            return Objects.equals(JavacUtils.getQualifiedName(fieldAccess), Constants.PROMISE_DEFER_VOID);
+            return Objects.equals(JavacUtils.getQualifiedName(fieldAccess), Constants.JASYNC_DEFER_VOID);
         }
         return false;
     }

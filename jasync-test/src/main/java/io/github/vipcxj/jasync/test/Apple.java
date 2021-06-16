@@ -1,8 +1,13 @@
 package io.github.vipcxj.jasync.test;
 
+import io.github.vipcxj.jasync.core.CompareUseCase;
+import io.github.vipcxj.jasync.spec.JAsync;
 import io.github.vipcxj.jasync.spec.Promise;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import io.github.vipcxj.jasync.reactive.Promises;
+import io.github.vipcxj.jasync.spec.functional.VoidPromiseFunction;
+import io.github.vipcxj.jasync.spec.functional.VoidPromiseSupplier;
+import io.github.vipcxj.jasync.spec.helpers.ObjectReference;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
@@ -12,38 +17,27 @@ import java.time.Duration;
 
 public class Apple {
 
-    public static class A {
-
-    }
-
-    private String a;
-
-    private void m() {
-
-    }
-
     private Promise<String> say(String message) {
-        return Promise.just(message);
+        return JAsync.just(message);
     }
 
-    @Async
     public Promise<Boolean> test1() {
         Integer a = Promises.from(Mono.just(6).delayElement(Duration.ofSeconds(1))).await();
         if (a > 3) {
             try {
                 System.out.println(say("hello").await());
             } catch (Throwable t) {
-                return Promise.error(t);
+                return JAsync.error(t);
             } finally {
                 System.out.println(say("finally").await());
             }
-            return Promise.just(true);
+            return JAsync.just(true);
         } else if (a == 2) {
             say("a = 2").await();
         } else {
             say("else").await();
         }
-        return Promise.just(false);
+        return JAsync.just(false);
     }
 
     public static String getLineInfo() {
@@ -51,7 +45,6 @@ public class Apple {
         return ste.getFileName() + ": Line " + ste.getLineNumber();
     }
 
-    @Async
     public Promise<Integer> test2(int a) {
         int i = 0, j, o;
         Double k;
@@ -64,14 +57,60 @@ public class Apple {
         --a;
         System.out.println(p);
         o = 1;
-        return Promise.just(a + i + j + k.intValue());
+        return JAsync.just(a + i + j + k.intValue());
+    }
+
+    private static final String ABC = "abc";
+
+
+    public Promise<Void> testMultiLevelScopeVar() {
+        String a = "!";
+        {
+            System.out.println(say(a).await());
+            {
+                a = "3";
+                System.out.println(say(a).await());
+            }
+        }
+        return null;
+    }
+
+    public Promise<Void> testSwitch() {
+        String s = "a";
+        switch (s) {
+            case "a" + "b":
+                return null;
+            case ABC:
+                s = "c";
+                return null;
+        }
+        int a = 1;
+        switch (a) {
+            case 1:
+                String message = "1";
+                say(message).await();
+            case 2 + 4:
+            case 3:
+                say("2 or 3").await();
+                break;
+            case 4: {
+                message = "2";
+                say(message + "2").await();
+            }
+            case 5: {
+                message = "4";
+            }
+            default:
+                int b = 3;
+                say("" + b).await();
+        }
+        return null;
     }
 
     private Promise<StringWriter> getWriter() {
-        return Promise.just(new StringWriter());
+        return JAsync.just(new StringWriter());
     }
 
-    @Async
     public Promise<Void> testTryWith() {
         try (
                 StringWriter writer1 = getWriter().await();
@@ -86,7 +125,7 @@ public class Apple {
         } finally {
             System.out.println('3');
         }
-        return Promise.just();
+        return JAsync.just();
     }
 
     public void test() {
@@ -102,11 +141,6 @@ public class Apple {
         } finally {
             System.out.println('3');
         }
-    }
-
-    public static void main(String[] args) {
-        Apple apple = new Apple();
-        apple.test2(3).block();
     }
 
     public static class B {

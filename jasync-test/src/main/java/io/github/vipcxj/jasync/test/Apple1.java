@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.test;
 
+import io.github.vipcxj.jasync.spec.JAsync;
 import io.github.vipcxj.jasync.spec.Promise;
 
 import java.io.StringWriter;
@@ -17,11 +18,11 @@ public class Apple1 {
     }
 
     private Promise<StringWriter> getWriter() {
-        return Promise.just(new StringWriter());
+        return JAsync.just(new StringWriter());
     }
 
     private Promise<String> say(String message) {
-        return Promise.just(message);
+        return JAsync.just(message);
     }
 
 

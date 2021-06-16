@@ -1,4 +1,4 @@
-package io.github.vipcxj.jasync.core.javac;
+package io.github.vipcxj.jasync.core.javac.model;
 
 public enum VarUseState {
 

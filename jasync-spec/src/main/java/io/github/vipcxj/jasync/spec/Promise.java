@@ -1,16 +1,15 @@
 package io.github.vipcxj.jasync.spec;
 
 import io.github.vipcxj.jasync.spec.functional.*;
-import io.github.vipcxj.jasync.spec.spi.PromiseProvider;
+import io.github.vipcxj.jasync.spec.switchexpr.EnumCase;
+import io.github.vipcxj.jasync.spec.switchexpr.IntCase;
+import io.github.vipcxj.jasync.spec.switchexpr.StringCase;
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 public interface Promise<T> {
-
-    PromiseProvider provider = Utils.getProvider();
 
     default T await() {
         throw new UnsupportedOperationException();
@@ -72,74 +71,43 @@ public interface Promise<T> {
             return null;
         });
     }
-    Promise<T> doFinally(PromiseSupplier<T> block);
+    Promise<T> doFinally(VoidPromiseSupplier block);
     Promise<T> doWhile(BooleanSupplier predicate, PromiseFunction<T, T> block);
     Promise<Void> doWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block);
     Promise<T> doWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block);
     Promise<Void> doWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block);
+    Promise<T> doDoWhile(BooleanSupplier predicate, PromiseFunction<T, T> block);
+    Promise<Void> doDoWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block);
+    Promise<T> doDoWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block);
+    Promise<Void> doDoWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block);
+
+    <E> Promise<Void> doForEachIterable(Iterable<E> iterable, VoidPromiseFunction<E> block);
+    <E> Promise<Void> doForEachObjectArray(E[] array, VoidPromiseFunction<E> block);
+    Promise<Void> doForEachByteArray(byte[] array, ByteVoidPromiseFunction block);
+    Promise<Void> doForEachCharArray(char[] array, CharVoidPromiseFunction block);
+    Promise<Void> doForEachBooleanArray(boolean[] array, BooleanVoidPromiseFunction block);
+    Promise<Void> doForEachShortArray(short[] array, ShortVoidPromiseFunction block);
+    Promise<Void> doForEachIntArray(int[] array, IntVoidPromiseFunction block);
+    Promise<Void> doForEachLongArray(long[] array, LongVoidPromiseFunction block);
+    Promise<Void> doForEachFloatArray(float[] array, FloatVoidPromiseFunction block);
+    Promise<Void> doForEachDoubleArray(double[] array, DoubleVoidPromiseFunction block);
+
+    Promise<Void> doIntSwitch(int value, List<IntCase> cases, VoidPromiseSupplier defaultBody);
+    default Promise<Void> doIntSwitch(int value, List<IntCase> cases) {
+        return doIntSwitch(value, cases, null);
+    }
+    Promise<Void> doStringSwitch(String value, List<StringCase> cases, VoidPromiseSupplier defaultBody);
+    default Promise<Void> doStringSwitch(String value, List<StringCase> cases) {
+        return doStringSwitch(value, cases, null);
+    }
+    <E extends Enum<E>> Promise<Void> doEnumSwitch(Enum<E> value, List<EnumCase<E>> cases, VoidPromiseSupplier defaultBody);
+    default  <E extends Enum<E>> Promise<Void> doEnumSwitch(Enum<E> value, List<EnumCase<E>> cases) {
+        return doEnumSwitch(value, cases, null);
+    }
+
     <O> Promise<O> catchReturn();
     Handle async();
     T block();
     T block(Duration duration);
     <I> I unwrap();
-
-    static void doContinue() {
-        throw new ContinueException();
-    }
-
-    static void doBreak() {
-        throw new BreakException();
-    }
-
-    static <T, O> Promise<T> doReturn(Promise<O> promise) {
-        if (promise != null) {
-            return promise.then(v -> {
-                throw new ReturnException(v);
-            });
-        } else {
-            throw new ReturnException(null);
-        }
-    }
-
-    static <T> Promise<T> just(T value) {
-        if (provider == null) {
-            throw new IllegalStateException("No provider of PromiseProvider found");
-        }
-        return provider.just(value);
-    }
-
-    static Promise<Void> just() {
-        return just(null);
-    }
-
-    static <T> Promise<T> defer(PromiseSupplier<T> block) {
-        if (provider == null) {
-            throw new IllegalStateException("No provider of PromiseProvider found");
-        }
-        return provider.defer(block);
-    }
-
-    static Promise<Void> deferVoid(VoidPromiseSupplier block) {
-        return defer(block);
-    }
-
-    static <T> Promise<T> error(Throwable t) {
-        if (provider == null) {
-            throw new IllegalStateException("No provider of PromiseProvider found");
-        }
-        return provider.error(t);
-    }
-
-    static boolean mustRethrowException(Throwable t, List<Class<? extends Throwable>> exceptionsType) {
-        if (t instanceof ReturnException) {
-            return exceptionsType.stream().noneMatch(ReturnException.class::equals);
-        }
-        if (t instanceof BreakException) {
-            return exceptionsType.stream().noneMatch(BreakException.class::equals);
-        }
-        if (t instanceof ContinueException) {
-            return exceptionsType.stream().noneMatch(ContinueException.class::equals);
-        }
-        return false;
-    }
 }

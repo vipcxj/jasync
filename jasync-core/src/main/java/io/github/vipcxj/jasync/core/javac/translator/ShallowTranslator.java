@@ -1,4 +1,4 @@
-package io.github.vipcxj.jasync.core.javac;
+package io.github.vipcxj.jasync.core.javac.translator;
 
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeTranslator;

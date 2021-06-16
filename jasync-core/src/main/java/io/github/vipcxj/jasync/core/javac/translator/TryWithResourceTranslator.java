@@ -1,4 +1,4 @@
-package io.github.vipcxj.jasync.core.javac;
+package io.github.vipcxj.jasync.core.javac.translator;
 
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
@@ -6,6 +6,8 @@ import com.sun.tools.javac.util.JCDiagnostic;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
+import io.github.vipcxj.jasync.core.javac.IJAsyncCuContext;
+import io.github.vipcxj.jasync.core.javac.JavacUtils;
 
 import javax.lang.model.SourceVersion;
 
@@ -53,7 +55,7 @@ public class TryWithResourceTranslator extends ShallowTranslator {
                                         treeMaker.VarDef(
                                                 treeMaker.Modifiers(0L),
                                                 var1,
-                                                JavacUtils.createQualifiedIdent(treeMaker, names, Throwable.class.getCanonicalName()),
+                                                JavacUtils.makeQualifiedIdent(treeMaker, names, Throwable.class.getCanonicalName()),
                                                 null
                                         ),
                                         treeMaker.Block(0L, List.of(
@@ -70,7 +72,7 @@ public class TryWithResourceTranslator extends ShallowTranslator {
                                                                         treeMaker.VarDef(
                                                                                 treeMaker.Modifiers(0L),
                                                                                 var2,
-                                                                                JavacUtils.createQualifiedIdent(treeMaker, names, Throwable.class.getCanonicalName()),
+                                                                                JavacUtils.makeQualifiedIdent(treeMaker, names, Throwable.class.getCanonicalName()),
                                                                                 null
                                                                         ),
                                                                         treeMaker.Block(0L, List.of(

@@ -1,16 +1,29 @@
 package io.github.vipcxj.jasync.core.javac;
 
+import io.github.vipcxj.jasync.spec.JAsync;
 import io.github.vipcxj.jasync.spec.Promise;
 
 public class Constants {
     public static final String PROMISE = Promise.class.getCanonicalName();
-    public static final String DEFER_VOID = "deferVoid";
-    public static final String PROMISE_DEFER_VOID = PROMISE + "." + DEFER_VOID;
+    public static final String THEN = "then";
     public static final String THEN_VOID = "thenVoid";
-    public static final String DO_RETURN = "doReturn";
-    public static final String PROMISE_DO_RETURN = PROMISE + "." + DO_RETURN;
-    public static final String ERROR = "error";
-    public static final String PROMISE_ERROR = PROMISE + "." + ERROR;
+    public static final String JASYNC = JAsync.class.getCanonicalName();
+    public static final String JASYNC_JUST = JASYNC + ".just";
+    public static final String JASYNC_DEFER_VOID = JASYNC + ".deferVoid";
+    public static final String JASYNC_DO_RETURN = JASYNC + ".doReturn";
+    public static final String JASYNC_DO_BREAK = JASYNC + ".doBreak";
+    public static final String JASYNC_DO_SWITCH = JASYNC + ".doSwitch";
+    public static final String JASYNC_DO_WHILE = JASYNC + ".doWhile";
+    public static final String JASYNC_DO_DO_WHILE = JASYNC + ".doDoWhile";
+    public static final String JASYNC_DO_FOR_EACH_OBJECT = JASYNC + ".doForEachObject";
+    public static final String JASYNC_DO_FOR_EACH_BOOLEAN = JASYNC + ".doForEachBoolean";
+    public static final String JASYNC_DO_FOR_EACH_BYTE = JASYNC + ".doForEachByte";
+    public static final String JASYNC_DO_FOR_EACH_CHAR = JASYNC + ".doForEachChar";
+    public static final String JASYNC_DO_FOR_EACH_SHORT = JASYNC + ".doForEachShort";
+    public static final String JASYNC_DO_FOR_EACH_INT = JASYNC + ".doForEachInt";
+    public static final String JASYNC_DO_FOR_EACH_LONG = JASYNC + ".doForEachLong";
+    public static final String JASYNC_DO_FOR_EACH_FLOAT = JASYNC + ".doForEachFloat";
+    public static final String JASYNC_DO_FOR_EACH_DOUBLE = JASYNC + ".doForEachDouble";
 
     public static final String REFERENCE_GET = "getValue";
     public static final String REFERENCE_ASSIGN = "setAndGet";
@@ -29,4 +42,13 @@ public class Constants {
     public static final String REFERENCE_LOGIC_AND_ASSIGN = "andAndGetValue";
     public static final String REFERENCE_LOGIC_OR_ASSIGN = "orAndGetValue";
     public static final String REFERENCE_LOGIC_XOR_ASSIGN = "xorAndGetValue";
+
+    public static final String CASES = "io.github.vipcxj.jasync.spec.switchexpr.Cases";
+    public static final String CASES_OF = CASES + ".of";
+    public static final String INT_CASE = "io.github.vipcxj.jasync.spec.switchexpr.IntCase";
+    public static final String INT_CASE_OF = INT_CASE + ".of";
+    public static final String STRING_CASE = "io.github.vipcxj.jasync.spec.switchexpr.StringCase";
+    public static final String STRING_CASE_OF = STRING_CASE + ".of";
+    public static final String ENUM_CASE = "io.github.vipcxj.jasync.spec.switchexpr.EnumCase";
+    public static final String ENUM_CASE_OF = ENUM_CASE + ".of";
 }

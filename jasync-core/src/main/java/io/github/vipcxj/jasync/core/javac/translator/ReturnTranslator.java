@@ -1,9 +1,12 @@
-package io.github.vipcxj.jasync.core.javac;
+package io.github.vipcxj.jasync.core.javac.translator;
 
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.Names;
+import io.github.vipcxj.jasync.core.javac.Constants;
+import io.github.vipcxj.jasync.core.javac.IJAsyncCuContext;
+import io.github.vipcxj.jasync.core.javac.JavacUtils;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -43,6 +46,7 @@ public class ReturnTranslator extends ShallowTranslator {
 
     @Override
     public void visitReturn(JCTree.JCReturn jcReturn) {
+        super.visitReturn(jcReturn);
         if (findAwait) {
             TreeMaker treeMaker = context.getTreeMaker();
             Names names = context.getNames();
@@ -50,8 +54,8 @@ public class ReturnTranslator extends ShallowTranslator {
             result = treeMaker.at(jcReturn).Return(
                     treeMaker.Apply(
                             List.nil(),
-                            JavacUtils.createQualifiedIdent(treeMaker, names, Constants.PROMISE_DO_RETURN),
-                            List.of(jcReturn.expr)
+                            JavacUtils.makeQualifiedIdent(treeMaker, names, Constants.JASYNC_DO_RETURN),
+                            jcReturn.expr != null ? List.of(jcReturn.expr) : List.of(JavacUtils.makeNull(context))
                     )
             );
             treeMaker.pos = prePos;

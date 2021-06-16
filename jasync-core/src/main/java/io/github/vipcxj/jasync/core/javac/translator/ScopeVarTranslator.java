@@ -1,4 +1,4 @@
-package io.github.vipcxj.jasync.core.javac;
+package io.github.vipcxj.jasync.core.javac.translator;
 
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.tree.JCTree;
@@ -6,6 +6,10 @@ import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.TreeTranslator;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.Names;
+import io.github.vipcxj.jasync.core.javac.*;
+import io.github.vipcxj.jasync.core.javac.model.VarInfo;
+import io.github.vipcxj.jasync.core.javac.model.VarKey;
+import io.github.vipcxj.jasync.core.javac.model.VarUseState;
 
 import javax.lang.model.element.Element;
 import java.util.Map;
@@ -22,8 +26,18 @@ public class ScopeVarTranslator extends TreeTranslator {
 
     private VarInfo getVarInfo(JCTree tree) {
         Element element = context.getElement(tree);
+        Symbol.VarSymbol varSymbol = null;
         if (element instanceof Symbol.VarSymbol) {
-            Symbol.VarSymbol varSymbol = (Symbol.VarSymbol) element;
+            varSymbol = (Symbol.VarSymbol) element;
+        } else if (tree instanceof JCTree.JCIdent) {
+            // 如果tree和ast断开关联，getElement返回必定为空。但若tree本身就已经解析过Symbol了，可以直接用
+            // 但这里的处理过于魔法，很容易出问题，如果有更好的办法，最好改掉。
+            JCTree.JCIdent ident = (JCTree.JCIdent) tree;
+            if (ident.sym instanceof Symbol.VarSymbol) {
+                varSymbol = (Symbol.VarSymbol) ident.sym;
+            }
+        }
+        if (varSymbol != null) {
             for (VarInfo info : varData.values()) {
                 if (JavacUtils.equalSymbol(varSymbol, info.getSymbol())) {
                     return info;
@@ -36,20 +50,23 @@ public class ScopeVarTranslator extends TreeTranslator {
     @Override
     public void visitIdent(JCTree.JCIdent jcIdent) {
         VarInfo varInfo = getVarInfo(jcIdent);
-        if (varInfo != null && varInfo.getState() == VarUseState.WRITE) {
-            TreeMaker maker = context.getTreeMaker();
-            Names names = context.getNames();
-            int prePos = maker.pos;
-            result = maker.at(jcIdent).Apply(
-                    List.nil(),
-                    maker.Select(
-                            maker.Ident(jcIdent.name),
-                            names.fromString(Constants.REFERENCE_GET)
-                    ),
-                    List.nil()
-            );
-            maker.pos = prePos;
-            return;
+        if (varInfo != null) {
+            jcIdent.sym = null;
+            if (varInfo.getState() == VarUseState.WRITE) {
+                TreeMaker maker = context.getTreeMaker();
+                Names names = context.getNames();
+                int prePos = maker.pos;
+                result = maker.at(jcIdent).Apply(
+                        List.nil(),
+                        maker.Select(
+                                maker.Ident(jcIdent.name),
+                                names.fromString(Constants.REFERENCE_GET)
+                        ),
+                        List.nil()
+                );
+                maker.pos = prePos;
+                return;
+            }
         }
         super.visitIdent(jcIdent);
     }
@@ -118,22 +135,24 @@ public class ScopeVarTranslator extends TreeTranslator {
     @Override
     public void visitAssignop(JCTree.JCAssignOp jcAssignOp) {
         VarInfo varInfo = getVarInfo(jcAssignOp.lhs);
-        if (varInfo != null && varInfo.getState() == VarUseState.WRITE) {
-            String assignMethod = getAssignMethod(jcAssignOp.getTag());
+        if (varInfo != null) {
             JCTree.JCExpression rhs = translate(jcAssignOp.rhs);
-            TreeMaker maker = context.getTreeMaker();
-            Names names = context.getNames();
-            int prePos = maker.pos;
-            result = maker.at(jcAssignOp).Apply(
-                    List.nil(),
-                    maker.at(jcAssignOp.lhs).Select(
-                            maker.Ident(varInfo.getSymbol().name),
-                            names.fromString(assignMethod)
-                    ),
-                    List.of(rhs)
-            );
-            maker.pos = prePos;
-            return;
+            if (varInfo.getState() == VarUseState.WRITE) {
+                String assignMethod = getAssignMethod(jcAssignOp.getTag());
+                TreeMaker maker = context.getTreeMaker();
+                Names names = context.getNames();
+                int prePos = maker.pos;
+                result = maker.at(jcAssignOp).Apply(
+                        List.nil(),
+                        maker.at(jcAssignOp.lhs).Select(
+                                maker.Ident(varInfo.getSymbol().name),
+                                names.fromString(assignMethod)
+                        ),
+                        List.of(rhs)
+                );
+                maker.pos = prePos;
+                return;
+            }
         }
         super.visitAssignop(jcAssignOp);
     }
@@ -141,21 +160,23 @@ public class ScopeVarTranslator extends TreeTranslator {
     @Override
     public void visitUnary(JCTree.JCUnary jcUnary) {
         VarInfo varInfo = getVarInfo(jcUnary.arg);
-        if (varInfo != null && varInfo.getState() == VarUseState.WRITE) {
-            String assignMethod = getAssignMethod(jcUnary.getTag());
-            TreeMaker maker = context.getTreeMaker();
-            Names names = context.getNames();
-            int prePos = maker.pos;
-            result = maker.at(jcUnary).Apply(
-                    List.nil(),
-                    maker.at(jcUnary.arg).Select(
-                            maker.Ident(varInfo.getSymbol().name),
-                            names.fromString(assignMethod)
-                    ),
-                    List.nil()
-            );
-            maker.pos = prePos;
-            return;
+        if (varInfo != null) {
+            if (varInfo.getState() == VarUseState.WRITE) {
+                String assignMethod = getAssignMethod(jcUnary.getTag());
+                TreeMaker maker = context.getTreeMaker();
+                Names names = context.getNames();
+                int prePos = maker.pos;
+                result = maker.at(jcUnary).Apply(
+                        List.nil(),
+                        maker.at(jcUnary.arg).Select(
+                                maker.Ident(varInfo.getSymbol().name),
+                                names.fromString(assignMethod)
+                        ),
+                        List.nil()
+                );
+                maker.pos = prePos;
+                return;
+            }
         }
         super.visitUnary(jcUnary);
     }

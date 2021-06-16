@@ -1,9 +1,13 @@
 package io.github.vipcxj.jasync.core.javac;
 
 import com.sun.tools.javac.api.JavacTrees;
+import com.sun.tools.javac.code.Symtab;
+import com.sun.tools.javac.code.Types;
+import com.sun.tools.javac.comp.Attr;
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
+import com.sun.tools.javac.util.Log;
 import com.sun.tools.javac.util.Names;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -18,6 +22,10 @@ public class JAsyncContext implements IJAsyncContext {
     protected final TreeMaker treeMaker;
     protected final Names names;
     protected final JavacTrees trees;
+    protected final Attr attr;
+    protected final Log log;
+    protected final Types types;
+    protected final Symtab syms;
 
     public JAsyncContext(final ProcessingEnvironment environment) {
         this.environment = environment;
@@ -25,6 +33,10 @@ public class JAsyncContext implements IJAsyncContext {
         this.context = ((JavacProcessingEnvironment) environment).getContext();
         this.treeMaker = TreeMaker.instance(context);
         this.names = Names.instance(context);
+        this.attr = Attr.instance(context);
+        this.syms = Symtab.instance(context);
+        this.log = Log.instance(context);
+        this.types = Types.instance(context);
     }
 
     public JAsyncContext(IJAsyncContext asyncContext) {
@@ -33,6 +45,10 @@ public class JAsyncContext implements IJAsyncContext {
         this.context = asyncContext.getContext();
         this.treeMaker = asyncContext.getTreeMaker();
         this.names = asyncContext.getNames();
+        this.attr = asyncContext.getAttr();
+        this.log = asyncContext.getLog();
+        this.syms = asyncContext.getSymbols();
+        this.types = asyncContext.getTypes();
     }
 
     @Override
@@ -58,6 +74,26 @@ public class JAsyncContext implements IJAsyncContext {
     @Override
     public JavacTrees getTrees() {
         return trees;
+    }
+
+    @Override
+    public Attr getAttr() {
+        return attr;
+    }
+
+    @Override
+    public Log getLog() {
+        return log;
+    }
+
+    @Override
+    public Symtab getSymbols() {
+        return syms;
+    }
+
+    @Override
+    public Types getTypes() {
+        return types;
     }
 
     @Override
