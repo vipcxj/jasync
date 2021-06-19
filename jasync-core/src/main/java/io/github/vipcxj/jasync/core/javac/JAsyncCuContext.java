@@ -4,6 +4,7 @@ import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.util.TreePath;
 import com.sun.tools.javac.api.JavacScope;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.util.Log;
 
 import javax.lang.model.element.Element;
 
@@ -29,7 +30,12 @@ public class JAsyncCuContext extends JAsyncContext implements IJAsyncCuContext {
     @Override
     public JavacScope getScope(JCTree tree) {
         TreePath path = getPath(tree);
-        return path != null ? getTrees().getScope(path) : null;
+        Log.DiscardDiagnosticHandler handler = new Log.DiscardDiagnosticHandler(getLog());
+        try {
+            return path != null ? getTrees().getScope(path) : null;
+        } finally {
+            getLog().popDiagnosticHandler(handler);
+        }
     }
 
     @Override

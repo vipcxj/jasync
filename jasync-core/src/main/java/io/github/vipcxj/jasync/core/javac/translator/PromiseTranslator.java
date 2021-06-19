@@ -291,7 +291,7 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
                         JCTree.JCBlock block = JavacUtils.makeBlock(context, statements);
                         // make new declare valid in the ast tree.
                         jcCase.stats = List.of(block);
-                        getAttr().attribStat(block, getScope(block).getEnv());
+                        JavacUtils.attrStat(context, block);
                         statements = copyReshaped().reshapeStatements(statements, blockStatementsReplacer(block));
                         block.stats = statements;
                         // restore the case statements.
@@ -304,17 +304,12 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
                 action = ACTION.RESHAPE_STATEMENT;
                 promise = true;
                 ListBuffer<JCTree.JCExpression> args = new ListBuffer<>();
-                JCTree.JCExpression defaultArg = null;
                 Iterator<JCTree.JCBlock> iterator = cases.iterator();
                 for (JCTree.JCCase aCase : jcSwitch.cases) {
                     JCTree.JCBlock block = iterator.next();
                     treeMaker.at(block);
                     int caseType = getCaseType(aCase);
-                    if (caseType != 0) {
-                        args.append(JavacUtils.makeCase(context, caseType, aCase.pat, block));
-                    } else {
-                        defaultArg = JavacUtils.makeVoidPromiseSupplier(context, block);
-                    }
+                    args.append(JavacUtils.makeCase(context, caseType, aCase.pat, block));
                 }
                 treeMaker.at(jcSwitch);
                 result = JavacUtils.makeExprStat(context, JavacUtils.makeApply(
@@ -326,8 +321,7 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
                                         context,
                                         Constants.CASES_OF,
                                         args.toList()
-                                ),
-                                defaultArg != null ? defaultArg : JavacUtils.makeNull(context)
+                                )
                         )
                 ));
             } finally {

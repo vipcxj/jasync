@@ -788,6 +788,13 @@ public class JavacUtils {
         int prePos = maker.pos;
         JCTree.JCExpression expression = null;
         switch (caseType) {
+            case 0:
+                expression = makeApply(
+                        context,
+                        Constants.DEFAULT_CASE_OF,
+                        List.of(makeVoidPromiseSupplier(context, block))
+                );
+                break;
             case 1:
                 expression = makeApply(
                         context,

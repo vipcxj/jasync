@@ -3,6 +3,7 @@ package io.github.vipcxj.jasync.spec;
 import io.github.vipcxj.jasync.spec.functional.*;
 import io.github.vipcxj.jasync.spec.spi.PromiseProvider;
 import io.github.vipcxj.jasync.spec.switchexpr.EnumCase;
+import io.github.vipcxj.jasync.spec.switchexpr.ICase;
 import io.github.vipcxj.jasync.spec.switchexpr.IntCase;
 import io.github.vipcxj.jasync.spec.switchexpr.StringCase;
 
@@ -55,28 +56,8 @@ public class JAsync {
         }
     }
 
-    public static Promise<Void> doSwitch(int value, List<IntCase> cases, VoidPromiseSupplier defaultBody) {
-        return just().doIntSwitch(value, cases, defaultBody);
-    }
-
-    public static Promise<Void> doSwitch(int value, List<IntCase> cases) {
-        return just().doIntSwitch(value, cases, null);
-    }
-
-    public static Promise<Void> doSwitch(String value, List<StringCase> cases, VoidPromiseSupplier defaultBody) {
-        return just().doStringSwitch(value, cases, defaultBody);
-    }
-
-    public static Promise<Void> doSwitch(String value, List<StringCase> cases) {
-        return just().doStringSwitch(value, cases, null);
-    }
-
-    public static <E extends Enum<E>> Promise<Void> doSwitch(Enum<E> value, List<EnumCase<E>> cases, VoidPromiseSupplier defaultBody) {
-        return just().doEnumSwitch(value, cases, defaultBody);
-    }
-
-    public static <E extends Enum<E>> Promise<Void> doSwitch(Enum<E> value, List<EnumCase<E>> cases) {
-        return just().doEnumSwitch(value, cases, null);
+    public static <C> Promise<Void> doSwitch(C value, List<? extends ICase<C>> cases) {
+        return just().doSwitch(value, cases);
     }
 
     public static Promise<Void> doWhile(BooleanSupplier predicate, VoidPromiseSupplier block) {

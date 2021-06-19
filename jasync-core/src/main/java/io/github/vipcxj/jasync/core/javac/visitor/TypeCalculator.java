@@ -25,4 +25,19 @@ public class TypeCalculator extends TreeScanner {
             }
         }
     }
+
+    @Override
+    public void visitIdent(JCTree.JCIdent tree) {
+        scan(tree);
+    }
+
+    @Override
+    public void visitLiteral(JCTree.JCLiteral tree) {
+        scan(tree);
+    }
+
+    @Override
+    public void visitTypeIdent(JCTree.JCPrimitiveTypeTree tree) {
+        scan(tree);
+    }
 }

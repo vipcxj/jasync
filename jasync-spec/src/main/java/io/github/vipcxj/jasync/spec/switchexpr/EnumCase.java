@@ -2,7 +2,7 @@ package io.github.vipcxj.jasync.spec.switchexpr;
 
 import io.github.vipcxj.jasync.spec.functional.VoidPromiseSupplier;
 
-public class EnumCase<E extends Enum<E>> implements Case<Enum<E>> {
+public class EnumCase<E extends Enum<E>> implements ICase<Enum<E>> {
     private final E cond;
     private final VoidPromiseSupplier body;
 
@@ -21,8 +21,8 @@ public class EnumCase<E extends Enum<E>> implements Case<Enum<E>> {
     }
 
     @Override
-    public boolean is(Enum<E> v) {
-        return  v == cond;
+    public boolean is(Enum<E> v, boolean findingDefault) {
+        return !findingDefault && v == cond;
     }
 
     public static <E extends Enum<E>> EnumCase<E> of(E cond, VoidPromiseSupplier body) {

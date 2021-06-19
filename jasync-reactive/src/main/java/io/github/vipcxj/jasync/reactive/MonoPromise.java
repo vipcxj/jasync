@@ -1,12 +1,9 @@
 package io.github.vipcxj.jasync.reactive;
 
+import io.github.vipcxj.jasync.runtime.helpers.ArrayIterator;
 import io.github.vipcxj.jasync.spec.*;
 import io.github.vipcxj.jasync.spec.functional.*;
-import io.github.vipcxj.jasync.runtime.helpers.ArrayIterator;
-import io.github.vipcxj.jasync.spec.switchexpr.Case;
-import io.github.vipcxj.jasync.spec.switchexpr.EnumCase;
-import io.github.vipcxj.jasync.spec.switchexpr.IntCase;
-import io.github.vipcxj.jasync.spec.switchexpr.StringCase;
+import io.github.vipcxj.jasync.spec.switchexpr.ICase;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -312,50 +309,32 @@ public class MonoPromise<T> implements Promise<T> {
         );
     }
 
-    private <C> Promise<Void> doSwitch(C value, List<? extends Case<C>> cases, VoidPromiseSupplier defaultBody) {
+    @Override
+    public <C> Promise<Void> doSwitch(C value, List<? extends ICase<C>> cases) {
         boolean matched = false;
-        Mono<Void> result = null;
-        for (Case<C> aCase : cases) {
-            if (!matched && aCase.is(value)) {
-                matched = true;
+        Promise<Void> result = null;
+        for (int i = 0; i < 2; ++i) {
+            for (ICase<C> aCase : cases) {
+                if (!matched && aCase.is(value, i != 0)) {
+                    matched = true;
+                }
+                if (matched) {
+                    result = (result != null ? result : new MonoPromise<>(mono)).then(() -> {
+                        try {
+                            VoidPromiseSupplier body = aCase.getBody();
+                            Promise<Void> promise = body != null ? body.get() : null;
+                            return promise != null ? promise : JAsync.just();
+                        } catch (Throwable t) {
+                            return JAsync.error(t);
+                        }
+                    });
+                }
             }
             if (matched) {
-                result = (result != null ? result : mono).then(Mono.defer(() -> {
-                    try {
-                        Promise<Void> promise = aCase.getBody().get();
-                        return promise != null ? promise.unwrap() : Mono.empty();
-                    } catch (Throwable t) {
-                        return Mono.error(t);
-                    }
-                }));
+                break;
             }
         }
-        if (!matched && defaultBody != null) {
-            result = mono.then(Mono.defer(() -> {
-                try {
-                    Promise<Void> promise = defaultBody.get();
-                    return promise != null ? promise.unwrap() : Mono.empty();
-                } catch (Throwable t) {
-                    return Mono.error(t);
-                }
-            }));
-        }
-        return result != null ? new MonoPromise<>(result).doCatch(Collections.singletonList(BreakException.class), e -> {}) : new MonoPromise<>(Mono.empty());
-    }
-
-    @Override
-    public Promise<Void> doIntSwitch(int value, List<IntCase> cases, VoidPromiseSupplier defaultBody) {
-        return doSwitch(value, cases, defaultBody);
-    }
-
-    @Override
-    public Promise<Void> doStringSwitch(String value, List<StringCase> cases, VoidPromiseSupplier defaultBody) {
-        return doSwitch(value, cases, defaultBody);
-    }
-
-    @Override
-    public <E extends Enum<E>> Promise<Void> doEnumSwitch(Enum<E> value, List<EnumCase<E>> enumCases, VoidPromiseSupplier defaultBody) {
-        return doSwitch(value, enumCases, defaultBody);
+        return result != null ? result.doCatch(Collections.singletonList(BreakException.class), e -> {}) : JAsync.just();
     }
 
     @Override

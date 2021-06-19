@@ -2,6 +2,7 @@ package io.github.vipcxj.jasync.spec;
 
 import io.github.vipcxj.jasync.spec.functional.*;
 import io.github.vipcxj.jasync.spec.switchexpr.EnumCase;
+import io.github.vipcxj.jasync.spec.switchexpr.ICase;
 import io.github.vipcxj.jasync.spec.switchexpr.IntCase;
 import io.github.vipcxj.jasync.spec.switchexpr.StringCase;
 
@@ -92,18 +93,7 @@ public interface Promise<T> {
     Promise<Void> doForEachFloatArray(float[] array, FloatVoidPromiseFunction block);
     Promise<Void> doForEachDoubleArray(double[] array, DoubleVoidPromiseFunction block);
 
-    Promise<Void> doIntSwitch(int value, List<IntCase> cases, VoidPromiseSupplier defaultBody);
-    default Promise<Void> doIntSwitch(int value, List<IntCase> cases) {
-        return doIntSwitch(value, cases, null);
-    }
-    Promise<Void> doStringSwitch(String value, List<StringCase> cases, VoidPromiseSupplier defaultBody);
-    default Promise<Void> doStringSwitch(String value, List<StringCase> cases) {
-        return doStringSwitch(value, cases, null);
-    }
-    <E extends Enum<E>> Promise<Void> doEnumSwitch(Enum<E> value, List<EnumCase<E>> cases, VoidPromiseSupplier defaultBody);
-    default  <E extends Enum<E>> Promise<Void> doEnumSwitch(Enum<E> value, List<EnumCase<E>> cases) {
-        return doEnumSwitch(value, cases, null);
-    }
+    <C> Promise<Void> doSwitch(C value, List<? extends ICase<C>> cases);
 
     <O> Promise<O> catchReturn();
     Handle async();

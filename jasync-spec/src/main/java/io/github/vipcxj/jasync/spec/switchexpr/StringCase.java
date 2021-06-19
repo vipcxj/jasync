@@ -2,7 +2,7 @@ package io.github.vipcxj.jasync.spec.switchexpr;
 
 import io.github.vipcxj.jasync.spec.functional.VoidPromiseSupplier;
 
-public class StringCase implements Case<String> {
+public class StringCase implements ICase<String> {
     private final String cond;
     private final VoidPromiseSupplier body;
 
@@ -21,7 +21,9 @@ public class StringCase implements Case<String> {
     }
 
     @Override
-    public boolean is(String v) {
+    public boolean is(String v, boolean findingDefault) {
+        if (findingDefault)
+            return false;
         if (cond == null) {
             return v == null;
         }

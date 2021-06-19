@@ -51,4 +51,6 @@ public class Constants {
     public static final String STRING_CASE_OF = STRING_CASE + ".of";
     public static final String ENUM_CASE = "io.github.vipcxj.jasync.spec.switchexpr.EnumCase";
     public static final String ENUM_CASE_OF = ENUM_CASE + ".of";
+    public static final String DEFAULT_CASE = "io.github.vipcxj.jasync.spec.switchexpr.DefaultCase";
+    public static final String DEFAULT_CASE_OF = DEFAULT_CASE + ".of";
 }

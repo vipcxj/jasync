@@ -2,7 +2,7 @@ package io.github.vipcxj.jasync.spec.switchexpr;
 
 import io.github.vipcxj.jasync.spec.functional.VoidPromiseSupplier;
 
-public class IntCase implements Case<Integer> {
+public class IntCase implements ICase<Integer> {
     private final int cond;
     private final VoidPromiseSupplier body;
 
@@ -20,13 +20,13 @@ public class IntCase implements Case<Integer> {
         return body;
     }
 
-    public boolean is(int v) {
-        return  v == cond;
+    public boolean is(int v, boolean findingDefault) {
+        return !findingDefault && v == cond;
     }
 
     @Override
-    public boolean is(Integer v) {
-        return v != null && v == cond;
+    public boolean is(Integer v, boolean findingDefault) {
+        return !findingDefault && v != null && v == cond;
     }
 
     public static IntCase of(int cond, VoidPromiseSupplier body) {
