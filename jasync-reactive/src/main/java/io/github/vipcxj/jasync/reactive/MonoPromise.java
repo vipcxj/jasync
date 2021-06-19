@@ -2,7 +2,7 @@ package io.github.vipcxj.jasync.reactive;
 
 import io.github.vipcxj.jasync.spec.*;
 import io.github.vipcxj.jasync.spec.functional.*;
-import io.github.vipcxj.jasync.spec.helpers.ArrayIterator;
+import io.github.vipcxj.jasync.runtime.helpers.ArrayIterator;
 import io.github.vipcxj.jasync.spec.switchexpr.Case;
 import io.github.vipcxj.jasync.spec.switchexpr.EnumCase;
 import io.github.vipcxj.jasync.spec.switchexpr.IntCase;

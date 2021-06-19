@@ -19,7 +19,7 @@ import io.github.vipcxj.jasync.core.javac.visitor.ReturnScanner;
 import io.github.vipcxj.jasync.core.javac.visitor.TypeCalculator;
 import io.github.vipcxj.jasync.spec.Promise;
 import io.github.vipcxj.jasync.spec.functional.*;
-import io.github.vipcxj.jasync.spec.helpers.*;
+import io.github.vipcxj.jasync.runtime.helpers.*;
 
 import java.util.Map;
 import java.util.Objects;

@@ -1,7 +1,9 @@
-package io.github.vipcxj.jasync.spec.helpers;
+package io.github.vipcxj.jasync.runtime.helpers;
 
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static io.github.vipcxj.jasync.runtime.helpers.AtomicIntegerHelper.*;
 
 public class IntReference extends Number implements Comparable<IntReference>, Serializable {
 
@@ -62,51 +64,51 @@ public class IntReference extends Number implements Comparable<IntReference>, Se
     }
 
     public int mulAndGetValue(long v) {
-        return atomic.accumulateAndGet((int) v, (a, b) -> a * b);
+        return mul(atomic, v);
     }
 
     public int mulAndGetValue(double v) {
-        return atomic.accumulateAndGet((int) v, (a, b) -> a * b);
+        return mul(atomic, (long) v);
     }
 
     public int divideAndGetValue(long v) {
-        return atomic.accumulateAndGet((int) v, (a, b) -> a / b);
+        return div(atomic, v);
     }
 
     public int divideAndGetValue(double v) {
-        return atomic.accumulateAndGet((int) v, (a, b) -> a / b);
+        return div(atomic, (long) v);
     }
 
     public int modAndGetValue(long v) {
-        return atomic.accumulateAndGet((int) v, (a, b) -> a % b);
+        return mod(atomic, v);
     }
 
     public int modAndGetValue(double v) {
-        return atomic.accumulateAndGet((int) v, (a, b) -> a % b);
+        return mod(atomic, (long) v);
     }
 
     public int leftShiftAndGetValue(long v) {
-        return atomic.accumulateAndGet((int) v, (a, b) -> a << b);
+        return leftShift(atomic, v);
     }
 
     public int rightShiftAndGetValue(long v) {
-        return atomic.accumulateAndGet((int) v, (a, b) -> a >> b);
+        return rightShift(atomic, v);
     }
 
     public int unsignedRightShiftAndGetValue(long v) {
-        return atomic.accumulateAndGet((int) v, (a, b) -> a >>> b);
+        return unsignedRightShift(atomic, v);
     }
 
     public int andAndGetValue(long v) {
-        return atomic.accumulateAndGet((int) v, (a, b) -> a & b);
+        return and(atomic, v);
     }
 
     public int orAndGetValue(long v) {
-        return atomic.accumulateAndGet((int) v, (a, b) -> a | b);
+        return or(atomic, v);
     }
 
     public int xorAndGetValue(long v) {
-        return atomic.accumulateAndGet((int) v, (a, b) -> a ^ b);
+        return xor(atomic, v);
     }
 
     @Override

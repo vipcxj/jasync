@@ -1,4 +1,4 @@
-package io.github.vipcxj.jasync.spec.helpers;
+package io.github.vipcxj.jasync.runtime.helpers;
 
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicBoolean;

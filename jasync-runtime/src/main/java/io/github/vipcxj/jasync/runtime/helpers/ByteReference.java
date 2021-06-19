@@ -1,12 +1,14 @@
-package io.github.vipcxj.jasync.spec.helpers;
+package io.github.vipcxj.jasync.runtime.helpers;
 
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.github.vipcxj.jasync.runtime.helpers.AtomicIntegerHelper.*;
+
 public class ByteReference extends Number implements Comparable<ByteReference>, Serializable {
 
     private static final long serialVersionUID = 3058916963831990968L;
-    private final AtomicInteger atomic;
+    protected final AtomicInteger atomic;
 
     public ByteReference() {
         this((byte) 0);
@@ -62,51 +64,51 @@ public class ByteReference extends Number implements Comparable<ByteReference>, 
     }
 
     public byte mulAndGetValue(long v) {
-        return (byte) atomic.accumulateAndGet((int) v, (a, b) -> a * b);
+        return (byte) mul(atomic, (int) v);
     }
 
     public byte mulAndGetValue(double v) {
-        return (byte) atomic.accumulateAndGet((int) v, (a, b) -> a * b);
+        return (byte) mul(atomic, (int) v);
     }
 
     public byte divideAndGetValue(long v) {
-        return (byte) atomic.accumulateAndGet((int) v, (a, b) -> a / b);
+        return (byte) div(atomic, (int) v);
     }
 
     public byte divideAndGetValue(double v) {
-        return (byte) atomic.accumulateAndGet((int) v, (a, b) -> a / b);
+        return (byte) div(atomic, (int) v);
     }
 
     public byte modAndGetValue(long v) {
-        return (byte) atomic.accumulateAndGet((int) v, (a, b) -> a % b);
+        return (byte) mod(atomic, (int) v);
     }
 
     public byte modAndGetValue(double v) {
-        return (byte) atomic.accumulateAndGet((int) v, (a, b) -> a % b);
+        return (byte) mod(atomic, (int) v);
     }
 
     public byte leftShiftAndGetValue(long v) {
-        return (byte) atomic.accumulateAndGet((int) v, (a, b) -> a << b);
+        return (byte) leftShift(atomic, v);
     }
 
     public byte rightShiftAndGetValue(long v) {
-        return (byte) atomic.accumulateAndGet((int) v, (a, b) -> a >> b);
+        return (byte) rightShift(atomic, v);
     }
 
     public byte unsignedRightShiftAndGetValue(long v) {
-        return (byte) atomic.accumulateAndGet((int) v, (a, b) -> a >>> b);
+        return (byte) unsignedRightShift(atomic, v);
     }
 
     public byte andAndGetValue(long v) {
-        return (byte) atomic.accumulateAndGet((int) v, (a, b) -> a & b);
+        return (byte) and(atomic, v);
     }
 
     public byte orAndGetValue(long v) {
-        return (byte) atomic.accumulateAndGet((int) v, (a, b) -> a | b);
+        return (byte) or(atomic, v);
     }
 
     public byte xorAndGetValue(long v) {
-        return (byte) atomic.accumulateAndGet((int) v, (a, b) -> a ^ b);
+        return (byte) xor(atomic, v);
     }
 
     @Override

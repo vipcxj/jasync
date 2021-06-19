@@ -1,11 +1,11 @@
-package io.github.vipcxj.jasync.spec.helpers;
+package io.github.vipcxj.jasync.runtime.helpers;
 
 import java.util.Iterator;
 
 public class ArrayIterator<E> implements Iterator<E> {
 
     private final E[] array;
-    private int length;
+    private final int length;
     private int index;
 
     public ArrayIterator(E[] array) {
@@ -22,5 +22,10 @@ public class ArrayIterator<E> implements Iterator<E> {
     @Override
     public E next() {
         return array[index++];
+    }
+
+    @Override
+    public void remove() {
+        throw new UnsupportedOperationException();
     }
 }

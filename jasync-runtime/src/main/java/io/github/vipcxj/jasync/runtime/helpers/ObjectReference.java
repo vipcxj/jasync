@@ -1,4 +1,4 @@
-package io.github.vipcxj.jasync.spec.helpers;
+package io.github.vipcxj.jasync.runtime.helpers;
 
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -293,102 +293,202 @@ public class ObjectReference<T> implements java.io.Serializable {
 
     public T getValueAndIncrement() {
         assertNumber("post increment");
-        return atomic.getAndAccumulate(toT(1), this::plus);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = plus(prev, toT(1));
+        } while (!atomic.compareAndSet(prev, next));
+        return prev;
     }
 
     public T getValueAndDecrement() {
         assertNumber("post decrement");
-        return atomic.getAndAccumulate(toT(1), this::minus);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = minus(prev, toT(1));
+        } while (!atomic.compareAndSet(prev, next));
+        return prev;
     }
 
     public T incrementAndGetValue() {
         assertNumber("pre increment");
-        return atomic.accumulateAndGet(toT(1), this::plus);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = plus(prev, toT(1));
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T decrementAndGetValue() {
         assertNumber("pre decrement");
-        return atomic.accumulateAndGet(toT(1), this::minus);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = minus(prev, toT(1));
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T addAndGetValue(long v) {
         assertNumber("plus and assign");
-        return atomic.accumulateAndGet(toT(v), this::plus);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = plus(prev, toT(v));
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T addAndGetValue(double v) {
         assertNumber("plus and assign");
-        return atomic.accumulateAndGet(toT(v), (a, b) -> plus(a, b, true));
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = plus(prev, toT(v), true);
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T minusAndGetValue(long v) {
         assertNumber("minus and assign");
-        return atomic.accumulateAndGet(toT(v), this::minus);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = minus(prev, toT(v));
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T minusAndGetValue(double v) {
         assertNumber("minus and assign");
-        return atomic.accumulateAndGet(toT(v), (a, b) -> minus(a, b, true));
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = minus(prev, toT(v), true);
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T mulAndGetValue(long v) {
         assertNumber("multiply and assign");
-        return atomic.accumulateAndGet(toT(v), this::multiply);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = multiply(prev, toT(v));
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T mulAndGetValue(double v) {
         assertNumber("multiply and assign");
-        return atomic.accumulateAndGet(toT(v), (a, b) -> multiply(a, b, true));
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = multiply(prev, toT(v), true);
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T divideAndGetValue(long v) {
         assertNumber("divide and assign");
-        return atomic.accumulateAndGet(toT(v), this::divide);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = divide(prev, toT(v));
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T divideAndGetValue(double v) {
         assertNumber("divide and assign");
-        return atomic.accumulateAndGet(toT(v), (a, b) -> divide(a, b, true));
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = divide(prev, toT(v), true);
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T modAndGetValue(long v) {
         assertNumber("mod and assign");
-        return atomic.accumulateAndGet(toT(v), this::mod);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = mod(prev, toT(v));
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T modAndGetValue(double v) {
         assertNumber("mod and assign");
-        return atomic.accumulateAndGet(toT(v), (a, b) -> mod(a, b, true));
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = mod(prev, toT(v), true);
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T leftShiftAndGetValue(long v) {
         assertNumber("left shift and assign");
-        return atomic.accumulateAndGet(toT(v), this::leftShift);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = leftShift(prev, toT(v));
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T rightShiftAndGetValue(long v) {
         assertNumber("right shift and assign");
-        return atomic.accumulateAndGet(toT(v), this::rightShift);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = rightShift(prev, toT(v));
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T unsignedRightShiftAndGetValue(long v) {
         assertNumber("unsigned right shift and assign");
-        return atomic.accumulateAndGet(toT(v), this::unsignedRightShift);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = unsignedRightShift(prev, toT(v));
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T andAndGetValue(long v) {
         assertNumber("logic and and assign");
-        return atomic.accumulateAndGet(toT(v), this::logicAnd);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = logicAnd(prev, toT(v));
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T orAndGetValue(long v) {
         assertNumber("logic or and assign");
-        return atomic.accumulateAndGet(toT(v), this::logicOr);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = logicOr(prev, toT(v));
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
     public T xorAndGetValue(long v) {
         assertNumber("logic xor and assign");
-        return atomic.accumulateAndGet(toT(v), this::logicXor);
+        T prev, next;
+        do {
+            prev = atomic.get();
+            next = logicXor(prev, toT(v));
+        } while (!atomic.compareAndSet(prev, next));
+        return next;
     }
 
 }

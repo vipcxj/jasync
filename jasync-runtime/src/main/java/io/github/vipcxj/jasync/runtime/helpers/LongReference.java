@@ -1,12 +1,14 @@
-package io.github.vipcxj.jasync.spec.helpers;
+package io.github.vipcxj.jasync.runtime.helpers;
 
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static io.github.vipcxj.jasync.runtime.helpers.AtomicLongHelper.*;
+
 public class LongReference extends Number implements Comparable<LongReference>, Serializable {
 
     private static final long serialVersionUID = -6475621842589727141L;
-    private final AtomicLong atomic;
+    protected final AtomicLong atomic;
 
     public LongReference() {
         this(0L);
@@ -62,51 +64,51 @@ public class LongReference extends Number implements Comparable<LongReference>, 
     }
 
     public long mulAndGetValue(long v) {
-        return atomic.accumulateAndGet(v, (a, b) -> a * b);
+        return mul(atomic, v);
     }
 
     public long mulAndGetValue(double v) {
-        return atomic.accumulateAndGet((long) v, (a, b) -> a * b);
+        return mul(atomic, (long) v);
     }
 
     public long divideAndGetValue(long v) {
-        return atomic.accumulateAndGet(v, (a, b) -> a / b);
+        return div(atomic, v);
     }
 
     public long divideAndGetValue(double v) {
-        return atomic.accumulateAndGet((long) v, (a, b) -> a / b);
+        return div(atomic, (long) v);
     }
 
     public long modAndGetValue(long v) {
-        return atomic.accumulateAndGet(v, (a, b) -> a % b);
+        return mod(atomic, v);
     }
 
     public long modAndGetValue(double v) {
-        return atomic.accumulateAndGet((long) v, (a, b) -> a % b);
+        return mod(atomic, (long) v);
     }
 
     public long leftShiftAndGetValue(long v) {
-        return atomic.accumulateAndGet(v, (a, b) -> a << b);
+        return leftShift(atomic, v);
     }
 
     public long rightShiftAndGetValue(long v) {
-        return atomic.accumulateAndGet(v, (a, b) -> a >> b);
+        return rightShift(atomic, v);
     }
 
     public long unsignedRightShiftAndGetValue(long v) {
-        return atomic.accumulateAndGet(v, (a, b) -> a >>> b);
+        return unsignedRightShift(atomic, v);
     }
 
     public long andAndGetValue(long v) {
-        return atomic.accumulateAndGet(v, (a, b) -> a & b);
+        return and(atomic, v);
     }
 
     public long orAndGetValue(long v) {
-        return atomic.accumulateAndGet(v, (a, b) -> a | b);
+        return or(atomic, v);
     }
 
     public long xorAndGetValue(long v) {
-        return atomic.accumulateAndGet(v, (a, b) -> a ^ b);
+        return xor(atomic, v);
     }
 
     @Override
