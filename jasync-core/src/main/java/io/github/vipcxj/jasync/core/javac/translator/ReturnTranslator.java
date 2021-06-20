@@ -5,7 +5,7 @@ import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.Names;
 import io.github.vipcxj.jasync.core.javac.Constants;
-import io.github.vipcxj.jasync.core.javac.IJAsyncCuContext;
+import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 
 import javax.lang.model.element.Element;
@@ -17,10 +17,10 @@ import javax.lang.model.util.Types;
 
 public class ReturnTranslator extends ShallowTranslator {
 
-    private final IJAsyncCuContext context;
+    private final IJAsyncInstanceContext context;
     private boolean findAwait;
 
-    public ReturnTranslator(IJAsyncCuContext context) {
+    public ReturnTranslator(IJAsyncInstanceContext context) {
         this.context = context;
         this.findAwait = false;
     }

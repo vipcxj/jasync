@@ -17,9 +17,9 @@ import io.github.vipcxj.jasync.core.javac.model.VarKey;
 import io.github.vipcxj.jasync.core.javac.model.VarUseState;
 import io.github.vipcxj.jasync.core.javac.visitor.ReturnScanner;
 import io.github.vipcxj.jasync.core.javac.visitor.TypeCalculator;
+import io.github.vipcxj.jasync.runtime.helpers.*;
 import io.github.vipcxj.jasync.spec.Promise;
 import io.github.vipcxj.jasync.spec.functional.*;
-import io.github.vipcxj.jasync.runtime.helpers.*;
 
 import java.util.Map;
 import java.util.Objects;
@@ -63,7 +63,7 @@ public class JavacUtils {
     }
 
     public static JCTree.JCMethodInvocation createPromiseThen(
-            IJAsyncCuContext context,
+            IJAsyncInstanceContext context,
             JCTree.JCBlock thenBlock,
             List<JCTree.JCCatch> catchBlocks,
             JCTree.JCBlock finallyBlock,
@@ -167,7 +167,7 @@ public class JavacUtils {
         return treeMaker.Literal(TypeTag.BOT, null).setType(context.getSymbols().botType);
     }
 
-    public static JCTree.JCBlock forceBlockReturn(IJAsyncCuContext context, JCTree.JCBlock block) {
+    public static JCTree.JCBlock forceBlockReturn(IJAsyncInstanceContext context, JCTree.JCBlock block) {
         Boolean returned = ReturnScanner.scanBlock(block);
         if (!Boolean.TRUE.equals(returned)) {
             TreeMaker treeMaker = context.getTreeMaker();
@@ -188,7 +188,7 @@ public class JavacUtils {
         return block;
     }
 
-    public static JCTree.JCMethodInvocation appendCatchReturn(IJAsyncCuContext context, JCTree.JCExpression expression) {
+    public static JCTree.JCMethodInvocation appendCatchReturn(IJAsyncInstanceContext context, JCTree.JCExpression expression) {
         TreeMaker treeMaker = context.getTreeMaker();
         int prePos = treeMaker.pos;
         try {
@@ -203,24 +203,24 @@ public class JavacUtils {
         }
     }
 
-    public static JCTree.JCReturn makeReturn(IJAsyncCuContext context, JCTree.JCExpression expression) {
+    public static JCTree.JCReturn makeReturn(IJAsyncInstanceContext context, JCTree.JCExpression expression) {
         TreeMaker maker = context.getTreeMaker();
         return wrapPos(context, maker.Return(expression), expression);
     }
 
-    public static JCTree.JCMethodInvocation makeApply(IJAsyncCuContext context, String methodName) {
+    public static JCTree.JCMethodInvocation makeApply(IJAsyncInstanceContext context, String methodName) {
         return makeApply(context, methodName, List.nil(), null, List.nil());
     }
 
-    public static JCTree.JCMethodInvocation makeApply(IJAsyncCuContext context, String methodName, List<JCTree.JCExpression> args) {
+    public static JCTree.JCMethodInvocation makeApply(IJAsyncInstanceContext context, String methodName, List<JCTree.JCExpression> args) {
         return makeApply(context, methodName, args, null, List.nil());
     }
 
-    public static JCTree.JCMethodInvocation makeApply(IJAsyncCuContext context, String methodName, List<JCTree.JCExpression> args, JCTree.JCExpression parent) {
+    public static JCTree.JCMethodInvocation makeApply(IJAsyncInstanceContext context, String methodName, List<JCTree.JCExpression> args, JCTree.JCExpression parent) {
         return makeApply(context, methodName, args, parent, List.nil());
     }
 
-    public static JCTree.JCMethodInvocation makeApply(IJAsyncCuContext context, String methodName, List<JCTree.JCExpression> args, JCTree.JCExpression parent, List<JCTree.JCExpression> typeArgs) {
+    public static JCTree.JCMethodInvocation makeApply(IJAsyncInstanceContext context, String methodName, List<JCTree.JCExpression> args, JCTree.JCExpression parent, List<JCTree.JCExpression> typeArgs) {
         if (methodName == null || methodName.isEmpty()) {
             throw new IllegalArgumentException("Invalid method name: " + methodName + ".");
         }
@@ -257,7 +257,7 @@ public class JavacUtils {
     }
 
     public static JCTree.JCExpression makeSupplier(
-            IJAsyncCuContext context,
+            IJAsyncInstanceContext context,
             JCTree.JCBlock body,
             TreeFactory<JCTree.JCExpression> baseClassMaker,
             TreeFactory<JCTree.JCExpression> typeMaker,
@@ -298,7 +298,7 @@ public class JavacUtils {
         }
     }
 
-    public static JCTree.JCExpression makeBooleanSupplier(IJAsyncCuContext context, JCTree.JCExpression expr) {
+    public static JCTree.JCExpression makeBooleanSupplier(IJAsyncInstanceContext context, JCTree.JCExpression expr) {
         return makeSupplier(
                 context,
                 JavacUtils.makeBlock(context, JavacUtils.makeReturn(context, expr)),
@@ -308,7 +308,7 @@ public class JavacUtils {
         );
     }
 
-    public static JCTree.JCExpression makeBooleanPromiseSupplier(IJAsyncCuContext context, JCTree.JCExpression expr) {
+    public static JCTree.JCExpression makeBooleanPromiseSupplier(IJAsyncInstanceContext context, JCTree.JCExpression expr) {
         return makeSupplier(
                 context,
                 JavacUtils.makeBlock(context, JavacUtils.makeReturn(context, expr)),
@@ -328,7 +328,7 @@ public class JavacUtils {
         );
     }
 
-    public static JCTree.JCExpression makeVoidPromiseSupplier(IJAsyncCuContext context, JCTree.JCBlock body) {
+    public static JCTree.JCExpression makeVoidPromiseSupplier(IJAsyncInstanceContext context, JCTree.JCBlock body) {
         return makeSupplier(
                 context,
                 body,
@@ -341,7 +341,7 @@ public class JavacUtils {
         );
     }
 
-    private static JCTree.JCExpression makePromiseFunctionType(IJAsyncCuContext context, Type typeA, Type typeB) {
+    private static JCTree.JCExpression makePromiseFunctionType(IJAsyncInstanceContext context, Type typeA, Type typeB) {
         TreeMaker maker = context.getTreeMaker();
         Names names = context.getNames();
         if (typeB == null) {
@@ -379,7 +379,7 @@ public class JavacUtils {
         }
     }
 
-    public static JCTree.JCExpression makePromiseFunction(IJAsyncCuContext context, JCTree.JCBlock body, Type typeA, Type typeB, String var) {
+    public static JCTree.JCExpression makePromiseFunction(IJAsyncInstanceContext context, JCTree.JCBlock body, Type typeA, Type typeB, String var) {
         TreeMaker treeMaker = context.getTreeMaker();
         Names names = context.getNames();
         int prePos = treeMaker.pos;
@@ -423,7 +423,7 @@ public class JavacUtils {
         }
     }
 
-    public static JCTree.JCExpression makeVoidPromiseFunction(IJAsyncCuContext context, JCTree.JCBlock body, Type type, String var) {
+    public static JCTree.JCExpression makeVoidPromiseFunction(IJAsyncInstanceContext context, JCTree.JCBlock body, Type type, String var) {
         return makePromiseFunction(
                 context,
                 body,
@@ -433,17 +433,17 @@ public class JavacUtils {
         );
     }
 
-    public static JCTree.JCBlock makeBlock(IJAsyncCuContext context, List<JCTree.JCStatement> statements) {
+    public static JCTree.JCBlock makeBlock(IJAsyncInstanceContext context, List<JCTree.JCStatement> statements) {
         TreeMaker treeMaker = context.getTreeMaker();
         return wrapPos(context, treeMaker.Block(0L, statements), statements);
     }
 
-    public static JCTree.JCBlock makeBlock(IJAsyncCuContext context, JCTree.JCStatement statement) {
+    public static JCTree.JCBlock makeBlock(IJAsyncInstanceContext context, JCTree.JCStatement statement) {
         if (statement instanceof JCTree.JCBlock) return (JCTree.JCBlock) statement;
         return makeBlock(context, List.of(statement));
     }
 
-    public static JCTree.JCExpression makePromise(IJAsyncCuContext context, JCTree.JCExpression expression) {
+    public static JCTree.JCExpression makePromise(IJAsyncInstanceContext context, JCTree.JCExpression expression) {
         return makeApply(
                 context,
                 Constants.JASYNC_JUST,
@@ -451,17 +451,17 @@ public class JavacUtils {
         );
     }
 
-    public static JCTree.JCBlock shallowCopyBlock(IJAsyncCuContext context, JCTree.JCBlock block) {
+    public static JCTree.JCBlock shallowCopyBlock(IJAsyncInstanceContext context, JCTree.JCBlock block) {
         TreeMaker treeMaker = context.getTreeMaker();
         return wrapPos(context, treeMaker.Block(0L, block.stats), block);
     }
 
-    public static JCTree.JCExpressionStatement makeExprStat(IJAsyncCuContext context, JCTree.JCExpression expression) {
+    public static JCTree.JCExpressionStatement makeExprStat(IJAsyncInstanceContext context, JCTree.JCExpression expression) {
         TreeMaker maker = context.getTreeMaker();
         return wrapPos(context, maker.Exec(expression), expression);
     }
 
-    public static JCTree.JCStatement makeWhileFromForLoop(IJAsyncCuContext context, JCTree.JCForLoop forLoop) {
+    public static JCTree.JCStatement makeWhileFromForLoop(IJAsyncInstanceContext context, JCTree.JCForLoop forLoop) {
         TreeMaker maker = context.getTreeMaker();
         int prePos = maker.pos;
         try {
@@ -513,7 +513,7 @@ public class JavacUtils {
         }
     }
 
-    public static JCTree.JCCompilationUnit getJCCompilationUnitTree(IJAsyncCuContext context) {
+    public static JCTree.JCCompilationUnit getJCCompilationUnitTree(IJAsyncInstanceContext context) {
         CompilationUnitTree cu = context.getCompilationUnitTree();
         JCTree.JCCompilationUnit jcu = null;
         if (cu instanceof JCTree.JCCompilationUnit) {
@@ -542,14 +542,14 @@ public class JavacUtils {
         return -1;
     }
 
-    public static int getEndPos(IJAsyncCuContext context, JCTree tree) {
+    public static int getEndPos(IJAsyncInstanceContext context, JCTree tree) {
         if (tree == null) return -1;
         JCTree.JCCompilationUnit jcu = getJCCompilationUnitTree(context);
         int endPos = tree.getEndPosition(jcu != null ? jcu.endPositions : null);
         return Math.max(endPos, tree.pos);
     }
 
-    public static int getEndPos(IJAsyncCuContext context, List<? extends JCTree> trees) {
+    public static int getEndPos(IJAsyncInstanceContext context, List<? extends JCTree> trees) {
         if (trees == null || trees.isEmpty()) {
             return -1;
         }
@@ -565,7 +565,7 @@ public class JavacUtils {
         return position;
     }
 
-    public static <T extends JCTree> T wrapPos(IJAsyncCuContext context, T tree, JCTree target, boolean replace) {
+    public static <T extends JCTree> T wrapPos(IJAsyncInstanceContext context, T tree, JCTree target, boolean replace) {
         if (target == null) return tree;
         tree.pos = target.getStartPosition();
         JCTree.JCCompilationUnit jcu = getJCCompilationUnitTree(context);
@@ -580,11 +580,11 @@ public class JavacUtils {
         return tree;
     }
 
-    public static <T extends JCTree> T wrapPos(IJAsyncCuContext context, T tree, JCTree target) {
+    public static <T extends JCTree> T wrapPos(IJAsyncInstanceContext context, T tree, JCTree target) {
         return wrapPos(context, tree, target, false);
     }
 
-    public static <T extends JCTree> T wrapPos(IJAsyncCuContext context, T tree, List<? extends JCTree> targets) {
+    public static <T extends JCTree> T wrapPos(IJAsyncInstanceContext context, T tree, List<? extends JCTree> targets) {
         if (targets == null || targets.isEmpty()) return tree;
         tree.pos = targets.head.getStartPosition();
         JCTree.JCCompilationUnit jcu = getJCCompilationUnitTree(context);
@@ -772,7 +772,7 @@ public class JavacUtils {
         return statements;
     }
 
-    private static JCTree.JCExpression toEnum(IJAsyncCuContext context, JCTree.JCExpression pat) {
+    private static JCTree.JCExpression toEnum(IJAsyncInstanceContext context, JCTree.JCExpression pat) {
         if (pat instanceof JCTree.JCIdent) {
             TreeMaker treeMaker = context.getTreeMaker();
             int prePos = treeMaker.pos;
@@ -783,7 +783,7 @@ public class JavacUtils {
         throw new IllegalArgumentException("Unable to resolve the enum value from: " + pat);
     }
 
-    public static JCTree.JCExpression makeCase(IJAsyncCuContext context, int caseType, JCTree.JCExpression pat, JCTree.JCBlock block) {
+    public static JCTree.JCExpression makeCase(IJAsyncInstanceContext context, int caseType, JCTree.JCExpression pat, JCTree.JCBlock block) {
         TreeMaker maker = context.getTreeMaker();
         int prePos = maker.pos;
         JCTree.JCExpression expression = null;
@@ -825,7 +825,7 @@ public class JavacUtils {
     }
 
     // loop should be processed.
-    public static JCTree.JCExpression makeForEach(IJAsyncCuContext context, JCTree.JCEnhancedForLoop loop) {
+    public static JCTree.JCExpression makeForEach(IJAsyncInstanceContext context, JCTree.JCEnhancedForLoop loop) {
         if (loop == null) {
             return null;
         }
@@ -874,7 +874,7 @@ public class JavacUtils {
         );
     }
 
-    public static Type getType(IJAsyncCuContext context, JCTree jcTree) {
+    public static Type getType(IJAsyncInstanceContext context, JCTree jcTree) {
         if (jcTree instanceof JCTree.JCExpression || jcTree instanceof JCTree.JCStatement) {
             TypeCalculator calculator = new TypeCalculator();
             jcTree.accept(calculator);
@@ -892,7 +892,7 @@ public class JavacUtils {
         }
     }
 
-    public static void attrExpr(IJAsyncCuContext context, JCTree.JCExpression jcTree) {
+    public static void attrExpr(IJAsyncInstanceContext context, JCTree.JCExpression jcTree) {
         Log.DiagnosticHandler discardHandler = new Log.DiscardDiagnosticHandler(context.getLog());
         try {
             JavacScope scope = context.getScope(jcTree);
@@ -904,7 +904,7 @@ public class JavacUtils {
         }
     }
 
-    public static void attrStat(IJAsyncCuContext context, JCTree.JCStatement jcTree) {
+    public static void attrStat(IJAsyncInstanceContext context, JCTree.JCStatement jcTree) {
         Log.DiagnosticHandler discardHandler = new Log.DiscardDiagnosticHandler(context.getLog());
         try {
             JavacScope scope = context.getScope(jcTree);
@@ -916,28 +916,28 @@ public class JavacUtils {
         }
     }
 
-    public static void atPosIfValid(IJAsyncCuContext context, int pos) {
+    public static void atPosIfValid(IJAsyncInstanceContext context, int pos) {
         if (pos >= 0) {
             context.getTreeMaker().at(pos);
         }
     }
 
-    public static void atPosIfGreater(IJAsyncCuContext context, int pos) {
+    public static void atPosIfGreater(IJAsyncInstanceContext context, int pos) {
         TreeMaker maker = context.getTreeMaker();
         if (pos > maker.pos) {
             maker.pos = pos;
         }
     }
 
-    public static void atStartPos(IJAsyncCuContext context, List<? extends JCTree> trees) {
+    public static void atStartPos(IJAsyncInstanceContext context, List<? extends JCTree> trees) {
         atPosIfValid(context, getStartPos(trees));
     }
 
-    public static void atEndPos(IJAsyncCuContext context, List<? extends JCTree> trees) {
+    public static void atEndPos(IJAsyncInstanceContext context, List<? extends JCTree> trees) {
         atPosIfValid(context, getEndPos(context, trees));
     }
 
-    public static void atCaseBlockStart(IJAsyncCuContext context, JCTree.JCCase jcCase) {
+    public static void atCaseBlockStart(IJAsyncInstanceContext context, JCTree.JCCase jcCase) {
         TreeMaker maker = context.getTreeMaker();
         int casePosition = jcCase.getStartPosition();
         if (casePosition < 0) {

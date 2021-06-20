@@ -4,7 +4,7 @@ import com.sun.source.tree.MethodInvocationTree;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.util.List;
 import io.github.vipcxj.jasync.core.javac.Constants;
-import io.github.vipcxj.jasync.core.javac.IJAsyncCuContext;
+import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -15,10 +15,10 @@ import javax.lang.model.util.Types;
 
 public class AwaitScanner extends ShallowTreeBooleanScanner {
 
-    private final IJAsyncCuContext context;
+    private final IJAsyncInstanceContext context;
     private boolean result;
 
-    public AwaitScanner(IJAsyncCuContext context) {
+    public AwaitScanner(IJAsyncInstanceContext context) {
         this.context = context;
         this.result = false;
     }
@@ -42,12 +42,12 @@ public class AwaitScanner extends ShallowTreeBooleanScanner {
         return false;
     }
 
-    public static boolean checkTree(IJAsyncCuContext context, JCTree tree) {
+    public static boolean checkTree(IJAsyncInstanceContext context, JCTree tree) {
         AwaitScanner scanner = new AwaitScanner(context);
         return Boolean.TRUE.equals(tree.accept(scanner, null));
     }
 
-    public static boolean checkStatements(IJAsyncCuContext context, List<JCTree.JCStatement> statements) {
+    public static boolean checkStatements(IJAsyncInstanceContext context, List<JCTree.JCStatement> statements) {
         AwaitScanner scanner = new AwaitScanner(context);
         for (JCTree.JCStatement statement : statements) {
             if (Boolean.TRUE.equals(statement.accept(scanner, null))) {

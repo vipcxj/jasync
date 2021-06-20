@@ -5,7 +5,7 @@ import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeScanner;
 import com.sun.tools.javac.util.List;
-import io.github.vipcxj.jasync.core.javac.IJAsyncCuContext;
+import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.model.VarInfo;
 import io.github.vipcxj.jasync.core.javac.model.VarKey;
 import io.github.vipcxj.jasync.core.javac.model.VarUseState;
@@ -20,12 +20,12 @@ import static io.github.vipcxj.jasync.core.javac.JavacUtils.equalSymbol;
 
 public class ScopeVarScanner extends TreeScanner {
 
-    private final IJAsyncCuContext context;
+    private final IJAsyncInstanceContext context;
     private final JavacScope scope;
     private final Map<VarKey, VarInfo> varData;
     private boolean scanReshaped = false;
 
-    public ScopeVarScanner(IJAsyncCuContext context, JavacScope scope) {
+    public ScopeVarScanner(IJAsyncInstanceContext context, JavacScope scope) {
         this.context = context;
         this.scope = scope;
         this.varData = new HashMap<>();
@@ -138,7 +138,7 @@ public class ScopeVarScanner extends TreeScanner {
         super.visitUnary(jcUnary);
     }
 
-    public static Map<VarKey, VarInfo> scanVar(IJAsyncCuContext context, List<JCTree.JCStatement> preScopeStats, JCTree.JCExpression reshapedExpr) {
+    public static Map<VarKey, VarInfo> scanVar(IJAsyncInstanceContext context, List<JCTree.JCStatement> preScopeStats, JCTree.JCExpression reshapedExpr) {
         if (preScopeStats.isEmpty()) {
             return Collections.emptyMap();
         }

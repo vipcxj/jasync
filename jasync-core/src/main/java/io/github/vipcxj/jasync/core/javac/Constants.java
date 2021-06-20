@@ -2,8 +2,13 @@ package io.github.vipcxj.jasync.core.javac;
 
 import io.github.vipcxj.jasync.spec.JAsync;
 import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.annotations.Async;
 
 public class Constants {
+    public static final String ASYNC = Async.class.getCanonicalName();
+    public static final String ASYNC_DEBUG_ID = "debugId";
+    public static final String ASYNC_DISABLED = "disabled";
+    public static final String ASYNC_METHOD = "method";
     public static final String PROMISE = Promise.class.getCanonicalName();
     public static final String THEN = "then";
     public static final String THEN_VOID = "thenVoid";

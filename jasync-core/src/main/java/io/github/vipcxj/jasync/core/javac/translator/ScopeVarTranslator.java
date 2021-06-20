@@ -6,7 +6,9 @@ import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.TreeTranslator;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.Names;
-import io.github.vipcxj.jasync.core.javac.*;
+import io.github.vipcxj.jasync.core.javac.Constants;
+import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
+import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.model.VarInfo;
 import io.github.vipcxj.jasync.core.javac.model.VarKey;
 import io.github.vipcxj.jasync.core.javac.model.VarUseState;
@@ -16,10 +18,10 @@ import java.util.Map;
 
 public class ScopeVarTranslator extends TreeTranslator {
 
-    private final IJAsyncCuContext context;
+    private final IJAsyncInstanceContext context;
     private final Map<VarKey, VarInfo> varData;
 
-    public ScopeVarTranslator(IJAsyncCuContext context, Map<VarKey, VarInfo> varData) {
+    public ScopeVarTranslator(IJAsyncInstanceContext context, Map<VarKey, VarInfo> varData) {
         this.context = context;
         this.varData = varData;
     }

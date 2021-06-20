@@ -4,10 +4,16 @@ import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.util.TreePath;
 import com.sun.tools.javac.api.JavacScope;
 import com.sun.tools.javac.tree.JCTree;
+import io.github.vipcxj.jasync.core.javac.model.JAsyncInfo;
 
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
 
-public interface IJAsyncCuContext extends IJAsyncContext {
+public interface IJAsyncInstanceContext extends IJAsyncContext {
+
+    JAsyncInfo getInfo();
+
+    ExecutableElement getMethodRoot();
 
     CompilationUnitTree getCompilationUnitTree();
 

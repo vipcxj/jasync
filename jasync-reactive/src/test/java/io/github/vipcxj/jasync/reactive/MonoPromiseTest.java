@@ -1,7 +1,7 @@
 package io.github.vipcxj.jasync.reactive;
 
-import io.github.vipcxj.jasync.spec.JAsync;
 import io.github.vipcxj.jasync.runtime.helpers.IntReference;
+import io.github.vipcxj.jasync.spec.JAsync;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 

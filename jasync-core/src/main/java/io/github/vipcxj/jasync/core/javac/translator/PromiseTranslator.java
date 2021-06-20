@@ -1,21 +1,19 @@
 package io.github.vipcxj.jasync.core.javac.translator;
 
-import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.Tree;
-import com.sun.source.util.TreePath;
-import com.sun.tools.javac.api.JavacScope;
 import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Symbol;
-import com.sun.tools.javac.code.Symtab;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.TypeTag;
-import com.sun.tools.javac.comp.Attr;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.TreeTranslator;
-import com.sun.tools.javac.util.*;
+import com.sun.tools.javac.util.Context;
+import com.sun.tools.javac.util.List;
+import com.sun.tools.javac.util.ListBuffer;
+import com.sun.tools.javac.util.Names;
 import io.github.vipcxj.jasync.core.javac.Constants;
-import io.github.vipcxj.jasync.core.javac.IJAsyncCuContext;
+import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.model.VarInfo;
 import io.github.vipcxj.jasync.core.javac.model.VarKey;
@@ -35,9 +33,9 @@ import javax.lang.model.util.Types;
 import java.util.Iterator;
 import java.util.Map;
 
-public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContext {
+public class PromiseTranslator extends TreeTranslator {
 
-    private final IJAsyncCuContext context;
+    private final IJAsyncInstanceContext context;
     private ACTION action;
     private JCTree.JCExpression unwrap;
     private final String replacedVar;
@@ -47,7 +45,7 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
     private JCTree.JCStatement toReshape;
     private final boolean reshaped;
 
-    public PromiseTranslator(IJAsyncCuContext jAsyncContext, boolean reshaped) {
+    public PromiseTranslator(IJAsyncInstanceContext jAsyncContext, boolean reshaped) {
         this.context = jAsyncContext;
         this.action = ACTION.NO_OP;
         this.unwrap = null;
@@ -65,72 +63,27 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
         return new PromiseTranslator(context, true);
     }
 
-    @Override
     public ProcessingEnvironment getEnvironment() {
         return context.getEnvironment();
     }
 
-    @Override
     public Context getContext() {
         return context.getContext();
     }
 
-    @Override
     public TreeMaker getTreeMaker() {
         return context.getTreeMaker();
     }
 
-    @Override
-    public Attr getAttr() {
-        return context.getAttr();
-    }
-
-    @Override
-    public Log getLog() {
-        return context.getLog();
-    }
-
-    @Override
-    public Symtab getSymbols() {
-        return context.getSymbols();
-    }
-
-    @Override
-    public com.sun.tools.javac.code.Types getTypes() {
-        return context.getTypes();
-    }
-
-    @Override
     public Names getNames() {
         return context.getNames();
     }
 
-    @Override
     public JavacTrees getTrees() {
         return context.getTrees();
     }
 
-    @Override
-    public String nextVar() {
-        return context.nextVar();
-    }
 
-    @Override
-    public CompilationUnitTree getCompilationUnitTree() {
-        return context.getCompilationUnitTree();
-    }
-
-    @Override
-    public TreePath getPath(JCTree tree) {
-        return context.getPath(tree);
-    }
-
-    @Override
-    public JavacScope getScope(JCTree tree) {
-        return context.getScope(tree);
-    }
-
-    @Override
     public Element getElement(JCTree tree) {
         return context.getElement(tree);
     }
@@ -477,7 +430,7 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
                     int prePos = maker.pos;
                     try {
                         this.result = maker.at(jcTry).Exec(JavacUtils.createPromiseThen(
-                                this,
+                                context,
                                 jcTry.body,
                                 jcTry.catchers,
                                 jcTry.finalizer,
@@ -626,7 +579,7 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
                         Constants.JASYNC_DEFER_VOID,
                         List.of(
                                 JavacUtils.makeVoidPromiseSupplier(
-                                        this,
+                                        context,
                                         current.getKind() == Tree.Kind.BLOCK ? (JCTree.JCBlock) current : JavacUtils.makeBlock(context, current)
                                 )
                         )
@@ -644,7 +597,7 @@ public class PromiseTranslator extends TreeTranslator implements IJAsyncCuContex
                         Constants.THEN_VOID,
                         List.of(
                                 JavacUtils.makeVoidPromiseSupplier(
-                                        this,
+                                        context,
                                         JavacUtils.makeBlock(
                                                 context,
                                                 copyReshaped().reshapeStatements(tails, prependStatementsReplacer(replacer, heads))

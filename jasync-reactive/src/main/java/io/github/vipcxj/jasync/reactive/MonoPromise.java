@@ -15,16 +15,38 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class MonoPromise<T> implements Promise<T> {
+    private boolean resolved;
+    private T value;
+    private Throwable error;
     private final Mono<T> mono;
 
     public MonoPromise(Mono<T> mono) {
         this.mono = mono;
     }
 
+    private void mustNotResolved() {
+        if (resolved) {
+            throw new IllegalStateException("Should not resolve again.");
+        }
+    }
+
+    private void resolve(T value) {
+        mustNotResolved();
+        this.resolved = true;
+        this.value = value;
+    }
+
+    private void reject(Throwable error) {
+        mustNotResolved();
+        this.resolved = true;
+        this.error = error;
+    }
+
     @Override
     public <O> Promise<O> then(PromiseFunction<T, O> resolver) {
         AtomicReference<Boolean> empty = new AtomicReference<>(true);
         return new MonoPromise<>(mono.<O>flatMap(v -> {
+            resolve(v);
             empty.set(false);
             Promise<O> res;
             try {
@@ -35,6 +57,7 @@ public class MonoPromise<T> implements Promise<T> {
             return res != null ? res.unwrap() : Mono.empty();
         }).switchIfEmpty(Mono.defer(() -> {
             if (empty.get()) {
+                resolve(null);
                 Promise<O> res;
                 try {
                     res = resolver.apply(null);
@@ -54,6 +77,7 @@ public class MonoPromise<T> implements Promise<T> {
                 .onErrorResume(
                         t -> exceptionsType.stream().anyMatch(e -> e.isAssignableFrom(t.getClass())),
                         t -> {
+                            reject(t);
                             if (JAsync.mustRethrowException(t, exceptionsType)) {
                                 return Mono.error(t);
                             }
@@ -319,7 +343,7 @@ public class MonoPromise<T> implements Promise<T> {
                     matched = true;
                 }
                 if (matched) {
-                    result = (result != null ? result : new MonoPromise<>(mono)).then(() -> {
+                    result = (result != null ? result : this).then(() -> {
                         try {
                             VoidPromiseSupplier body = aCase.getBody();
                             Promise<Void> promise = body != null ? body.get() : null;
@@ -356,6 +380,18 @@ public class MonoPromise<T> implements Promise<T> {
     }
 
     @Override
+    public T await() {
+        if (resolved) {
+            if (error != null) {
+                sneakyThrow(error);
+            } else {
+                return value;
+            }
+        }
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public Handle async() {
         return new DisposableHandle(mono.subscribe());
     }
@@ -378,5 +414,10 @@ public class MonoPromise<T> implements Promise<T> {
 
     public static <O> MonoPromise<O> just(O value) {
         return new MonoPromise<>(Mono.justOrEmpty(value));
+    }
+
+    private static <E extends Throwable> void sneakyThrow(Throwable e) throws E {
+        //noinspection unchecked
+        throw (E) e;
     }
 }

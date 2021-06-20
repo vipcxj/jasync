@@ -3,7 +3,7 @@ package io.github.vipcxj.jasync.core.javac.visitor;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeScanner;
-import io.github.vipcxj.jasync.core.javac.IJAsyncCuContext;
+import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.model.CaseVarInfo;
 
@@ -12,12 +12,12 @@ import java.util.*;
 
 public class SwitchScanner extends TreeScanner {
 
-    private final IJAsyncCuContext context;
+    private final IJAsyncInstanceContext context;
     private final Map<String, CaseVarInfo> varData;
     private JCTree.JCCase currentCase;
     private final Stack<JCTree.JCBlock> blocks;
 
-    public SwitchScanner(IJAsyncCuContext context) {
+    public SwitchScanner(IJAsyncInstanceContext context) {
         this.context = context;
         this.varData = new HashMap<>();
         this.blocks = new Stack<>();

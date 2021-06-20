@@ -1,10 +1,7 @@
 package io.github.vipcxj.jasync.spec;
 
 import io.github.vipcxj.jasync.spec.functional.*;
-import io.github.vipcxj.jasync.spec.switchexpr.EnumCase;
 import io.github.vipcxj.jasync.spec.switchexpr.ICase;
-import io.github.vipcxj.jasync.spec.switchexpr.IntCase;
-import io.github.vipcxj.jasync.spec.switchexpr.StringCase;
 
 import java.time.Duration;
 import java.util.Collections;

@@ -4,14 +4,14 @@ import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.List;
 import io.github.vipcxj.jasync.core.javac.Constants;
-import io.github.vipcxj.jasync.core.javac.IJAsyncCuContext;
+import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 
 public class BreakTranslator extends ShallowTranslator {
 
-    private final IJAsyncCuContext context;
+    private final IJAsyncInstanceContext context;
 
-    public BreakTranslator(IJAsyncCuContext context) {
+    public BreakTranslator(IJAsyncInstanceContext context) {
         this.context = context;
     }
 
@@ -27,7 +27,7 @@ public class BreakTranslator extends ShallowTranslator {
         maker.pos = prePos;
     }
 
-    public static List<JCTree.JCStatement> reshapeStatements(IJAsyncCuContext context, List<JCTree.JCStatement> statements) {
+    public static List<JCTree.JCStatement> reshapeStatements(IJAsyncInstanceContext context, List<JCTree.JCStatement> statements) {
         BreakTranslator translator = new BreakTranslator(context);
         return JavacUtils.mapList(statements, statement -> {
             statement.accept(translator);

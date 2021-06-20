@@ -6,16 +6,16 @@ import com.sun.tools.javac.util.JCDiagnostic;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
-import io.github.vipcxj.jasync.core.javac.IJAsyncCuContext;
+import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 
 import javax.lang.model.SourceVersion;
 
 public class TryWithResourceTranslator extends ShallowTranslator {
 
-    private final IJAsyncCuContext context;
+    private final IJAsyncInstanceContext context;
 
-    public TryWithResourceTranslator(IJAsyncCuContext context) {
+    public TryWithResourceTranslator(IJAsyncInstanceContext context) {
         this.context = context;
     }
 

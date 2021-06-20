@@ -3,18 +3,39 @@ package io.github.vipcxj.jasync.core.javac;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.util.TreePath;
 import com.sun.tools.javac.api.JavacScope;
+import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.util.Log;
+import io.github.vipcxj.jasync.core.javac.model.JAsyncInfo;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
 
-public class JAsyncCuContext extends JAsyncContext implements IJAsyncCuContext {
+public class JAsyncInstanceContext extends JAsyncContext implements IJAsyncInstanceContext {
 
+    protected ExecutableElement methodRoot;
     protected CompilationUnitTree cu;
+    protected JAsyncInfo info;
 
-    public JAsyncCuContext(IJAsyncContext asyncContext, CompilationUnitTree cu) {
+    public JAsyncInstanceContext(IJAsyncContext asyncContext, ExecutableElement methodRoot) {
         super(asyncContext);
-        this.cu = cu;
+        this.methodRoot = methodRoot;
+        JavacTrees javacTrees = getTrees();
+        TreePath path = javacTrees.getPath(methodRoot);
+        this.cu = path.getCompilationUnit();
+        AnnotationMirror async = AnnotationUtils.getAnnotationDirectOn(methodRoot, Constants.ASYNC);
+        this.info = new JAsyncInfo(this, async);
+    }
+
+    @Override
+    public ExecutableElement getMethodRoot() {
+        return methodRoot;
+    }
+
+    @Override
+    public JAsyncInfo getInfo() {
+        return info;
     }
 
     @Override
