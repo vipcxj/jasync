@@ -3,10 +3,7 @@ package io.github.vipcxj.jasync.core.javac;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.api.JavacScope;
-import com.sun.tools.javac.code.Flags;
-import com.sun.tools.javac.code.Symbol;
-import com.sun.tools.javac.code.Type;
-import com.sun.tools.javac.code.TypeTag;
+import com.sun.tools.javac.code.*;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeCopier;
 import com.sun.tools.javac.tree.TreeMaker;
@@ -15,12 +12,20 @@ import io.github.vipcxj.jasync.core.javac.model.TreeFactory;
 import io.github.vipcxj.jasync.core.javac.model.VarInfo;
 import io.github.vipcxj.jasync.core.javac.model.VarKey;
 import io.github.vipcxj.jasync.core.javac.model.VarUseState;
+import io.github.vipcxj.jasync.core.javac.utils.SymbolHelpers;
 import io.github.vipcxj.jasync.core.javac.visitor.ReturnScanner;
 import io.github.vipcxj.jasync.core.javac.visitor.TypeCalculator;
 import io.github.vipcxj.jasync.runtime.helpers.*;
 import io.github.vipcxj.jasync.spec.Promise;
 import io.github.vipcxj.jasync.spec.functional.*;
 
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -59,6 +64,51 @@ public class JavacUtils {
             return getQualifiedName((JCTree.JCFieldAccess) expression) + "." + fieldAccess.getIdentifier().toString();
         } else {
             return null;
+        }
+    }
+
+    public static JCTree.JCExpression makeCatch(
+            IJAsyncInstanceContext context,
+            JCTree.JCExpression parent,
+            JCTree.JCVariableDecl paramDecl,
+            JCTree.JCExpression promiseFunction
+    ) {
+        TreeMaker treeMaker = context.getTreeMaker();
+        Names names = context.getNames();
+        Name clazz = names.fromString("class");
+        int prePos = treeMaker.pos;
+        try {
+            JCTree.JCExpression exType = paramDecl.vartype;
+            if (exType != null && exType.getKind() == Tree.Kind.UNION_TYPE) {
+                JCTree.JCTypeUnion typeUnion = (JCTree.JCTypeUnion) exType;
+                for (JCTree.JCExpression alternative : typeUnion.alternatives) {
+                    parent = makeApply(
+                            context,
+                            "doCatch",
+                            List.of(
+                                    treeMaker.at(alternative).Select(alternative, clazz),
+                                    promiseFunction
+                            ),
+                            parent
+                    );
+                }
+            } else {
+                if (exType == null) {
+                    exType = treeMaker.Type(context.getSymbols().throwableType);
+                }
+                parent = makeApply(
+                        context,
+                        "doCatch",
+                        List.of(
+                                treeMaker.Select(exType, clazz),
+                                promiseFunction
+                        ),
+                        parent
+                );
+            }
+            return parent;
+        } finally {
+            treeMaker.pos = prePos;
         }
     }
 
@@ -565,6 +615,13 @@ public class JavacUtils {
         return position;
     }
 
+    public static void replaceEndPosition(IJAsyncInstanceContext context, JCTree tree, JCTree newTree) {
+        JCTree.JCCompilationUnit jcu = getJCCompilationUnitTree(context);
+        if (jcu != null && jcu.endPositions != null) {
+            jcu.endPositions.replaceTree(tree, newTree);
+        }
+    }
+
     public static <T extends JCTree> T wrapPos(IJAsyncInstanceContext context, T tree, JCTree target, boolean replace) {
         if (target == null) return tree;
         tree.pos = target.getStartPosition();
@@ -574,7 +631,9 @@ public class JavacUtils {
                 jcu.endPositions.replaceTree(target, tree);
             } else {
                 int endPos = getEndPos(context, target);
-                jcu.endPositions.storeEnd(tree, endPos);
+                if (endPos >= 0) {
+                    jcu.endPositions.storeEnd(tree, endPos);
+                }
             }
         }
         return tree;
@@ -594,17 +653,25 @@ public class JavacUtils {
         return tree;
     }
 
-    public static boolean equalSymbol(Symbol.VarSymbol symbol1, Symbol.VarSymbol symbol2) {
+    public static boolean equalSymbol(IJAsyncContext context, Symbol symbol1, Symbol symbol2) {
         if (symbol1 == null) {
             return symbol2 == null;
         }
         if (symbol2 == null) {
             return false;
         }
-        if (symbol1.pos != symbol2.pos) {
+        if (symbol1.getKind() != symbol2.getKind()) {
             return false;
         }
-        if (symbol1.getKind() != symbol2.getKind()) {
+        if (symbol1 instanceof Symbol.VarSymbol) {
+            if (!(symbol2 instanceof Symbol.VarSymbol)) {
+                return false;
+            }
+            if (((Symbol.VarSymbol) symbol1).pos != ((Symbol.VarSymbol) symbol2).pos) {
+                return false;
+            }
+        }
+        if (!context.getTypes().isSameType(symbol1.type, symbol2.type)) {
             return false;
         }
         Name simpleName1 = symbol1.getSimpleName();
@@ -612,7 +679,114 @@ public class JavacUtils {
         return simpleName1 != null && simpleName2 != null && Objects.equals(simpleName1.toString(), simpleName2.toString());
     }
 
-    private static JCTree.JCExpression createReferenceType(TreeMaker maker, Names names, Type type) {
+    public static TypeMirror getClassType(IJAsyncContext context, String qName, TypeMirror... typeArgs) {
+        Elements elements = context.getEnvironment().getElementUtils();
+        Types types = context.getEnvironment().getTypeUtils();
+        TypeElement element = elements.getTypeElement(qName);
+        if (element == null) {
+            return null;
+        }
+        if (typeArgs != null) {
+            return types.getDeclaredType(element, typeArgs);
+        } else {
+            return element.asType();
+        }
+    }
+
+    public static TypeMirror getClassType(IJAsyncContext context, Class<?> baseType, TypeMirror... typeArgs) {
+        return getClassType(context, baseType.getCanonicalName(), typeArgs);
+    }
+
+    public static TypeMirror getReferenceType(IJAsyncContext context, TypeMirror baseType) {
+        if (baseType == null) return null;
+        switch (baseType.getKind()) {
+            case BYTE:
+                return getClassType(context, ByteReference.class);
+            case CHAR:
+                return getClassType(context, CharReference.class);
+            case SHORT:
+                return getClassType(context, ShortReference.class);
+            case INT:
+                return getClassType(context, IntReference.class);
+            case LONG:
+                return getClassType(context, LongReference.class);
+            case FLOAT:
+                return getClassType(context, FloatReference.class);
+            case DOUBLE:
+                return getClassType(context, DoubleReference.class);
+            case BOOLEAN:
+                return getClassType(context, BooleanReference.class);
+            default:
+                return getClassType(context, ObjectReference.class, baseType);
+        }
+    }
+
+    public static JCTree.JCNewClass makeNewReferenceTree(IJAsyncContext context, JCTree.JCVariableDecl variableDecl) {
+        Names names = context.getNames();
+        TreeMaker maker = context.getTreeMaker();
+        Type type = variableDecl.type;
+        Type referenceType = (Type) getReferenceType(context, type);
+        Symbol.TypeSymbol referenceSymbol = referenceType.asElement();
+        Symbol.MethodSymbol constructorSymbol;
+        boolean initialized = variableDecl.init != null || variableDecl.sym.getKind() != ElementKind.LOCAL_VARIABLE;
+        List<JCTree.JCExpression> args = List.nil();
+        List<JCTree.JCExpression> typeArgs = List.nil();
+        if (type.isPrimitive()) {
+            if (initialized) {
+                constructorSymbol = (Symbol.MethodSymbol) SymbolHelpers.INSTANCE.getSymbol(referenceSymbol, names.init, symbol ->
+                        symbol instanceof Symbol.MethodSymbol && ((Symbol.MethodSymbol) symbol).params().size() == 1
+                );
+                args = args.append(maker.Ident(variableDecl));
+            } else {
+                constructorSymbol = (Symbol.MethodSymbol) SymbolHelpers.INSTANCE.getSymbol(referenceSymbol, names.init, symbol ->
+                        symbol instanceof Symbol.MethodSymbol && ((Symbol.MethodSymbol) symbol).params().size() == 0
+                );
+            }
+        } else {
+            int flag = getFlag(type);
+            typeArgs = typeArgs.append(maker.Type(type));
+            if (initialized) {
+                constructorSymbol = (Symbol.MethodSymbol) SymbolHelpers.INSTANCE.getSymbol(referenceSymbol, names.init, symbol ->
+                        symbol instanceof Symbol.MethodSymbol && ((Symbol.MethodSymbol) symbol).params().size() == 2
+                );
+                args = args.append(maker.Ident(variableDecl)).append(maker.Literal(flag));
+            } else {
+                constructorSymbol = (Symbol.MethodSymbol) SymbolHelpers.INSTANCE.getSymbol(referenceSymbol, names.init, symbol ->
+                        symbol instanceof Symbol.MethodSymbol && ((Symbol.MethodSymbol) symbol).params().size() == 1
+                );
+                args = args.append(maker.Literal(flag));
+            }
+        }
+        JCTree.JCNewClass newClass = maker.NewClass(null, typeArgs, maker.QualIdent(referenceSymbol), args, null);
+        newClass.type = referenceSymbol.type;
+        newClass.constructor = constructorSymbol;
+        newClass.constructorType = constructorSymbol.type;
+        return newClass;
+    }
+
+    public static JCTree.JCVariableDecl makeReferenceDeclTree(IJAsyncContext context, JCTree.JCVariableDecl variableDecl, String var) {
+        if (var == null) {
+            var = context.nextVar();
+        }
+        Names names = context.getNames();
+        TreeMaker maker = context.getTreeMaker();
+        Symbol.VarSymbol symbol = new Symbol.VarSymbol(
+                Flags.FINAL,
+                names.fromString(var),
+                (Type) getReferenceType(context, variableDecl.type),
+                variableDecl.sym.owner
+        );
+        int prePos = maker.pos;
+        try {
+            maker.pos = variableDecl.pos + 1;
+            symbol.pos = maker.pos;
+            return maker.VarDef(symbol, makeNewReferenceTree(context, variableDecl));
+        } finally {
+            maker.pos = prePos;
+        }
+    }
+
+    private static JCTree.JCExpression createReferenceTypeTree(TreeMaker maker, Names names, Type type) {
         if (type == null) return null;
         switch (type.getTag()) {
             case BYTE:
@@ -650,7 +824,7 @@ public class JavacUtils {
     }
 
     private static int getFlag(Type type) {
-        Symbol.TypeSymbol tsym = type.tsym;
+        Symbol.TypeSymbol tsym = type.asElement();
         if (tsym == null)
             return ObjectReference.FLAG_OTHER;
         String qName = tsym.getQualifiedName().toString();
@@ -730,7 +904,7 @@ public class JavacUtils {
                 JCTree.JCVariableDecl decl = maker.VarDef(
                         maker.Modifiers(Flags.FINAL),
                         names.fromString(nextVar),
-                        createReferenceType(maker, names, symbol.type),
+                        createReferenceTypeTree(maker, names, symbol.type),
                         createReferenceInit(maker, names, symbol.type, info.isInitialized() ? symbol.name : null)
                 );
                 info.setNewName(nextVar);
@@ -762,7 +936,7 @@ public class JavacUtils {
                 JCTree.JCVariableDecl decl = maker.VarDef(
                         maker.Modifiers(Flags.FINAL),
                         symbol.name,
-                        createReferenceType(maker, names, symbol.type),
+                        createReferenceTypeTree(maker, names, symbol.type),
                         maker.Ident(names.fromString(info.getNewName()))
                 );
                 statements.append(decl);
@@ -783,7 +957,36 @@ public class JavacUtils {
         throw new IllegalArgumentException("Unable to resolve the enum value from: " + pat);
     }
 
-    public static JCTree.JCExpression makeCase(IJAsyncInstanceContext context, int caseType, JCTree.JCExpression pat, JCTree.JCBlock block) {
+    // 0: default, 1: int, 2: String, 3: Enum
+    public static int getCaseType(IJAsyncInstanceContext context, JCTree.JCCase jcCase) {
+        if (jcCase.pat == null) {
+            return 0;
+        }
+        Type type = getType(context, jcCase.pat);
+        if (type == null) {
+            throw new IllegalArgumentException("Unable to get the type of case: " + jcCase.pat);
+        }
+        TypeTag tag = type.getTag();
+        if (tag == TypeTag.INT || tag == TypeTag.SHORT || tag == TypeTag.BYTE || tag == TypeTag.CHAR) {
+            return 1;
+        }
+        if (tag == TypeTag.CLASS) {
+            TypeElement typeElement = (TypeElement) context.getEnvironment().getTypeUtils().asElement(type);
+            if (String.class.getCanonicalName().equals(typeElement.getQualifiedName().toString())) {
+                return 2;
+            }
+            if (typeElement.getKind() == ElementKind.ENUM) {
+                return 3;
+            }
+        }
+        throw new IllegalArgumentException("Unable to get the type of case: " + jcCase.pat);
+    }
+
+    public static JCTree.JCExpression makeCaseWithBlock(IJAsyncInstanceContext context, int caseType, JCTree.JCExpression pat, JCTree.JCBlock block) {
+        return makeCaseWithVoidPromiseSupplier(context, caseType, pat, makeVoidPromiseSupplier(context, block));
+    }
+
+    public static JCTree.JCExpression makeCaseWithVoidPromiseSupplier(IJAsyncInstanceContext context, int caseType, JCTree.JCExpression pat, JCTree.JCExpression voidPromiseSupplier) {
         TreeMaker maker = context.getTreeMaker();
         int prePos = maker.pos;
         JCTree.JCExpression expression = null;
@@ -792,28 +995,28 @@ public class JavacUtils {
                 expression = makeApply(
                         context,
                         Constants.DEFAULT_CASE_OF,
-                        List.of(makeVoidPromiseSupplier(context, block))
+                        List.of(voidPromiseSupplier)
                 );
                 break;
             case 1:
                 expression = makeApply(
                         context,
                         Constants.INT_CASE_OF,
-                        List.of(pat, makeVoidPromiseSupplier(context, block))
+                        List.of(pat, voidPromiseSupplier)
                 );
                 break;
             case 2:
                 expression = makeApply(
                         context,
                         Constants.STRING_CASE_OF,
-                        List.of(pat, makeVoidPromiseSupplier(context, block))
+                        List.of(pat, voidPromiseSupplier)
                 );
                 break;
             case 3:
                 expression = makeApply(
                         context,
                         Constants.ENUM_CASE_OF,
-                        List.of(toEnum(context, pat), makeVoidPromiseSupplier(context, block))
+                        List.of(toEnum(context, pat), voidPromiseSupplier)
                 );
                 break;
         }
@@ -950,5 +1153,119 @@ public class JavacUtils {
             atPosIfGreater(context, getEndPos(context, jcCase.pat));
         }
         atPosIfGreater(context, getStartPos(jcCase.stats));
+    }
+
+    public static Symbol.VarSymbol createCatchThrowableParam(IJAsyncContext context, Name name, Symbol owner) {
+        Symtab symbols = context.getSymbols();
+        Symbol.VarSymbol symbol = new Symbol.VarSymbol(
+                Flags.PARAMETER,
+                name,
+                symbols.throwableType,
+                owner);
+        symbol.setData(ElementKind.EXCEPTION_PARAMETER);
+        return symbol;
+    }
+
+    public static boolean isAwaitTree(IJAsyncInstanceContext context, JCTree tree) {
+        if (tree == null)
+            return false;
+        Element element = context.getElement(tree);
+        if (element instanceof ExecutableElement) {
+            if (element.getSimpleName().toString().equals("await")) {
+                Elements elementUtils = context.getEnvironment().getElementUtils();
+                Types typeUtils = context.getEnvironment().getTypeUtils();
+                TypeElement promiseElement = elementUtils.getTypeElement(Constants.PROMISE);
+                TypeMirror promiseType = promiseElement.asType();
+                return typeUtils.isAssignable(element.getEnclosingElement().asType(), promiseType);
+            }
+        }
+        return false;
+    }
+
+    public static String getAssignMethod(JCTree.Tag tag) {
+        switch (tag) {
+            case ASSIGN:
+                return Constants.REFERENCE_ASSIGN;
+            case PREINC:
+                return Constants.REFERENCE_PRE_INC;
+            case PREDEC:
+                return Constants.REFERENCE_PRE_DEC;
+            case POSTINC:
+                return Constants.REFERENCE_POST_INC;
+            case POSTDEC:
+                return Constants.REFERENCE_POST_DEC;
+            case PLUS_ASG:
+                return Constants.REFERENCE_PLUS_ASSIGN;
+            case MINUS_ASG:
+                return Constants.REFERENCE_MINUS_ASSIGN;
+            case DIV_ASG:
+                return Constants.REFERENCE_DIVIDE_ASSIGN;
+            case MUL_ASG:
+                return Constants.REFERENCE_MULTIPLY_ASSIGN;
+            case MOD_ASG:
+                return Constants.REFERENCE_MOD_ASSIGN;
+            case SL_ASG:
+                return Constants.REFERENCE_LEFT_SHIFT_ASSIGN;
+            case SR_ASG:
+                return Constants.REFERENCE_RIGHT_SHIFT_ASSIGN;
+            case USR_ASG:
+                return Constants.REFERENCE_UNSIGNED_RIGHT_SHIFT_ASSIGN;
+            case BITAND_ASG:
+                return Constants.REFERENCE_LOGIC_AND_ASSIGN;
+            case BITOR_ASG:
+                return Constants.REFERENCE_LOGIC_OR_ASSIGN;
+            case BITXOR_ASG:
+                return Constants.REFERENCE_LOGIC_XOR_ASSIGN;
+            default:
+                throw new IllegalArgumentException("unrecognized assign tag " + tag);
+        }
+    }
+
+    public static int getJavaMainVersion() {
+        String value = System.getProperty("java.specification.version");
+        if (value.startsWith("1.")) {
+            return Integer.valueOf(value.substring(2), 10);
+        } else {
+            return Integer.valueOf(value, 10);
+        }
+    }
+
+    public static Type getType(IJAsyncContext context, Class<?> type, Type... argTypes) {
+        Symtab symbols = context.getSymbols();
+        Elements elements = context.getEnvironment().getElementUtils();
+        Types typeUtils = context.getEnvironment().getTypeUtils();
+        if (type.isPrimitive()) {
+            if (type == int.class) {
+                return symbols.intType;
+            } else if (type == long.class) {
+                return symbols.longType;
+            } else if (type == float.class) {
+                return symbols.floatType;
+            } else if (type == double.class) {
+                return symbols.doubleType;
+            } else if (type == boolean.class) {
+                return symbols.booleanType;
+            } else if (type == short.class) {
+                return symbols.shortType;
+            } else if (type == char.class) {
+                return symbols.charType;
+            } else if (type == byte.class) {
+                return symbols.byteType;
+            } else {
+                return symbols.errorType;
+            }
+        } else if (type.isArray()) {
+            return context.getTypes().makeArrayType(getType(context, type.getComponentType()));
+        } else {
+            String canonicalName = type.getCanonicalName();
+            if (canonicalName == null) {
+                return symbols.errorType;
+            }
+            Type[] newTypes = new Type[argTypes.length];
+            for (int i = 0; i < argTypes.length; ++i) {
+                newTypes[i] = context.getTypes().boxedTypeOrType(argTypes[i]);
+            }
+            return (Type) typeUtils.getDeclaredType(elements.getTypeElement(canonicalName), newTypes);
+        }
     }
 }

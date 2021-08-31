@@ -25,7 +25,18 @@ public class VarInfo {
         JCTree decl = trees.getTree(symbol);
         if (decl instanceof JCTree.JCVariableDecl) {
             this.decl = (JCTree.JCVariableDecl) decl;
+            if (this.decl.init != null) {
+                this.initialized = true;
+            }
         }
+    }
+
+    public VarInfo(JCTree.JCVariableDecl decl) {
+        this.symbol = decl.sym;
+        this.state = VarUseState.READ;
+        ElementKind kind = symbol.getKind();
+        this.initialized = decl.init != null || kind == ElementKind.PARAMETER || kind == ElementKind.EXCEPTION_PARAMETER;
+        this.decl = decl;
     }
 
     public Symbol.VarSymbol getSymbol() {

@@ -7,7 +7,9 @@ import com.sun.tools.javac.comp.Attr;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Log;
+import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
+import io.github.vipcxj.jasync.core.javac.context.JAsyncSymbols;
 
 import javax.annotation.processing.ProcessingEnvironment;
 
@@ -21,6 +23,10 @@ public interface IJAsyncContext {
     Attr getAttr();
     Log getLog();
     Symtab getSymbols();
+    JAsyncSymbols getJAsyncSymbols();
     Types getTypes();
     String nextVar();
+    default Name nextVarName() {
+        return getNames().fromString(nextVar());
+    }
 }

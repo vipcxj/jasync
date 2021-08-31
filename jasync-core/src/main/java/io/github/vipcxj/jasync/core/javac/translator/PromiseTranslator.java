@@ -4,7 +4,6 @@ import com.sun.source.tree.Tree;
 import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
-import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.TreeTranslator;
@@ -24,7 +23,6 @@ import io.github.vipcxj.jasync.core.javac.visitor.SwitchScanner;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
@@ -170,31 +168,6 @@ public class PromiseTranslator extends TreeTranslator {
         }
     }
 
-    // 0: default, 1: int, 2: String, 3: Enum
-    private int getCaseType(JCTree.JCCase jcCase) {
-        if (jcCase.pat == null) {
-            return 0;
-        }
-        Type type = JavacUtils.getType(context, jcCase.pat);
-        if (type == null) {
-            throw new IllegalArgumentException("Unable to get the type of case: " + jcCase.pat);
-        }
-        TypeTag tag = type.getTag();
-        if (tag == TypeTag.INT || tag == TypeTag.SHORT || tag == TypeTag.BYTE || tag == TypeTag.CHAR) {
-            return 1;
-        }
-        if (tag == TypeTag.CLASS) {
-            TypeElement typeElement = (TypeElement) getEnvironment().getTypeUtils().asElement(type);
-            if (String.class.getCanonicalName().equals(typeElement.getQualifiedName().toString())) {
-                return 2;
-            }
-            if (typeElement.getKind() == ElementKind.ENUM) {
-                return 3;
-            }
-        }
-        throw new IllegalArgumentException("Unable to get the type of case: " + jcCase.pat);
-    }
-
     @Override
     public void visitSwitch(JCTree.JCSwitch jcSwitch) {
         jcSwitch.selector = translate(jcSwitch.selector);
@@ -261,8 +234,8 @@ public class PromiseTranslator extends TreeTranslator {
                 for (JCTree.JCCase aCase : jcSwitch.cases) {
                     JCTree.JCBlock block = iterator.next();
                     treeMaker.at(block);
-                    int caseType = getCaseType(aCase);
-                    args.append(JavacUtils.makeCase(context, caseType, aCase.pat, block));
+                    int caseType = JavacUtils.getCaseType(context, aCase);
+                    args.append(JavacUtils.makeCaseWithBlock(context, caseType, aCase.pat, block));
                 }
                 treeMaker.at(jcSwitch);
                 result = JavacUtils.makeExprStat(context, JavacUtils.makeApply(

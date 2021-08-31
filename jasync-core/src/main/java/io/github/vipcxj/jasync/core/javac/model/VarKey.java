@@ -6,16 +6,29 @@ import java.util.Objects;
 
 public class VarKey {
 
+    private final Symbol symbol;
     private final String name;
     private final int pos;
 
-    public VarKey(Symbol.VarSymbol symbol) {
-        this(symbol.getSimpleName().toString(), symbol.pos);
+    public VarKey(Symbol symbol) {
+        this.symbol = symbol;
+        this.name = symbol.getSimpleName().toString();
+        this.pos = getPos(symbol);
     }
 
-    public VarKey(String name, int pos) {
-        this.name = name;
-        this.pos = pos;
+    private static int getPos(Symbol symbol) {
+        if (symbol instanceof Symbol.VarSymbol) {
+            return ((Symbol.VarSymbol) symbol).pos;
+        } else if (symbol instanceof Symbol.DelegatedSymbol) {
+            Symbol underlyingSymbol = ((Symbol.DelegatedSymbol<?>) symbol).getUnderlyingSymbol();
+            return getPos(underlyingSymbol);
+        } else {
+            return -1;
+        }
+    }
+
+    public Symbol getSymbol() {
+        return symbol;
     }
 
     public String getName() {

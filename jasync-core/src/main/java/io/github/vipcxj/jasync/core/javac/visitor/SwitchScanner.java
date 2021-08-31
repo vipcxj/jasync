@@ -86,7 +86,7 @@ public class SwitchScanner extends TreeScanner {
         CaseVarInfo info = varData.get(jcIdent.name.toString());
         if (info != null) {
             Symbol.VarSymbol symbol = getSymbol(jcIdent);
-            if (JavacUtils.equalSymbol(info.getSymbol(), symbol)) {
+            if (JavacUtils.equalSymbol(context, info.getSymbol(), symbol)) {
                 info.read(currentCase);
             }
         }
@@ -96,7 +96,7 @@ public class SwitchScanner extends TreeScanner {
         CaseVarInfo info = varData.get(jcIdent.toString());
         if (info != null) {
             Symbol.VarSymbol symbol = getSymbol(jcIdent);
-            if (JavacUtils.equalSymbol(info.getSymbol(), symbol)) {
+            if (JavacUtils.equalSymbol(context, info.getSymbol(), symbol)) {
                 info.write(currentCase);
             }
         }

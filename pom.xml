@@ -13,9 +13,9 @@
         <module>jasync-reactive</module>
         <module>jasync-test</module>
         <module>jasync-spec</module>
-        <module>jasync-core-java8</module>
         <module>jasync-runtime</module>
         <module>jasync-runtime-java8</module>
+        <module>jasync-core-java9</module>
     </modules>
 
     <properties>

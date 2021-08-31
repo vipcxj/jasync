@@ -18,7 +18,7 @@ public class CaseVarCleanSymTranslator extends TreeTranslator {
 
     @Override
     public void visitIdent(JCTree.JCIdent tree) {
-        if (tree.sym instanceof Symbol.VarSymbol && JavacUtils.equalSymbol((Symbol.VarSymbol) tree.sym, symbol)) {
+        if (tree.sym instanceof Symbol.VarSymbol && JavacUtils.equalSymbol(context, tree.sym, symbol)) {
             tree.sym = null;
         }
         result = tree;

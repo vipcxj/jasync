@@ -9,6 +9,7 @@ import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Log;
 import com.sun.tools.javac.util.Names;
+import io.github.vipcxj.jasync.core.javac.context.JAsyncSymbols;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,6 +27,7 @@ public class JAsyncContext implements IJAsyncContext {
     protected final Log log;
     protected final Types types;
     protected final Symtab syms;
+    protected final JAsyncSymbols jAsyncSymbols;
 
     public JAsyncContext(final ProcessingEnvironment environment) {
         this.environment = environment;
@@ -37,6 +39,7 @@ public class JAsyncContext implements IJAsyncContext {
         this.syms = Symtab.instance(context);
         this.log = Log.instance(context);
         this.types = Types.instance(context);
+        this.jAsyncSymbols = JAsyncSymbols.instance(context);
     }
 
     public JAsyncContext(IJAsyncContext asyncContext) {
@@ -49,6 +52,7 @@ public class JAsyncContext implements IJAsyncContext {
         this.log = asyncContext.getLog();
         this.syms = asyncContext.getSymbols();
         this.types = asyncContext.getTypes();
+        this.jAsyncSymbols = asyncContext.getJAsyncSymbols();
     }
 
     @Override
@@ -89,6 +93,11 @@ public class JAsyncContext implements IJAsyncContext {
     @Override
     public Symtab getSymbols() {
         return syms;
+    }
+
+    @Override
+    public JAsyncSymbols getJAsyncSymbols() {
+        return jAsyncSymbols;
     }
 
     @Override

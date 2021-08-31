@@ -42,7 +42,7 @@ public class ScopeVarScanner extends TreeScanner {
             for (Element localElement : scope.getLocalElements()) {
                 if (localElement instanceof Symbol.VarSymbol) {
                     Symbol.VarSymbol localVarSymbol = (Symbol.VarSymbol) localElement;
-                    if (equalSymbol(varSymbol, localVarSymbol)) {
+                    if (equalSymbol(context, varSymbol, localVarSymbol)) {
                         return varSymbol;
                     }
                 }

@@ -37,12 +37,12 @@ public class JAsync {
         return assertProvider().error(t);
     }
 
-    public static void doContinue() {
-        throw new ContinueException();
+    public static void doContinue(String label) {
+        throw new ContinueException(label);
     }
 
-    public static void doBreak() {
-        throw new BreakException();
+    public static void doBreak(String label) {
+        throw new BreakException(label);
     }
 
     public static <T, O> Promise<T> doReturn(Promise<O> promise) {
@@ -63,6 +63,14 @@ public class JAsync {
 
     public static Promise<Void> doWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block) {
         return just().doWhileVoid(predicate, block);
+    }
+
+    public static Promise<Void> doDoWhile(BooleanSupplier predicate, VoidPromiseSupplier block) {
+        return just().doDoWhileVoid(predicate, block);
+    }
+
+    public static Promise<Void> doDoWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block) {
+        return just().doDoWhileVoid(predicate, block);
     }
 
     public static <E> Promise<Void> doForEachObject(Object iterableOrArray, VoidPromiseFunction<E> block) {

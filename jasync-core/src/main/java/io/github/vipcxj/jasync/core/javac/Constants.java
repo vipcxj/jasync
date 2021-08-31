@@ -3,15 +3,39 @@ package io.github.vipcxj.jasync.core.javac;
 import io.github.vipcxj.jasync.spec.JAsync;
 import io.github.vipcxj.jasync.spec.Promise;
 import io.github.vipcxj.jasync.spec.annotations.Async;
+import io.github.vipcxj.jasync.spec.switchexpr.StringCase;
 
 public class Constants {
     public static final String ASYNC = Async.class.getCanonicalName();
     public static final String ASYNC_DEBUG_ID = "debugId";
     public static final String ASYNC_DISABLED = "disabled";
+    public static final String ASYNC_LOG_RESULT_TREE = "logResultTree";
+    public static final String ASYNC_LOG_RESULT_POS_TREE = "logResultPosTree";
+    public static final String ASYNC_EXPERIMENT = "experiment";
     public static final String ASYNC_METHOD = "method";
     public static final String PROMISE = Promise.class.getCanonicalName();
+    public static final String JUST = "just";
     public static final String THEN = "then";
     public static final String THEN_VOID = "thenVoid";
+    public static final String CATCH_RETURN = "catchReturn";
+    public static final String DEFER_VOID = "deferVoid";
+    public static final String DO_CATCH = "doCatch";
+    public static final String DO_FINALLY = "doFinally";
+    public static final String DO_SWITCH = "doSwitch";
+    public static final String DO_WHILE = "doWhile";
+    public static final String DO_DO_WHILE = "doDoWhile";
+    public static final String DO_FOR_EACH_OBJECT = "doForEachObject";
+    public static final String DO_FOR_EACH_BYTE = "doForEachByte";
+    public static final String DO_FOR_EACH_CHAR = "doForEachChar";
+    public static final String DO_FOR_EACH_BOOLEAN = "doForEachBoolean";
+    public static final String DO_FOR_EACH_SHORT = "doForEachShort";
+    public static final String DO_FOR_EACH_INT = "doForEachInt";
+    public static final String DO_FOR_EACH_LONG = "doForEachLong";
+    public static final String DO_FOR_EACH_FLOAT = "doForEachFloat";
+    public static final String DO_FOR_EACH_DOUBLE = "doForEachDouble";
+    public static final String DO_RETURN = "doReturn";
+    public static final String DO_BREAK = "doBreak";
+    public static final String DO_CONTINUE = "doContinue";
     public static final String JASYNC = JAsync.class.getCanonicalName();
     public static final String JASYNC_JUST = JASYNC + ".just";
     public static final String JASYNC_DEFER_VOID = JASYNC + ".deferVoid";
@@ -48,14 +72,21 @@ public class Constants {
     public static final String REFERENCE_LOGIC_OR_ASSIGN = "orAndGetValue";
     public static final String REFERENCE_LOGIC_XOR_ASSIGN = "xorAndGetValue";
 
+    public static final String OF = "of";
     public static final String CASES = "io.github.vipcxj.jasync.spec.switchexpr.Cases";
-    public static final String CASES_OF = CASES + ".of";
+    public static final String CASES_OF = CASES + "." + OF;
     public static final String INT_CASE = "io.github.vipcxj.jasync.spec.switchexpr.IntCase";
-    public static final String INT_CASE_OF = INT_CASE + ".of";
+    public static final String INT_CASE_OF = INT_CASE + "." + OF;
     public static final String STRING_CASE = "io.github.vipcxj.jasync.spec.switchexpr.StringCase";
-    public static final String STRING_CASE_OF = STRING_CASE + ".of";
+    public static final String STRING_CASE_OF = STRING_CASE + "." + OF;
     public static final String ENUM_CASE = "io.github.vipcxj.jasync.spec.switchexpr.EnumCase";
-    public static final String ENUM_CASE_OF = ENUM_CASE + ".of";
+    public static final String ENUM_CASE_OF = ENUM_CASE + "." + OF;
     public static final String DEFAULT_CASE = "io.github.vipcxj.jasync.spec.switchexpr.DefaultCase";
-    public static final String DEFAULT_CASE_OF = DEFAULT_CASE + ".of";
+    public static final String DEFAULT_CASE_OF = DEFAULT_CASE + "." + OF;
+
+    public static final String INDY_MAKE_VOID_PROMISE_FUNCTION = "voidPromiseFunction";
+    public static final String INDY_MAKE_VOID_PROMISE_SUPPLIER = "voidPromiseSupplier";
+    public static final String INDY_MAKE_THROWABLE_CONSUMER = "throwableConsumer";
+    public static final String INDY_MAKE_BOOLEAN_SUPPLIER = "booleanSupplier";
+    public static final String INDY_MAKE_PROMISE_SUPPLIER = "promiseSupplier";
 }

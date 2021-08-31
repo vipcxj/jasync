@@ -39,7 +39,7 @@ public class MonoPromiseTest {
                                     () -> iRef.getValue() < 10,
                                     () -> JAsync.deferVoid(() -> {
                                         if (iRef.getValue() % 2 == 0) {
-                                            JAsync.doContinue();
+                                            JAsync.doContinue(null);
                                         }
                                         System.out.println(iRef.getValue());
                                         return JAsync.just();
@@ -60,7 +60,7 @@ public class MonoPromiseTest {
                                                         () -> JAsync.defer(() -> Promises.from(Mono.just(iRef.get() * jRef.get()).delayElement(Duration.ofSeconds(1))).<Void>then(t0 -> {
                                                             System.out.println(iRef.get() + " * " + jRef.get() + " = " + t0);
                                                             if (iRef.get() == 5) {
-                                                                JAsync.doBreak();
+                                                                JAsync.doBreak(null);
                                                             } else if (iRef.get() == 3 && jRef.get() == 4) {
                                                                 return JAsync.doReturn(null);
                                                             }

@@ -54,7 +54,7 @@ public class WhileTest {
 
     @Test
     public void test1() {
-        Assertions.assertEquals(100000, sum1(100000).block());
+        Assertions.assertEquals(2000000, sum1(2000000).block());
     }
 
     @Test

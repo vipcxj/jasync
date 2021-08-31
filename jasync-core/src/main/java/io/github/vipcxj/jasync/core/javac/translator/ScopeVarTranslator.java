@@ -41,7 +41,7 @@ public class ScopeVarTranslator extends TreeTranslator {
         }
         if (varSymbol != null) {
             for (VarInfo info : varData.values()) {
-                if (JavacUtils.equalSymbol(varSymbol, info.getSymbol())) {
+                if (JavacUtils.equalSymbol(context, varSymbol, info.getSymbol())) {
                     return info;
                 }
             }
@@ -97,50 +97,13 @@ public class ScopeVarTranslator extends TreeTranslator {
         super.visitAssign(jcAssign);
     }
 
-    private String getAssignMethod(JCTree.Tag tag) {
-        switch (tag) {
-            case PREINC:
-                return Constants.REFERENCE_PRE_INC;
-            case PREDEC:
-                return Constants.REFERENCE_PRE_DEC;
-            case POSTINC:
-                return Constants.REFERENCE_POST_INC;
-            case POSTDEC:
-                return Constants.REFERENCE_POST_DEC;
-            case PLUS_ASG:
-                return Constants.REFERENCE_PLUS_ASSIGN;
-            case MINUS_ASG:
-                return Constants.REFERENCE_MINUS_ASSIGN;
-            case DIV_ASG:
-                return Constants.REFERENCE_DIVIDE_ASSIGN;
-            case MUL_ASG:
-                return Constants.REFERENCE_MULTIPLY_ASSIGN;
-            case MOD_ASG:
-                return Constants.REFERENCE_MOD_ASSIGN;
-            case SL_ASG:
-                return Constants.REFERENCE_LEFT_SHIFT_ASSIGN;
-            case SR_ASG:
-                return Constants.REFERENCE_RIGHT_SHIFT_ASSIGN;
-            case USR_ASG:
-                return Constants.REFERENCE_UNSIGNED_RIGHT_SHIFT_ASSIGN;
-            case BITAND_ASG:
-                return Constants.REFERENCE_LOGIC_AND_ASSIGN;
-            case BITOR_ASG:
-                return Constants.REFERENCE_LOGIC_OR_ASSIGN;
-            case BITXOR_ASG:
-                return Constants.REFERENCE_LOGIC_XOR_ASSIGN;
-            default:
-                throw new IllegalArgumentException("unrecognized assign tag " + tag);
-        }
-    }
-
     @Override
     public void visitAssignop(JCTree.JCAssignOp jcAssignOp) {
         VarInfo varInfo = getVarInfo(jcAssignOp.lhs);
         if (varInfo != null) {
             JCTree.JCExpression rhs = translate(jcAssignOp.rhs);
             if (varInfo.getState() == VarUseState.WRITE) {
-                String assignMethod = getAssignMethod(jcAssignOp.getTag());
+                String assignMethod = JavacUtils.getAssignMethod(jcAssignOp.getTag());
                 TreeMaker maker = context.getTreeMaker();
                 Names names = context.getNames();
                 int prePos = maker.pos;
@@ -164,7 +127,7 @@ public class ScopeVarTranslator extends TreeTranslator {
         VarInfo varInfo = getVarInfo(jcUnary.arg);
         if (varInfo != null) {
             if (varInfo.getState() == VarUseState.WRITE) {
-                String assignMethod = getAssignMethod(jcUnary.getTag());
+                String assignMethod = JavacUtils.getAssignMethod(jcUnary.getTag());
                 TreeMaker maker = context.getTreeMaker();
                 Names names = context.getNames();
                 int prePos = maker.pos;

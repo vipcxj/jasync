@@ -1,8 +1,9 @@
 package io.github.vipcxj.jasync.test;
 
+import io.github.vipcxj.jasync.reactive.Promises;
 import io.github.vipcxj.jasync.spec.JAsync;
 import io.github.vipcxj.jasync.spec.Promise;
-import io.github.vipcxj.jasync.reactive.Promises;
+import io.github.vipcxj.jasync.spec.annotations.Async;
 import reactor.core.publisher.Mono;
 
 import java.io.StringWriter;
@@ -68,8 +69,16 @@ public class Apple {
         return null;
     }
 
+    @Async
     public Promise<Void> testSwitch() {
         String s = "a";
+/*        try {
+            say(s).await();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("1");
+        } finally {
+            s = "B";
+        }*/
         switch (s) {
             case "a" + "b":
                 return null;
@@ -95,7 +104,7 @@ public class Apple {
             }
             default:
                 int b = 3;
-                say("" + b).await();
+                say("" + a + b + say("abc" + s).await()).await();
         }
         return null;
     }

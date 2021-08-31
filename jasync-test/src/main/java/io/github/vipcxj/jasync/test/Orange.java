@@ -1,16 +1,20 @@
 package io.github.vipcxj.jasync.test;
 
 import io.github.vipcxj.jasync.core.CompareUseCase;
+import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.spec.JAsync;
 import io.github.vipcxj.jasync.spec.Promise;
 import io.github.vipcxj.jasync.spec.annotations.Async;
+import io.github.vipcxj.jasync.spec.functional.PromiseFunction;
 
 public class Orange {
 
+    private String stringField;
     private Promise<String> say(String message) {
         return JAsync.just(message);
     }
 
+    @Async
     public Promise<Void> testSimple() {
         String message = "say";
         String say = say(message).await();
@@ -36,6 +40,27 @@ public class Orange {
                 });
             }
         }).catchReturn();
+    }
+
+    @CompareUseCase
+    public <T> T test(int a, String b, T c) {
+        int la = 1, lb = 2;
+        String lsa = "1", lsb = "2";
+        testStart:;
+        String ta, tb;
+        ta = lsa;
+        tb = lsb;
+        int tia = la;
+        new PromiseFunction<Integer, Void>() {
+            @Override
+            public Promise<Void> apply(Integer integer) throws Throwable {
+                String la = lsa + stringField + ta + tb;
+                System.out.println(la + tia + lb + a + b + Constants.ASYNC);
+                return null;
+            }
+        };
+        testEnd:;
+        return c;
     }
 
     public static void main(String[] args) {

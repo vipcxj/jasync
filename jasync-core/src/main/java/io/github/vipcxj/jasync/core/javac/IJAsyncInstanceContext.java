@@ -4,6 +4,7 @@ import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.util.TreePath;
 import com.sun.tools.javac.api.JavacScope;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.TreeMaker;
 import io.github.vipcxj.jasync.core.javac.model.JAsyncInfo;
 
 import javax.lang.model.element.Element;
@@ -22,4 +23,6 @@ public interface IJAsyncInstanceContext extends IJAsyncContext {
     JavacScope getScope(JCTree tree);
 
     Element getElement(JCTree tree);
+
+    TreeMaker safeMaker();
 }

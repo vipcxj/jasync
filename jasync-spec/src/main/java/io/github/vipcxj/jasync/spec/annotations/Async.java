@@ -10,7 +10,11 @@ import java.lang.annotation.Target;
 public @interface Async {
     String debugId() default "";
     boolean disabled() default false;
+    boolean logResultTree() default false;
+    boolean logResultPosTree() default false;
+    boolean experiment() default false;
     Method method() default Method.AUTO;
+
 
     enum Method {
         AUTO, INDY, INNER_CLASS

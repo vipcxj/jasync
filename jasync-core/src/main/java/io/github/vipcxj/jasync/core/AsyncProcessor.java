@@ -3,10 +3,9 @@ package io.github.vipcxj.jasync.core;
 import com.google.auto.service.AutoService;
 import com.sun.tools.javac.tree.JCTree;
 import io.github.vipcxj.jasync.core.javac.*;
-import io.github.vipcxj.jasync.core.javac.translator.PromiseTranslator;
-import io.github.vipcxj.jasync.core.javac.translator.ReturnTranslator;
-import io.github.vipcxj.jasync.core.javac.translator.SimplifiedTranslator;
-import io.github.vipcxj.jasync.core.javac.translator.TryWithResourceTranslator;
+import io.github.vipcxj.jasync.core.javac.translate.context.TransMethodContext;
+import io.github.vipcxj.jasync.core.javac.translator.*;
+import io.github.vipcxj.jasync.core.javac.visitor.JAsyncAnalyzer;
 import io.github.vipcxj.jasync.core.javac.visitor.PosVisitor;
 
 import javax.annotation.processing.*;
@@ -38,19 +37,29 @@ public class AsyncProcessor extends AbstractProcessor {
             if (annotation.getQualifiedName().toString().equals(Constants.ASYNC)) {
                 for (Element element : roundEnv.getElementsAnnotatedWith(annotation)) {
                     IJAsyncInstanceContext instanceContext = new JAsyncInstanceContext(context, (ExecutableElement) element);
-                    JCTree.JCMethodDecl tree = (JCTree.JCMethodDecl) instanceContext.getTrees().getTree(element);
-                    StringWriter writer = new StringWriter();
-                    tree.accept(new PosVisitor(writer, false));
-                    System.out.println(writer.toString());
-                    System.out.println();
-                    tree.body.accept(new TryWithResourceTranslator(instanceContext));
-                    tree.body.accept(new ReturnTranslator(instanceContext));
-                    new PromiseTranslator(instanceContext, false).reshape(tree);
-                    tree.body.accept(new SimplifiedTranslator());
-                    writer = new StringWriter();
-                    tree.accept(new PosVisitor(writer, false));
-                    System.out.println(writer.toString());
-                    System.out.println(tree);
+                    if (instanceContext.getInfo().isEnabled()) {
+                        JCTree.JCMethodDecl tree = (JCTree.JCMethodDecl) instanceContext.getTrees().getTree(element);
+                        StringWriter writer = new StringWriter();
+                        // tree.accept(new PosVisitor(writer, false));
+                        // System.out.println(writer.toString());
+                        // System.out.println();
+                        new NormalizeTranslator(instanceContext).translate(tree);
+                        TransMethodContext transContext = JAsyncAnalyzer.scan(instanceContext, tree);
+                        transContext.complete();
+                        transContext.buildTree(true);
+//                        tree.body.accept(new TryWithResourceTranslator(instanceContext));
+//                        tree.body.accept(new ReturnTranslator(instanceContext));
+//                        new PromiseTranslator(instanceContext, false).reshape(tree);
+//                        tree.body.accept(new SimplifiedTranslator());
+                        writer = new StringWriter();
+                        if (instanceContext.getInfo().isLogResultPosTree()) {
+                            tree.accept(new PosVisitor(writer, false));
+                            System.out.println(writer.toString());
+                        }
+                        if (instanceContext.getInfo().isLogResultTree()) {
+                            System.out.println(tree);
+                        }
+                    }
                 }
             }
         }
