@@ -74,7 +74,7 @@ public class TransTreePlaceHolderContext<T extends JCTree>
     }
 
     @Override
-    public JCTree.JCIdent buildTree(boolean replaceSelf) {
+    public JCTree.JCIdent buildTreeWithoutThen(boolean replaceSelf) {
         return buildTree(this, capturedPlaceHolderInfo != null ? capturedPlaceHolderInfo : declPlaceHolderInfo, replaceSelf);
     }
 
@@ -103,7 +103,7 @@ public class TransTreePlaceHolderContext<T extends JCTree>
         }
 
         @Override
-        public JCTree.JCIdent buildTree(boolean replaceSelf) {
+        public JCTree.JCIdent buildTreeWithoutThen(boolean replaceSelf) {
             return TransTreePlaceHolderContext.buildTree(this, capturedPlaceHolderInfo != null ? capturedPlaceHolderInfo : declPlaceHolderInfo, replaceSelf);
         }
 
@@ -139,7 +139,7 @@ public class TransTreePlaceHolderContext<T extends JCTree>
         }
 
         @Override
-        public JCTree.JCIdent buildTree(boolean replaceSelf) {
+        public JCTree.JCIdent buildTreeWithoutThen(boolean replaceSelf) {
             return TransTreePlaceHolderContext.buildTree(this, capturedPlaceHolderInfo != null ? capturedPlaceHolderInfo : declPlaceHolderInfo, replaceSelf);
         }
 

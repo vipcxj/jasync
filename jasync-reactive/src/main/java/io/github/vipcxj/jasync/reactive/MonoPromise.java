@@ -24,21 +24,15 @@ public class MonoPromise<T> implements Promise<T> {
         this.mono = mono;
     }
 
-    private void mustNotResolved() {
-        if (resolved) {
-            throw new IllegalStateException("Should not resolve again.");
-        }
-    }
-
     private void resolve(T value) {
-        mustNotResolved();
         this.resolved = true;
         this.value = value;
+        this.error = null;
     }
 
     private void reject(Throwable error) {
-        mustNotResolved();
         this.resolved = true;
+        this.value = null;
         this.error = error;
     }
 

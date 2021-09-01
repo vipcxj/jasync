@@ -87,6 +87,7 @@ public class Constants {
     public static final String INDY_MAKE_VOID_PROMISE_FUNCTION = "voidPromiseFunction";
     public static final String INDY_MAKE_VOID_PROMISE_SUPPLIER = "voidPromiseSupplier";
     public static final String INDY_MAKE_THROWABLE_CONSUMER = "throwableConsumer";
+    public static final String INDY_MAKE_PROMISE_FUNCTION = "promiseFunction";
     public static final String INDY_MAKE_BOOLEAN_SUPPLIER = "booleanSupplier";
     public static final String INDY_MAKE_PROMISE_SUPPLIER = "promiseSupplier";
 }

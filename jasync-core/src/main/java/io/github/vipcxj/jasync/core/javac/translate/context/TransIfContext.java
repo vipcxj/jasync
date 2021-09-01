@@ -24,22 +24,13 @@ public class TransIfContext extends AbstractTransFrameHolderStatementContext<JCT
 
     public TransIfContext(AnalyzerContext analyzerContext, JCTree.JCIf tree) {
         super(analyzerContext, tree);
+        awaitContainer = tree.cond;
     }
 
     @Override
     public TransIfContext enter() {
         super.enter();
         return this;
-    }
-
-    @Override
-    public void exit() {
-        super.exit();
-    }
-
-    @Override
-    protected JCTree awaitContainer() {
-        return tree.cond;
     }
 
     @Override

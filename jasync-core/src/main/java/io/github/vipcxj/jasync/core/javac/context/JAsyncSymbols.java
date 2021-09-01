@@ -28,7 +28,8 @@ public class JAsyncSymbols {
     private final TreeMaker maker;
     private final Types types;
     private final Names names;
-    private final Symbol.MethodSymbol symPromiseThenVoidEmptyArg;
+    private final Symbol.MethodSymbol symPromiseThenSupplierArg;
+    private final Symbol.MethodSymbol symPromiseThenFuncArg;
     private final Symbol.MethodSymbol symPromiseThenVoidSupplierArg;
     private final Symbol.MethodSymbol symPromiseThenVoidFuncArg;
     private final Symbol.MethodSymbol symPromiseCatchReturn;
@@ -82,10 +83,17 @@ public class JAsyncSymbols {
         JavacElements elements = JavacElements.instance(context);
         names = Names.instance(context);
         Symbol.ClassSymbol symPromise = elements.getTypeElement(Promise.class.getCanonicalName());
-        symPromiseThenVoidEmptyArg = SymbolHelpers.INSTANCE.getMethodMember(
+        symPromiseThenSupplierArg = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symPromise,
-                names.fromString(Constants.THEN_VOID),
-                false
+                names.fromString(Constants.THEN),
+                false,
+                PromiseSupplier.class
+        );
+        symPromiseThenFuncArg = SymbolHelpers.INSTANCE.getMethodMember(
+                types, symPromise,
+                names.fromString(Constants.THEN),
+                false,
+                PromiseFunction.class
         );
         symPromiseThenVoidSupplierArg = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symPromise,
@@ -397,7 +405,7 @@ public class JAsyncSymbols {
         return maker.Select(maker.QualIdent(symJAsync), symJAsyncDoForEachObject);
     }
 
-    public JCTree.JCExpression makeDoReturn(JCTree.JCReturn tree) {
+    public JCTree.JCExpression makeDoReturn(JCTree.JCReturn tree, JCTree.JCExpression expr) {
         int prePos = maker.pos;
         try {
             maker.at(tree);
@@ -405,7 +413,7 @@ public class JAsyncSymbols {
                     com.sun.tools.javac.util.List.nil(),
                     maker.Select(maker.QualIdent(symJAsync), symJAsyncDoReturn),
                     com.sun.tools.javac.util.List.of(
-                            tree.expr != null ? makeJust(tree.expr) : makeJust()
+                            expr != null ? expr : maker.Literal(TypeTag.BOT, null)
                     )
             );
         } finally {
@@ -691,6 +699,14 @@ public class JAsyncSymbols {
                 maker.Select(maker.Ident(symRef), methodSymbol),
                 expr != null ? com.sun.tools.javac.util.List.of(expr) : com.sun.tools.javac.util.List.nil()
         );
+    }
+
+    public JCTree.JCExpression makePromiseThenFuncArg(JCTree.JCExpression expr) {
+        return expr != null ? maker.Select(expr, symPromiseThenFuncArg) : maker.Ident(symPromiseThenFuncArg);
+    }
+
+    public JCTree.JCExpression makePromiseThenSupplierArg(JCTree.JCExpression expr) {
+        return expr != null ? maker.Select(expr, symPromiseThenSupplierArg) : maker.Ident(symPromiseThenSupplierArg);
     }
 
     public JCTree.JCExpression makePromiseThenVoidFuncArg(JCTree.JCExpression expr) {

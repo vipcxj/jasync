@@ -37,7 +37,13 @@ public abstract class TransWhileLikeContext<T extends JCTree.JCStatement> extend
         super.onChildEnter(child);
         if (childState == ChildState.COND) {
             childContextMustBeExpression(child);
-            new TransCondContext(analyzerContext, (JCTree.JCExpression) child.getTree()).enter(false);
+            child.setAwaitContainer(child.getTree());
+            TransCondContext condContext = new TransCondContext(analyzerContext, (JCTree.JCExpression) child.getTree());
+            child.addDecorator(condContext);
+            child.addPostExitTrigger(ctx -> {
+                condContext.exit(false);
+            });
+            condContext.enter(false);
         } else if (childState == ChildState.BODY) {
             if (child instanceof TransBlockContext) {
                 return;
@@ -47,12 +53,12 @@ public abstract class TransWhileLikeContext<T extends JCTree.JCStatement> extend
     }
 
     @Override
-    public void exit() {
+    public void exit(boolean triggerCallback) {
         if (hasAwait()) {
             bodyContext.setHasAwait(true);
             condContext.setHasAwait(true);
         }
-        super.exit();
+        super.exit(triggerCallback);
     }
 
     enum ChildState {
@@ -72,8 +78,8 @@ public abstract class TransWhileLikeContext<T extends JCTree.JCStatement> extend
             int prePos = maker.pos;
             try {
                 maker.pos = tree.pos;
-                String methodType = condContext.hasAwait() ? Constants.INDY_MAKE_PROMISE_SUPPLIER : Constants.INDY_MAKE_BOOLEAN_SUPPLIER;
-                return JavacUtils.makeReturn(jasyncContext, maker.Apply(
+                String methodType = condContext.hasAwaitExpr() ? Constants.INDY_MAKE_PROMISE_SUPPLIER : Constants.INDY_MAKE_BOOLEAN_SUPPLIER;
+                return JavacUtils.makeReturn(jasyncContext, safeMaker().Apply(
                         List.nil(),
                         getBuildMethod(),
                         List.of(

@@ -14,6 +14,7 @@ public interface TranslateContext<T extends JCTree> {
     void exit(boolean triggerCallback);
     void startThen();
     void endThen();
+    boolean inThen();
     void addChildContext(TranslateContext<?> child);
     void onChildEnter(TranslateContext<?> child);
     void onChildExit(TranslateContext<?> child);
@@ -24,11 +25,23 @@ public interface TranslateContext<T extends JCTree> {
     List<TranslateContext<?>> getChildren();
     void complete();
     Frame getFrame();
-    String getIdent();
-    void doIdent();
     boolean hasAwait();
     void setHasAwait(boolean hasAwait);
     JCTree buildTree(boolean replace);
     AnalyzerContext getContext();
+    JCTree awaitContainer();
+    void setAwaitContainer(JCTree awaitContainer);
+    void addPreEnterTrigger(TransCallback trigger);
+    void removePreEnterTrigger(TransCallback trigger);
+    void addPostEnterTrigger(TransCallback trigger);
+    void removePostEnterTrigger(TransCallback trigger);
+    void addPreExitTrigger(TransCallback trigger);
+    void removePreExitTrigger(TransCallback trigger);
+    void addPostExitTrigger(TransCallback trigger);
+    void removePostExitTrigger(TransCallback trigger);
+    void addDecorator(TransDecorator decorator, int order);
+    default void addDecorator(TransDecorator decorator) {
+        addDecorator(decorator, TransDecorator.DEFAULT_ORDER);
+    }
 }
 

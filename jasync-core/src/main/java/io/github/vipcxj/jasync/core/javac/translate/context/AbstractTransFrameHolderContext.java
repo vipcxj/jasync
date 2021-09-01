@@ -27,7 +27,6 @@ public class AbstractTransFrameHolderContext<T extends JCTree>
         try {
             super.complete(false);
         } finally {
-            frame.lock();
             analyzerContext.exitTo(preFrame);
         }
         if (thenContext != null) {

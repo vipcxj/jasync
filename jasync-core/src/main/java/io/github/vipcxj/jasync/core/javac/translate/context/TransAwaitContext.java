@@ -18,18 +18,28 @@ import java.util.Set;
 
 public class TransAwaitContext extends AbstractTransExpressionContext<JCTree.JCMethodInvocation> {
 
+    private JCTree container;
     private ListBuffer<JCTree.JCVariableDecl> proxyDecls;
     private ListBuffer<TranslateContext<?>> exprContexts;
     private TranslateContext<?> awaitContext;
     private final Set<JCTree> toReplaced;
     private ChildState childState;
 
-    public TransAwaitContext(AnalyzerContext analyzerContext, AwaitContext.AwaitPart awaitPart) {
+    public TransAwaitContext(AnalyzerContext analyzerContext, JCTree container, AwaitContext.AwaitPart awaitPart) {
         super(analyzerContext, awaitPart.getAwaitInvoker());
+        this.container = container;
         this.hasAwait = true;
         this.toReplaced = new HashSet<>();
         this.proxyDecls = new ListBuffer<>();
         this.exprContexts = new ListBuffer<>();
+    }
+
+    public JCTree getContainer() {
+        return container;
+    }
+
+    public boolean isExpr() {
+        return container instanceof JCTree.JCExpression;
     }
 
     public ListBuffer<JCTree.JCVariableDecl> getProxyDecls() {
@@ -41,6 +51,8 @@ public class TransAwaitContext extends AbstractTransExpressionContext<JCTree.JCM
         super.enter(triggerCallback);
         return this;
     }
+
+
 
     @Override
     protected void addNormalChildContext(TranslateContext<?> child) {
@@ -68,7 +80,7 @@ public class TransAwaitContext extends AbstractTransExpressionContext<JCTree.JCM
 
     public static void make(AnalyzerContext analyzerContext, AwaitContext awaitContext) {
         for (AwaitContext.AwaitPart awaitPart : awaitContext.getAwaitParts()) {
-            TransAwaitContext transAwaitContext = new TransAwaitContext(analyzerContext, awaitPart);
+            TransAwaitContext transAwaitContext = new TransAwaitContext(analyzerContext, awaitContext.getContainer(), awaitPart);
             transAwaitContext.enter();
             try {
                 for (JCTree.JCExpression expression : awaitPart.getExpressions()) {
@@ -92,10 +104,18 @@ public class TransAwaitContext extends AbstractTransExpressionContext<JCTree.JCM
         JAsyncSymbols symbols = jasyncContext.getJAsyncSymbols();
         JCTree.JCMethodInvocation awaitTree = (JCTree.JCMethodInvocation) awaitContext.buildTree(false);
         JCTree.JCExpression method = awaitTree.meth;
-        if (method instanceof JCTree.JCFieldAccess) {
-            return symbols.makePromiseThenVoidFuncArg(((JCTree.JCFieldAccess) method).getExpression());
+        if (isExpr()) {
+            if (method instanceof JCTree.JCFieldAccess) {
+                return symbols.makePromiseThenFuncArg(((JCTree.JCFieldAccess) method).getExpression());
+            } else {
+                return symbols.makePromiseThenFuncArg(null);
+            }
         } else {
-            return symbols.makePromiseThenVoidFuncArg(null);
+            if (method instanceof JCTree.JCFieldAccess) {
+                return symbols.makePromiseThenVoidFuncArg(((JCTree.JCFieldAccess) method).getExpression());
+            } else {
+                return symbols.makePromiseThenVoidFuncArg(null);
+            }
         }
     }
 
@@ -129,14 +149,20 @@ public class TransAwaitContext extends AbstractTransExpressionContext<JCTree.JCM
         }
         int prePos = maker.pos;
         try {
-            JCTree.JCMethodDecl methodDecl = methodContext.addVoidPromiseFunction(thenContext.getFrame(), (JCTree.JCBlock) thenContext.buildTree(false));
-            return maker.Return(
+            JCTree.JCMethodDecl methodDecl = isExpr()
+                    ? methodContext.addPromiseFunction(thenContext, getContainer().type)
+                    : methodContext.addVoidPromiseFunction(thenContext);
+            JCTree.JCReturn outTree = maker.Return(
                     maker.Apply(
                             List.nil(),
                             makeAwaitThen(),
-                            List.of(methodContext.makeFunctional(thenContext.getFrame(), Constants.INDY_MAKE_VOID_PROMISE_FUNCTION, methodDecl))
+                            List.of(methodContext.makeFunctional(
+                                    thenContext.getFrame(),
+                                    isExpr() ? Constants.INDY_MAKE_PROMISE_FUNCTION : Constants.INDY_MAKE_VOID_PROMISE_FUNCTION,
+                                    methodDecl))
                     )
             );
+            return decorate(outTree);
         } finally {
             maker.pos = prePos;
         }

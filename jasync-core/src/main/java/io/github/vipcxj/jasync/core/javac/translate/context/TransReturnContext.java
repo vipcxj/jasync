@@ -7,8 +7,17 @@ import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
 import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
 
 public class TransReturnContext extends AbstractTransStatementContext<JCTree.JCReturn> {
+
+    private TranslateContext<?> exprContext;
+
     public TransReturnContext(AnalyzerContext analyzerContext, JCTree.JCReturn tree) {
         super(analyzerContext, tree);
+    }
+
+    @Override
+    protected void addNormalChildContext(TranslateContext<?> child) {
+        checkContextTree(child, tree.expr);
+        exprContext = child;
     }
 
     private boolean inAwaitScope() {
@@ -21,7 +30,10 @@ public class TransReturnContext extends AbstractTransStatementContext<JCTree.JCR
             ) {
                 break;
             }
-            if (ctx.hasAwait() ) {
+            if (ctx instanceof TransBlockContext && ((TransBlockContext) ctx).isDirect()) {
+                break;
+            }
+            if (ctx.hasAwait()) {
                 return true;
             }
             ctx = ctx.getParent();
@@ -30,10 +42,11 @@ public class TransReturnContext extends AbstractTransStatementContext<JCTree.JCR
     }
 
     @Override
-    public JCTree buildTree(boolean replaceSelf) {
+    public JCTree buildTreeWithoutThen(boolean replaceSelf) {
         if (inAwaitScope()) {
             IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
-            return JavacUtils.makeReturn(jasyncContext, jasyncContext.getJAsyncSymbols().makeDoReturn(tree));
+            JCTree.JCExpression expr = exprContext != null ? (JCTree.JCExpression) exprContext.buildTree(false) : null;
+            return JavacUtils.makeReturn(jasyncContext, jasyncContext.getJAsyncSymbols().makeDoReturn(tree, expr));
         } else {
             return tree;
         }

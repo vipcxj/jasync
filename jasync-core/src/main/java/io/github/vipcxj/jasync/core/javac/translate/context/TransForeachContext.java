@@ -19,17 +19,13 @@ public class TransForeachContext extends AbstractTransFrameHolderStatementContex
 
     public TransForeachContext(AnalyzerContext analyzerContext, JCTree.JCEnhancedForLoop tree) {
         super(analyzerContext, tree);
+        awaitContainer = tree.expr;
     }
 
     @Override
     public TransForeachContext enter() {
         super.enter();
         return this;
-    }
-
-    @Override
-    protected JCTree awaitContainer() {
-        return tree.expr;
     }
 
     @Override

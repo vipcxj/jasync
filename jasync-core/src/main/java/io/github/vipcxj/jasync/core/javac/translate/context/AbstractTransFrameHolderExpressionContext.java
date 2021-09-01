@@ -27,7 +27,6 @@ public class AbstractTransFrameHolderExpressionContext<T extends JCTree.JCExpres
         try {
             super.complete(false);
         } finally {
-            frame.lock();
             analyzerContext.exitTo(preFrame);
         }
         if (thenContext != null) {

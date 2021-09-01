@@ -33,9 +33,9 @@ public abstract class AbstractTransJumpLikeContext<T extends JCTree.JCStatement>
     public JCTree buildTree(boolean replaceSelf) {
         if (inAwaitScope()) {
             IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
-            return JavacUtils.makeExprStat(jasyncContext, makeExpr());
+            return decorate(JavacUtils.makeExprStat(jasyncContext, makeExpr()));
         } else {
-            return tree;
+            return decorate(tree);
         }
     }
 

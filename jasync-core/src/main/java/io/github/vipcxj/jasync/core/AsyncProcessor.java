@@ -46,6 +46,7 @@ public class AsyncProcessor extends AbstractProcessor {
                         new NormalizeTranslator(instanceContext).translate(tree);
                         TransMethodContext transContext = JAsyncAnalyzer.scan(instanceContext, tree);
                         transContext.complete();
+                        transContext.lock();
                         transContext.buildTree(true);
 //                        tree.body.accept(new TryWithResourceTranslator(instanceContext));
 //                        tree.body.accept(new ReturnTranslator(instanceContext));

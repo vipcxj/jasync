@@ -6,20 +6,20 @@ import com.sun.tools.javac.util.ListBuffer;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
-import io.github.vipcxj.jasync.core.javac.context.JAsyncSymbols;
 import io.github.vipcxj.jasync.core.javac.model.Frame;
+import io.github.vipcxj.jasync.core.javac.translate.TransDecorator;
 import io.github.vipcxj.jasync.core.javac.translate.TransExpressionContext;
 import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
 
-public class TransCondContext extends AbstractTransFrameHolderExpressionContext<JCTree.JCExpression> {
-    private TransExpressionContext<?> expressionContext;
+public class TransCondContext extends AbstractTransFrameHolderExpressionContext<JCTree.JCExpression> implements TransDecorator {
+    private TransExpressionContext<?> exprContext;
 
     public TransCondContext(AnalyzerContext analyzerContext, JCTree.JCExpression expression) {
         super(analyzerContext, expression);
     }
 
-    public TransExpressionContext<?> getExpressionContext() {
-        return expressionContext;
+    public boolean hasAwaitExpr() {
+        return exprContext.hasAwait();
     }
 
     @Override
@@ -29,16 +29,30 @@ public class TransCondContext extends AbstractTransFrameHolderExpressionContext<
     }
 
     @Override
-    public void onChildExit(TranslateContext<?> child) {
-        exit(false);
+    public void exit(boolean triggerCallback) {
+        if (exprContext != null && exprContext.inThen()) {
+            exprContext.endThen();
+        }
+        super.exit(triggerCallback);
+    }
+
+    @Override
+    public JCTree decorate(TranslateContext<?> ctx, JCTree tree) {
+        IJAsyncInstanceContext jasyncContext = getContext().getJasyncContext();
+        return JavacUtils.makeReturn(
+                jasyncContext,
+                hasAwaitExpr()
+                        ? jasyncContext.getJAsyncSymbols().makeJust((JCTree.JCExpression) tree)
+                        : (JCTree.JCExpression) tree
+        );
     }
 
     @Override
     protected void addNormalChildContext(TranslateContext<?> child) {
-        if (expressionContext == null) {
+        if (exprContext == null) {
             childContextMustBeExpression(child);
             checkContextTree(child, tree);
-            expressionContext = (TransExpressionContext<?>) child;
+            exprContext = (TransExpressionContext<?>) child;
         } else {
             throwIfFull();
         }
@@ -49,7 +63,6 @@ public class TransCondContext extends AbstractTransFrameHolderExpressionContext<
         if (hasAwait()) {
             ListBuffer<JCTree.JCStatement> stats = new ListBuffer<>();
             IJAsyncInstanceContext jasyncContext = getContext().getJasyncContext();
-            JAsyncSymbols symbols = jasyncContext.getJAsyncSymbols();
             TreeMaker maker = treeMaker();
             int prePos = maker.pos;
             try {
@@ -59,14 +72,11 @@ public class TransCondContext extends AbstractTransFrameHolderExpressionContext<
                         stats = stats.append(capturedInfo.makeUsedDecl());
                     }
                 }
-                JCTree expr = expressionContext.buildTree(false);
-                if (expressionContext instanceof TransAwaitContext) {
-                    for (JCTree.JCVariableDecl decl : ((TransAwaitContext) expressionContext).getProxyDecls().toList()) {
+                JCTree expr = exprContext.buildTree(false);
+                if (exprContext instanceof TransAwaitContext) {
+                    for (JCTree.JCVariableDecl decl : ((TransAwaitContext) exprContext).getProxyDecls().toList()) {
                         stats = stats.append(decl);
                     }
-                }
-                if (!(expr instanceof JCTree.JCReturn)) {
-                    expr = JavacUtils.makeReturn(jasyncContext, symbols.makeJust((JCTree.JCExpression) expr));
                 }
                 stats = stats.append((JCTree.JCStatement) expr);
                 return JavacUtils.makeBlock(jasyncContext, stats.toList());
@@ -74,7 +84,7 @@ public class TransCondContext extends AbstractTransFrameHolderExpressionContext<
                 maker.pos = prePos;
             }
         } else {
-            return expressionContext.buildTree(false);
+            return exprContext.buildTree(false);
         }
     }
 }

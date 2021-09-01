@@ -32,6 +32,10 @@ public class TransBlockContext extends AbstractTransFrameHolderStatementContext<
         this.nude = nude;
     }
 
+    public boolean isDirect() {
+        return direct;
+    }
+
     public void setDirect(boolean direct) {
         this.direct = direct;
     }
@@ -43,12 +47,12 @@ public class TransBlockContext extends AbstractTransFrameHolderStatementContext<
     }
 
     @Override
-    public void exit() {
+    public void exit(boolean triggerCallback) {
         TranslateContext<?> promiseChild = getPromiseChild();
         if (promiseChild != null) {
             promiseChild.endThen();
         }
-        super.exit();
+        super.exit(triggerCallback);
     }
 
     private TranslateContext<?> getPromiseChild() {
@@ -62,7 +66,6 @@ public class TransBlockContext extends AbstractTransFrameHolderStatementContext<
 
     @Override
     protected void addNormalChildContext(TranslateContext<?> child) {
-        child.doIdent();
         if (child.hasAwait()) {
             TranslateContext<?> last = children.peekLast();
             if (last != null && last.hasAwait()) {
@@ -114,7 +117,8 @@ public class TransBlockContext extends AbstractTransFrameHolderStatementContext<
             maker.pos = prePos;
         }
         for (TranslateContext<?> child : children) {
-            JCTree.JCStatement statement = (JCTree.JCStatement) child.buildTree(false);
+            JCTree tree = child.buildTree(false);
+            JCTree.JCStatement statement = (JCTree.JCStatement) tree;
             if (child instanceof TransAwaitContext) {
                 for (JCTree.JCVariableDecl decl : ((TransAwaitContext) child).getProxyDecls().toList()) {
                     stats = stats.append(decl);

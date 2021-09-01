@@ -67,7 +67,7 @@ public class TransUnaryContext
     }
 
     @Override
-    public JCTree buildTree(boolean replaceSelf) {
+    public JCTree buildTreeWithoutThen(boolean replaceSelf) {
         if (capturedInfo != null && capturedInfo.getDeclSymbol() != null) {
             VarTransHelper helper = new VarTransHelper(capturedInfo, declInfo);
             helper.prepare();

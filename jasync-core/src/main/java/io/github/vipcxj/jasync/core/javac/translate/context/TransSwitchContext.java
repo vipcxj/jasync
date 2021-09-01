@@ -12,8 +12,6 @@ import io.github.vipcxj.jasync.core.javac.context.JAsyncSymbols;
 import io.github.vipcxj.jasync.core.javac.model.Frame;
 import io.github.vipcxj.jasync.core.javac.translate.TransFrameHolderContext;
 import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
-import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.switchexpr.*;
 
 public class TransSwitchContext
         extends AbstractTransFrameHolderStatementContext<JCTree.JCSwitch>
@@ -24,6 +22,7 @@ public class TransSwitchContext
 
     public TransSwitchContext(AnalyzerContext analyzerContext, JCTree.JCSwitch tree) {
         super(analyzerContext, tree);
+        awaitContainer = tree.selector;
         this.caseContexts = new ListBuffer<>();
     }
 
@@ -31,11 +30,6 @@ public class TransSwitchContext
     public TransSwitchContext enter() {
         super.enter();
         return this;
-    }
-
-    @Override
-    protected JCTree awaitContainer() {
-        return tree.selector;
     }
 
     private int caseNum() {
@@ -73,7 +67,6 @@ public class TransSwitchContext
                     caseContext.complete();
                 }
             } finally {
-                frame.lock();
                 analyzerContext.exitTo(preFrame);
             }
         } else {
@@ -118,14 +111,14 @@ public class TransSwitchContext
                     JCTree.JCExpression argExpr;
                     switch (caseType) {
                         case 0: // default
-                            argExpr = maker.Apply(
+                            argExpr = safeMaker().Apply(
                                     List.nil(),
                                     symbols.makeDefaultCaseOf(),
                                     List.of(voidPromiseSupplier)
                             );
                             break;
                         case 1: // int
-                            argExpr = maker.Apply(
+                            argExpr = safeMaker().Apply(
                                     List.nil(),
                                     symbols.makeIntCaseOf(),
                                     List.of(
@@ -135,7 +128,7 @@ public class TransSwitchContext
                             );
                             break;
                         case 2: // String
-                            argExpr = maker.Apply(
+                            argExpr = safeMaker().Apply(
                                     List.nil(),
                                     symbols.makeStringCaseOf(),
                                     List.of(
@@ -145,7 +138,7 @@ public class TransSwitchContext
                             );
                             break;
                         case 3: // Enum
-                            argExpr = maker.Apply(
+                            argExpr = safeMaker().Apply(
                                     List.nil(),
                                     symbols.makeEnumCaseOf(),
                                     List.of(
@@ -159,12 +152,12 @@ public class TransSwitchContext
                     }
                     args = args.append(argExpr);
                 }
-                return JavacUtils.makeReturn(jasyncContext, maker.Apply(
+                return JavacUtils.makeReturn(jasyncContext, safeMaker().Apply(
                         List.nil(),
                         symbols.makeJAsyncDoSwitch(),
                         List.of(
                                 (JCTree.JCExpression) selectorContext.buildTree(false),
-                                maker.Apply(
+                                safeMaker().Apply(
                                         List.nil(),
                                         symbols.makeCasesOf(),
                                         args.toList()

@@ -68,7 +68,7 @@ public abstract class TransAssignLikeContext<T extends JCTree.JCExpression>
     }
 
     @Override
-    public JCTree buildTree(boolean replaceSelf) {
+    public JCTree buildTreeWithoutThen(boolean replaceSelf) {
         JCTree.JCExpression expression = (JCTree.JCExpression) expressionContext.buildTree(false);
         setExpressionTree(expression);
         if (capturedInfo != null || declInfo != null) {

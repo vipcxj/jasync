@@ -14,6 +14,7 @@ public class TransVarDeclContext extends AbstractTransStatementContext<JCTree.JC
 
     public TransVarDeclContext(AnalyzerContext analyzerContext, JCTree.JCVariableDecl tree) {
         super(analyzerContext, tree);
+        awaitContainer = tree;
         this.asyncParam = false;
     }
 
@@ -43,11 +44,6 @@ public class TransVarDeclContext extends AbstractTransStatementContext<JCTree.JC
                 initContext = null;
             }
         }
-    }
-
-    @Override
-    protected JCTree awaitContainer() {
-        return tree;
     }
 
     @Override

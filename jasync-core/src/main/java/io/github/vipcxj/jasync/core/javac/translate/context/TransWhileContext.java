@@ -43,7 +43,7 @@ public class TransWhileContext extends TransWhileLikeContext<JCTree.JCWhileLoop>
             return super.buildTreeWithoutThen(replaceSelf);
         } else {
             tree.cond = (JCTree.JCExpression) condContext.buildTree(false);
-            tree.body = (JCTree.JCStatement) condContext.buildTree(false);
+            tree.body = (JCTree.JCStatement) bodyContext.buildTree(false);
             return tree;
         }
     }

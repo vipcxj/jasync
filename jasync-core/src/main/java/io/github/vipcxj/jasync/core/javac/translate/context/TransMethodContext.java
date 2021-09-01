@@ -12,6 +12,7 @@ import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
 import io.github.vipcxj.jasync.core.javac.model.Frame;
+import io.github.vipcxj.jasync.core.javac.translate.TransFrameHolderContext;
 import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
 import io.github.vipcxj.jasync.core.javac.utils.SymbolHelpers;
 import io.github.vipcxj.jasync.spec.Promise;
@@ -229,11 +230,17 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         return indyHelperVarSymbol;
     }
 
-    private List<Symbol.VarSymbol> getParamSymbols(Symbol.MethodSymbol owner, Frame frame, Symbol.VarSymbol... argSymbols) {
+    private List<Symbol.VarSymbol> getParamSymbols(Frame frame) {
         ListBuffer<Symbol.VarSymbol> symbols = new ListBuffer<>();
-        for (Symbol.VarSymbol argSymbol : argSymbols) {
-            argSymbol.owner = owner;
-            symbols = symbols.append(argSymbol);
+//        for (Symbol.VarSymbol argSymbol : argSymbols) {
+//            argSymbol.owner = owner;
+//            symbols = symbols.append(argSymbol);
+//        }
+        for (Frame.CapturedInfo capturedInfo : frame.getCapturedVars().values()) {
+            symbols = symbols.append(capturedInfo.getDeclSymbol());
+        }
+        for (Frame.PlaceHolderInfo placeHolder : frame.getCapturedPlaceHolders().values()) {
+            symbols = symbols.append(placeHolder.getSymbol());
         }
         for (Frame.DeclInfo declInfo : frame.getDeclaredVars().values()) {
             if (declInfo.isAsyncParam()) {
@@ -245,20 +252,14 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
                 symbols = symbols.append(placeHolder.getSymbol());
             }
         }
-        for (Frame.CapturedInfo capturedInfo : frame.getCapturedVars().values()) {
-            symbols = symbols.append(capturedInfo.getDeclSymbol());
-        }
-        for (Frame.PlaceHolderInfo placeHolder : frame.getCapturedPlaceHolders().values()) {
-            symbols = symbols.append(placeHolder.getSymbol());
-        }
         return symbols.toList();
     }
 
-    public JCTree.JCMethodDecl addMethodDecl(Frame frame, Type resType, JCTree.JCBlock body, Symbol.VarSymbol... argSymbols) {
+    public JCTree.JCMethodDecl addMethodDecl(Frame frame, Type resType, JCTree.JCBlock body) {
         IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
         TreeMaker maker = jasyncContext.getTreeMaker();
         Symtab symbols = jasyncContext.getSymbols();
-        int flag = Flags.PRIVATE | Flags.SYNTHETIC;
+        int flag = Flags.PRIVATE /*| Flags.SYNTHETIC*/;
         if (staticMethod) {
             flag |= Flags.STATIC;
         }
@@ -269,7 +270,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
                 enclosingClassTree.sym
         );
         frame.bind(methodSymbol);
-        methodSymbol.params = getParamSymbols(methodSymbol, frame, argSymbols);
+        methodSymbol.params = getParamSymbols(frame);
         methodSymbol.type = new Type.MethodType(
                 JavacUtils.mapList(methodSymbol.params, param -> param.type),
                 resType,
@@ -289,7 +290,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
     public JCTree.JCMethodDecl addCondSupplier(TransCondContext condContext) {
         IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
         JCTree condTree = condContext.buildTree(false);
-        if (condContext.hasAwait()) {
+        if (condContext.hasAwaitExpr()) {
             Symtab symbols = jasyncContext.getSymbols();
             Types types = jasyncContext.getTypes();
             Type booleanType = types.boxedTypeOrType(symbols.booleanType);
@@ -299,14 +300,10 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
                     (JCTree.JCBlock) condTree
             );
         } else {
-            JCTree.JCBlock condBlock = JavacUtils.makeBlock(
-                    jasyncContext,
-                    JavacUtils.makeReturn(jasyncContext, (JCTree.JCExpression) condTree)
-            );
             return addMethodDecl(
                     condContext.getFrame(),
                     JavacUtils.getType(jasyncContext, boolean.class),
-                    condBlock
+                    (JCTree.JCBlock) condTree
             );
         }
     }
@@ -320,6 +317,19 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
     public JCTree.JCMethodDecl addVoidPromiseFunction(Frame frame, JCTree.JCBlock body) {
         IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
         return addMethodDecl(frame, JavacUtils.getType(jasyncContext, Promise.class, getBoxedVoidType(jasyncContext)), body);
+    }
+
+    public JCTree.JCMethodDecl addVoidPromiseFunction(TransBlockContext context) {
+        return addVoidPromiseFunction(context.getFrame(), (JCTree.JCBlock) context.buildTree(false));
+    }
+
+    public JCTree.JCMethodDecl addPromiseFunction(TransBlockContext context, Type type) {
+        IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
+        return addMethodDecl(
+                context.getFrame(),
+                JavacUtils.getType(jasyncContext, Promise.class, type),
+                (JCTree.JCBlock) context.buildTree(false)
+        );
     }
 
     public JCTree.JCMethodDecl addVoidPromiseSupplier(Frame frame, JCTree.JCBlock body) {
@@ -425,7 +435,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         }
     }
 
-    public JCTree.JCExpression makeFunctional(Frame frame, String functionType, JCTree.JCMethodDecl implMethod, Symbol.VarSymbol... args) {
+    public JCTree.JCExpression makeFunctional(Frame frame, String functionType, JCTree.JCMethodDecl implMethod) {
         IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
         TreeMaker maker = jasyncContext.getTreeMaker();
         Names names = jasyncContext.getNames();
@@ -435,9 +445,6 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         try {
             areExps = areExps.append(safeMaker().Literal(implMethod.name.toString()));
             areExps = areExps.append(makeMethodType(implMethod));
-            for (Symbol.VarSymbol arg : args) {
-                areExps = areExps.append(safeMaker().Ident(arg));
-            }
             for (Frame.CapturedInfo capturedInfo : frame.getCapturedVars().values()) {
                 areExps = areExps.append(capturedInfo.makeInputExpr());
             }
@@ -460,6 +467,22 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
             tree.body = (JCTree.JCBlock) bodyContext.buildTree(false);
         }
         return tree;
+    }
+
+    private static void lockContext(TranslateContext<?> context) {
+        if (context instanceof TransFrameHolderContext && context.getFrame() != null) {
+            context.getFrame().lock();
+        }
+        for (TranslateContext<?> child : context.getChildren()) {
+            lockContext(child);
+        }
+        if (context.getThen() != null) {
+            lockContext(context.getThen());
+        }
+    }
+
+    public void lock() {
+        lockContext(this);
     }
 
     static class PathData {

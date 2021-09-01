@@ -2,13 +2,10 @@ package io.github.vipcxj.jasync.core.javac.model;
 
 import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.Symbol;
-import com.sun.tools.javac.code.Symtab;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Name;
-import com.sun.tools.javac.util.Names;
-import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.context.JAsyncSymbols;
@@ -27,8 +24,7 @@ public class Frame {
     private final Map<VarKey, CapturedInfo> capturedVars;
     private final Map<JCTree, PlaceHolderInfo> declaredPlaceHolders;
     private final Map<JCTree, PlaceHolderInfo> capturedPlaceHolders;
-    private TransFrameHolderContext<?> holder;
-    private Symbol.MethodSymbol symbol;
+    private final TransFrameHolderContext<?> holder;
 
     public Frame(Frame parent, TransFrameHolderContext<?> holder) {
         this.parent = parent;
@@ -48,7 +44,6 @@ public class Frame {
     }
 
     public void bind(Symbol.MethodSymbol symbol) {
-        this.symbol = symbol;
         for (DeclInfo declInfo : declaredVars.values()) {
             declInfo.bind(symbol);
         }
@@ -126,23 +121,34 @@ public class Frame {
         readPlaceHolder(context, true);
     }
 
-    private void readVar(TransIdentContext context, boolean direct, boolean fromAwait) {
+    private DeclInfo getDeclInfo(VarKey key) {
+        DeclInfo declInfo = declaredVars.get(key);
+        if (declInfo != null) {
+            return declInfo;
+        }
+        if (parent != null) {
+            return parent.getDeclInfo(key);
+        }
+        return null;
+    }
+
+    private void readVar(TransIdentContext context, DeclInfo declInfo, boolean direct, boolean fromAwait) {
         Symbol symbol = context.getTree().sym;
         if (isVarSymbol(symbol)) {
             VarKey varKey = new VarKey(symbol);
-            DeclInfo declInfo = declaredVars.get(varKey);
-            if (declInfo != null) {
+            DeclInfo localDeclInfo = declaredVars.get(varKey);
+            if (localDeclInfo != null) {
                 if (direct) {
-                    declInfo.getReadAts().add(context);
+                    localDeclInfo.getReadAts().add(context);
                 } else if (fromAwait) {
-                    declInfo.setCaptured(true);
+                    localDeclInfo.setCaptured(true);
                 }
-                context.setDeclInfo(declInfo);
+                context.setDeclInfo(localDeclInfo);
             } else {
                 if (holder.hasAwait()) {
                     CapturedInfo capturedInfo = capturedVars.get(varKey);
                     if (capturedInfo == null) {
-                        capturedInfo = new CapturedInfo(varKey).setReadOnly(true);
+                        capturedInfo = new CapturedInfo(declInfo, varKey);
                         capturedVars.put(varKey, capturedInfo);
                     }
                     if (direct) {
@@ -152,34 +158,36 @@ public class Frame {
                     }
                 }
                 if (parent != null) {
-                    parent.readVar(context, direct, holder.hasAwait());
+                    parent.readVar(context, declInfo, direct, holder.hasAwait());
                 }
             }
         }
     }
 
     public void readVar(TransIdentContext context) {
-        readVar(context, true, holder.hasAwait());
+        VarKey key = new VarKey(context.getTree().sym);
+        DeclInfo declInfo = getDeclInfo(key);
+        readVar(context, declInfo, true, holder.hasAwait());
     }
 
-    private void writeVar(TransWriteExprContext<?> context, boolean direct, boolean fromAwait) {
+    private void writeVar(TransWriteExprContext<?> context, DeclInfo declInfo, boolean direct, boolean fromAwait) {
         Symbol symbol = context.getSymbol();
         if (isVarSymbol(symbol)) {
             VarKey varKey = new VarKey(symbol);
-            DeclInfo declInfo = declaredVars.get(varKey);
-            if (declInfo != null) {
+            DeclInfo localDeclInfo = declaredVars.get(varKey);
+            if (localDeclInfo != null) {
                 if (direct) {
-                    declInfo.getWriteAts().add(context);
+                    localDeclInfo.getWriteAts().add(context);
                 } else if (fromAwait) {
-                    declInfo.setCaptured(true);
-                    declInfo.setReadOnly(false);
+                    localDeclInfo.setCaptured(true);
+                    localDeclInfo.setReadOnly(false);
                 }
-                context.setDeclInfo(declInfo);
+                context.setDeclInfo(localDeclInfo);
             } else {
                 if (holder.hasAwait()) {
                     CapturedInfo capturedInfo = capturedVars.get(varKey);
                     if (capturedInfo == null) {
-                        capturedInfo = new CapturedInfo(varKey).setReadOnly(true);
+                        capturedInfo = new CapturedInfo(declInfo, varKey);
                         capturedVars.put(varKey, capturedInfo);
                     }
                     if (direct) {
@@ -187,17 +195,18 @@ public class Frame {
                         capturedInfo.writeAts.add(context);
                         context.setCapturedInfo(capturedInfo);
                     }
-                    capturedInfo.setReadOnly(false);
                 }
                 if (parent != null) {
-                    parent.writeVar(context, direct, holder.hasAwait());
+                    parent.writeVar(context, declInfo, direct, holder.hasAwait());
                 }
             }
         }
     }
 
     public void writeVar(TransWriteExprContext<?> context) {
-        writeVar(context, true, holder.hasAwait());
+        VarKey key = new VarKey(context.getSymbol());
+        DeclInfo declInfo = getDeclInfo(key);
+        writeVar(context, declInfo, true, holder.hasAwait());
     }
 
     public void lock() {
@@ -362,14 +371,15 @@ public class Frame {
 
     public class CapturedInfo {
         private final VarKey key;
+        private final DeclInfo declInfo;
         private Symbol.VarSymbol declSymbol;
         private Symbol.VarSymbol usedSymbol;
-        private boolean readOnly;
         private boolean lock;
         private final List<TransIdentContext> readAts;
         private final List<TransWriteExprContext<?>> writeAts;
 
-        public CapturedInfo(VarKey key) {
+        public CapturedInfo(DeclInfo declInfo, VarKey key) {
+            this.declInfo = declInfo;
             this.key = key;
             this.lock = false;
             this.readAts = new ArrayList<>();
@@ -378,7 +388,7 @@ public class Frame {
 
         private void lock() {
             Symbol origSymbol = key.getSymbol();
-            if (readOnly) {
+            if (!isNotReadOnly()) {
                 declSymbol = new Symbol.VarSymbol(Flags.FINAL | Flags.PARAMETER, origSymbol.name, origSymbol.type, null);
                 usedSymbol = declSymbol;
             } else {
@@ -409,7 +419,7 @@ public class Frame {
                 do {
                     DeclInfo declInfo = frame.declaredVars.get(key);
                     if (declInfo != null) {
-                        if (readOnly) {
+                        if (!isNotReadOnly()) {
                             return declInfo.readOnly
                                     ? safeMaker().Ident(declInfo.symbol)
                                     : symbols.makeRefGet(declInfo.getDeclSymbol());
@@ -423,8 +433,8 @@ public class Frame {
                         if (outputSymbol == null) {
                             throw new IllegalStateException();
                         }
-                        if (readOnly) {
-                            return capturedInfo.readOnly
+                        if (!isNotReadOnly()) {
+                            return !capturedInfo.isNotReadOnly()
                                     ? safeMaker().Ident(outputSymbol)
                                     : symbols.makeRefGet(outputSymbol) ;
                         } else {
@@ -448,12 +458,7 @@ public class Frame {
         }
 
         public boolean isNotReadOnly() {
-            return !readOnly;
-        }
-
-        public CapturedInfo setReadOnly(boolean readOnly) {
-            this.readOnly = readOnly;
-            return this;
+            return !declInfo.isReadOnly();
         }
 
         public Symbol.VarSymbol getDeclSymbol() {

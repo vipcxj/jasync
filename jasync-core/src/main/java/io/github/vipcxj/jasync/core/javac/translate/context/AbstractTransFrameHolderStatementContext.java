@@ -37,7 +37,6 @@ public class AbstractTransFrameHolderStatementContext<T extends JCTree.JCStateme
                 }
                 super.complete(false);
             } finally {
-                frame.lock();
                 analyzerContext.exitTo(preFrame);
             }
             if (thenContext != null) {

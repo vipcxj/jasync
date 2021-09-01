@@ -32,7 +32,7 @@ public class TransTryContext extends AbstractTransStatementContext<JCTree.JCTry>
     }
 
     @Override
-    public void exit() {
+    public void exit(boolean triggerCallback) {
         if (hasAwait()) {
             bodyContext.setHasAwait(true);
             for (TransCatchContext catchContext : catchContexts) {
@@ -42,7 +42,7 @@ public class TransTryContext extends AbstractTransStatementContext<JCTree.JCTry>
                 finallyContext.setHasAwait(true);
             }
         }
-        super.exit();
+        super.exit(triggerCallback);
     }
 
     private int resourceNum() {

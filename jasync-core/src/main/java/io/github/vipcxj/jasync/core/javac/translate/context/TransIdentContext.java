@@ -58,7 +58,7 @@ public class TransIdentContext extends AbstractTransExpressionContext<JCTree.JCI
     }
 
     @Override
-    public JCTree buildTree(boolean replaceSelf) {
+    public JCTree buildTreeWithoutThen(boolean replaceSelf) {
         if (capturedInfo != null || declInfo != null) {
             VarTransHelper helper = new VarTransHelper(capturedInfo, declInfo);
             helper.prepare();
