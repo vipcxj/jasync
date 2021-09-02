@@ -40,9 +40,7 @@ public abstract class TransWhileLikeContext<T extends JCTree.JCStatement> extend
             child.setAwaitContainer(child.getTree());
             TransCondContext condContext = new TransCondContext(analyzerContext, (JCTree.JCExpression) child.getTree());
             child.addDecorator(condContext);
-            child.addPostExitTrigger(ctx -> {
-                condContext.exit(false);
-            });
+            child.addPostExitTrigger(ctx -> condContext.exit(false));
             condContext.enter(false);
         } else if (childState == ChildState.BODY) {
             if (child instanceof TransBlockContext) {
@@ -84,7 +82,8 @@ public abstract class TransWhileLikeContext<T extends JCTree.JCStatement> extend
                         getBuildMethod(),
                         List.of(
                                 methodContext.makeFunctional(condContext.getFrame(), methodType, condMethod),
-                                methodContext.makeFunctional(bodyContext.getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, bodyMethod)
+                                methodContext.makeFunctional(bodyContext.getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, bodyMethod),
+                                makeLabelArg()
                         )
                 ));
             } finally {

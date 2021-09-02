@@ -72,6 +72,13 @@ public class TransCondContext extends AbstractTransFrameHolderExpressionContext<
                         stats = stats.append(capturedInfo.makeUsedDecl());
                     }
                 }
+                if (isDebug()) {
+                    for (Frame.CapturedInfo capturedInfo : getFrame().getDebugCapturedVars().values()) {
+                        if (capturedInfo.isNotReadOnly()) {
+                            stats = stats.append(capturedInfo.makeUsedDecl());
+                        }
+                    }
+                }
                 JCTree expr = exprContext.buildTree(false);
                 if (exprContext instanceof TransAwaitContext) {
                     for (JCTree.JCVariableDecl decl : ((TransAwaitContext) exprContext).getProxyDecls().toList()) {

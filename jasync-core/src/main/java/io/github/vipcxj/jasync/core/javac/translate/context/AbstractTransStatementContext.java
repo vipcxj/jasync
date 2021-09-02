@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.core.javac.translate.context;
 
+import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.tree.JCTree;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
 import io.github.vipcxj.jasync.core.javac.translate.TransStatementContext;
@@ -11,7 +12,11 @@ public abstract class AbstractTransStatementContext<T extends JCTree.JCStatement
     private Name label;
 
     public AbstractTransStatementContext(AnalyzerContext analyzerContext, T tree) {
-        super(analyzerContext, tree);
+        this(analyzerContext, tree, false);
+    }
+
+    public AbstractTransStatementContext(AnalyzerContext analyzerContext, T tree, boolean synthetic) {
+        super(analyzerContext, tree, synthetic);
     }
 
     @Override
@@ -20,8 +25,13 @@ public abstract class AbstractTransStatementContext<T extends JCTree.JCStatement
     }
 
     @Override
-    public Name getLabel() {
-        return label;
+    public JCTree.JCLiteral makeLabelArg() {
+        if (label != null) {
+            String labelValue = label.toString();
+            if (!labelValue.isEmpty()) {
+                return safeMaker().Literal(labelValue);
+            }
+        }
+        return safeMaker().Literal(TypeTag.BOT, null);
     }
-
 }

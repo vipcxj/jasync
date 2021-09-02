@@ -7,7 +7,6 @@ import io.github.vipcxj.jasync.spec.switchexpr.ICase;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -109,17 +108,26 @@ public class MonoPromise<T> implements Promise<T> {
         });
     }
 
+    private Mono<? extends AtomicReference<T>> doWhileBody(PromiseFunction<T, T> body, String label, AtomicReference<T> ref) throws Throwable {
+        return body.apply(ref.get()).then(a -> {
+            ref.set(a);
+            return null;
+        }).doCatch(ContinueException.class, e -> {
+            if (e.matchLabel(label)) {
+                return null;
+            }
+            return JAsync.error(e);
+        }).unwrap();
+    }
+
     @Override
-    public Promise<T> doWhile(BooleanSupplier predicate, PromiseFunction<T, T> block) {
+    public Promise<T> doWhile(BooleanSupplier predicate, PromiseFunction<T, T> block, String label) {
         return this.then(v -> {
             AtomicReference<T> ref = new AtomicReference<>(v);
             return new MonoPromise<>(Mono.defer(() -> {
                 try {
                     if (predicate.getAsBoolean()) {
-                        return block.apply(ref.get()).then(a -> {
-                            ref.set(a);
-                            return null;
-                        }).doCatch(Collections.singletonList(ContinueException.class), e -> null).unwrap();
+                        return doWhileBody(block, label, ref);
                     } else {
                         return Mono.just(ref);
                     }
@@ -127,104 +135,122 @@ public class MonoPromise<T> implements Promise<T> {
                     return Mono.error(t);
                 }
             }).repeatWhenEmpty(i -> i).map(AtomicReference::get));
-        }).doCatch(Collections.singletonList(BreakException.class), e -> {});
+        }).doCatch(BreakException.class, e -> {
+            if (e.matchLabel(label)) {
+                return null;
+            }
+            return JAsync.error(e);
+        });
     }
 
     @Override
-    public Promise<Void> doWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block) {
+    public Promise<Void> doWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block, String label) {
         return this.then(() -> new MonoPromise<Void>(Mono.defer(() -> {
             try {
                 if (predicate.getAsBoolean()) {
-                    return block.get().then(a -> null).doCatch(Collections.singletonList(ContinueException.class), e -> null).unwrap();
+                    return block.get().then(a -> null).doCatch(ContinueException.class, e -> {
+                        if (e.matchLabel(label)) {
+                            return null;
+                        }
+                        return JAsync.error(e);
+                    }).unwrap();
                 } else {
                     return Mono.just(1);
                 }
             } catch (Throwable t) {
                 return Mono.error(t);
             }
-        }).repeatWhenEmpty(i -> i).flatMap(v -> Mono.empty()))).doCatch(Collections.singletonList(BreakException.class), e -> {});
+        }).repeatWhenEmpty(i -> i).flatMap(v -> Mono.empty()))).doCatch(BreakException.class, e -> {
+            if (e.matchLabel(label)) {
+                return null;
+            }
+            return JAsync.error(e);
+        });
     }
 
     @Override
-    public Promise<T> doWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block) {
+    public Promise<T> doWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block, String label) {
         return this.then(v -> {
             AtomicReference<T> ref = new AtomicReference<>(v);
-            return new MonoPromise<>(predicate.get().then(test -> {
+            return new MonoPromise<>(Mono.defer(() -> {
                 try {
-                    if (Boolean.TRUE.equals(test)) {
-                        return block.apply(ref.get()).then(a -> {
-                            ref.set(a);
-                            return null;
-                        }).doCatch(Collections.singletonList(ContinueException.class), e -> null).unwrap();
-                    } else {
-                        return JAsync.just(ref);
-                    }
+                    return predicate.get().<Mono<Boolean>>unwrap().flatMap(test -> {
+                        try {
+                            if (Boolean.TRUE.equals(test)) {
+                                return doWhileBody(block, label, ref);
+                            } else {
+                                return Mono.just(ref);
+                            }
+                        } catch (Throwable t) {
+                            return Mono.error(t);
+                        }
+                    });
                 } catch (Throwable t) {
-                    return JAsync.error(t);
+                    return Mono.error(t);
                 }
-            }).<Mono<AtomicReference<T>>>unwrap().repeatWhenEmpty(i -> i).map(AtomicReference::get));
-        }).doCatch(Collections.singletonList(BreakException.class), e -> {});
-    }
-
-    @Override
-    public Promise<Void> doWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block) {
-        return this.then(v -> new MonoPromise<>(predicate.get().then(test -> {
-            try {
-                if (Boolean.TRUE.equals(test)) {
-                    return block.get()
-                            .then(() -> null)
-                            .doCatch(Collections.singletonList(ContinueException.class), e -> null);
-                } else {
-                    return JAsync.just(1);
-                }
-            } catch (Throwable t) {
-                return JAsync.error(t);
+            }).repeatWhenEmpty(i -> i).map(AtomicReference::get));
+        }).doCatch(BreakException.class, e -> {
+            if (e.matchLabel(label)) {
+                return null;
             }
-        }).<Mono<Integer>>unwrap().repeatWhenEmpty(i -> i).<Void>flatMap(a -> Mono.empty()))).doCatch(Collections.singletonList(BreakException.class), e -> {});
+            return JAsync.error(e);
+        });
     }
 
     @Override
-    public Promise<T> doDoWhile(BooleanSupplier predicate, PromiseFunction<T, T> block) {
-        return this.then(v -> block.apply(v).doWhile(predicate, block));
+    public Promise<Void> doWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label) {
+        return this.then(() -> new MonoPromise<Void>(Mono.defer(() -> {
+            try {
+                return predicate.get().<Mono<Boolean>>unwrap().flatMap(test -> {
+                    try {
+                        if (Boolean.TRUE.equals(test)) {
+                            return block.get().then(a -> null).doCatch(ContinueException.class, e -> {
+                                if (e.matchLabel(label)) {
+                                    return null;
+                                }
+                                return JAsync.error(e);
+                            }).unwrap();
+                        } else {
+                            return Mono.just(1);
+                        }
+                    } catch (Throwable t) {
+                        return Mono.error(t);
+                    }
+                });
+            } catch (Throwable t) {
+                return Mono.error(t);
+            }
+        }).repeatWhenEmpty(i -> i).flatMap(v -> Mono.empty()))).doCatch(BreakException.class, e -> {
+            if (e.matchLabel(label)) {
+                return null;
+            }
+            return JAsync.error(e);
+        });
     }
 
-    @Override
-    public Promise<Void> doDoWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block) {
-        return this.thenVoid(() -> block.get().doWhileVoid(predicate, block));
-    }
-
-    @Override
-    public Promise<T> doDoWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block) {
-        return this.then(v -> block.apply(v).doWhile(predicate, block));
-    }
-
-    @Override
-    public Promise<Void> doDoWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block) {
-        return this.thenVoid(() -> block.get().doWhileVoid(predicate, block));
-    }
-
-    private  <E> Promise<Void> doForEachIterator(Iterator<E> iterator, VoidPromiseFunction<E> block) {
+    private  <E> Promise<Void> doForEachIterator(Iterator<E> iterator, VoidPromiseFunction<E> block, String label) {
         return this.doWhileVoid(
                 iterator::hasNext,
                 () -> {
                     E next = iterator.next();
                     return block.apply(next);
-                }
+                },
+                label
         );
     }
 
     @Override
-    public <E> Promise<Void> doForEachIterable(Iterable<E> iterable, VoidPromiseFunction<E> block) {
-        return doForEachIterator(iterable.iterator(), block);
+    public <E> Promise<Void> doForEachIterable(Iterable<E> iterable, VoidPromiseFunction<E> block, String label) {
+        return doForEachIterator(iterable.iterator(), block, label);
     }
 
     @Override
-    public <E> Promise<Void> doForEachObjectArray(E[] array, VoidPromiseFunction<E> block) {
-        return doForEachIterator(new ArrayIterator<>(array), block);
+    public <E> Promise<Void> doForEachObjectArray(E[] array, VoidPromiseFunction<E> block, String label) {
+        return doForEachIterator(new ArrayIterator<>(array), block, label);
     }
 
     @Override
-    public Promise<Void> doForEachBooleanArray(boolean[] array, BooleanVoidPromiseFunction block) {
+    public Promise<Void> doForEachBooleanArray(boolean[] array, BooleanVoidPromiseFunction block, String label) {
         AtomicInteger index = new AtomicInteger();
         int length = array.length;
         return this.doWhileVoid(
@@ -232,12 +258,13 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> {
                     boolean next = array[index.getAndIncrement()];
                     return block.apply(next);
-                }
+                },
+                label
         );
     }
 
     @Override
-    public Promise<Void> doForEachByteArray(byte[] array, ByteVoidPromiseFunction block) {
+    public Promise<Void> doForEachByteArray(byte[] array, ByteVoidPromiseFunction block, String label) {
         AtomicInteger index = new AtomicInteger();
         int length = array.length;
         return this.doWhileVoid(
@@ -245,12 +272,13 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> {
                     byte next = array[index.getAndIncrement()];
                     return block.apply(next);
-                }
+                },
+                label
         );
     }
 
     @Override
-    public Promise<Void> doForEachCharArray(char[] array, CharVoidPromiseFunction block) {
+    public Promise<Void> doForEachCharArray(char[] array, CharVoidPromiseFunction block, String label) {
         AtomicInteger index = new AtomicInteger();
         int length = array.length;
         return this.doWhileVoid(
@@ -258,12 +286,13 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> {
                     char next = array[index.getAndIncrement()];
                     return block.apply(next);
-                }
+                },
+                label
         );
     }
 
     @Override
-    public Promise<Void> doForEachShortArray(short[] array, ShortVoidPromiseFunction block) {
+    public Promise<Void> doForEachShortArray(short[] array, ShortVoidPromiseFunction block, String label) {
         AtomicInteger index = new AtomicInteger();
         int length = array.length;
         return this.doWhileVoid(
@@ -271,12 +300,13 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> {
                     short next = array[index.getAndIncrement()];
                     return block.apply(next);
-                }
+                },
+                label
         );
     }
 
     @Override
-    public Promise<Void> doForEachIntArray(int[] array, IntVoidPromiseFunction block) {
+    public Promise<Void> doForEachIntArray(int[] array, IntVoidPromiseFunction block, String label) {
         AtomicInteger index = new AtomicInteger();
         int length = array.length;
         return this.doWhileVoid(
@@ -284,12 +314,13 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> {
                     int next = array[index.getAndIncrement()];
                     return block.apply(next);
-                }
+                },
+                label
         );
     }
 
     @Override
-    public Promise<Void> doForEachLongArray(long[] array, LongVoidPromiseFunction block) {
+    public Promise<Void> doForEachLongArray(long[] array, LongVoidPromiseFunction block, String label) {
         AtomicInteger index = new AtomicInteger();
         int length = array.length;
         return this.doWhileVoid(
@@ -297,12 +328,13 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> {
                     long next = array[index.getAndIncrement()];
                     return block.apply(next);
-                }
+                },
+                label
         );
     }
 
     @Override
-    public Promise<Void> doForEachFloatArray(float[] array, FloatVoidPromiseFunction block) {
+    public Promise<Void> doForEachFloatArray(float[] array, FloatVoidPromiseFunction block, String label) {
         AtomicInteger index = new AtomicInteger();
         int length = array.length;
         return this.doWhileVoid(
@@ -310,12 +342,13 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> {
                     float next = array[index.getAndIncrement()];
                     return block.apply(next);
-                }
+                },
+                label
         );
     }
 
     @Override
-    public Promise<Void> doForEachDoubleArray(double[] array, DoubleVoidPromiseFunction block) {
+    public Promise<Void> doForEachDoubleArray(double[] array, DoubleVoidPromiseFunction block, String label) {
         AtomicInteger index = new AtomicInteger();
         int length = array.length;
         return this.doWhileVoid(
@@ -323,12 +356,13 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> {
                     double next = array[index.getAndIncrement()];
                     return block.apply(next);
-                }
+                },
+                label
         );
     }
 
     @Override
-    public <C> Promise<Void> doSwitch(C value, List<? extends ICase<C>> cases) {
+    public <C> Promise<Void> doSwitch(C value, List<? extends ICase<C>> cases, String label) {
         boolean matched = false;
         Promise<Void> result = null;
         for (int i = 0; i < 2; ++i) {
@@ -352,7 +386,12 @@ public class MonoPromise<T> implements Promise<T> {
                 break;
             }
         }
-        return result != null ? result.doCatch(Collections.singletonList(BreakException.class), e -> {}) : JAsync.just();
+        return result != null ? result.doCatch(BreakException.class, e -> {
+            if (e.matchLabel(label)) {
+                return null;
+            }
+            return JAsync.error(e);
+        }) : JAsync.just();
     }
 
     @Override

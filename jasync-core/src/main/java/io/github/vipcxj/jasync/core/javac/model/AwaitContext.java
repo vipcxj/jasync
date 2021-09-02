@@ -3,22 +3,23 @@ package io.github.vipcxj.jasync.core.javac.model;
 import com.sun.tools.javac.tree.JCTree;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
+import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
 import io.github.vipcxj.jasync.core.javac.visitor.CollectTreeScanner;
 
 import java.util.*;
 
 
 public class AwaitContext {
-    private final JCTree container;
+    private final TranslateContext<?> translateContext;
     private final List<AwaitPart> awaitParts;
 
-    public AwaitContext(JCTree container) {
-        this.container = container;
+    public AwaitContext(TranslateContext<?> translateContext) {
+        this.translateContext = translateContext;
         this.awaitParts = new ArrayList<>();
     }
 
-    public JCTree getContainer() {
-        return container;
+    public TranslateContext<?> getTranslateContext() {
+        return translateContext;
     }
 
     public List<AwaitPart> getAwaitParts() {
@@ -67,9 +68,9 @@ public class AwaitContext {
                 || node.tree.getTag().isIncOrDecUnaryOp();
     }
 
-    public static AwaitContext scan(IJAsyncInstanceContext context, JCTree container) {
+    public static AwaitContext scan(IJAsyncInstanceContext context, TranslateContext<?> translateContext) {
         CollectTreeScanner collectTreeScanner = new CollectTreeScanner();
-        collectTreeScanner.scan(container);
+        collectTreeScanner.scan(translateContext.awaitContainer());
         AstTree astTree = collectTreeScanner.getAstTree();
         List<AstTree.AstNode> nodes = new LinkedList<>();
         Set<AstTree.AstNode> awaitTrees = new HashSet<>();
@@ -96,7 +97,7 @@ public class AwaitContext {
         if (awaitTrees.isEmpty()) {
             return null;
         }
-        AwaitContext awaitContext = new AwaitContext(container);
+        AwaitContext awaitContext = new AwaitContext(translateContext);
         List<JCTree.JCExpression> expressions = new ArrayList<>();
         for (AstTree.AstNode node : nodes) {
             if (awaitTrees.contains(node)) {

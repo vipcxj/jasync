@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.core.javac.translate.context;
 
+import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.List;
@@ -10,6 +11,7 @@ import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
 import io.github.vipcxj.jasync.core.javac.context.JAsyncSymbols;
 import io.github.vipcxj.jasync.core.javac.model.AwaitContext;
 import io.github.vipcxj.jasync.core.javac.model.Frame;
+import io.github.vipcxj.jasync.core.javac.translate.TransExpressionContext;
 import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
 import io.github.vipcxj.jasync.core.javac.visitor.JAsyncAnalyzer;
 
@@ -18,28 +20,35 @@ import java.util.Set;
 
 public class TransAwaitContext extends AbstractTransExpressionContext<JCTree.JCMethodInvocation> {
 
-    private JCTree container;
+    private final TranslateContext<?> targetContext;
     private ListBuffer<JCTree.JCVariableDecl> proxyDecls;
     private ListBuffer<TranslateContext<?>> exprContexts;
     private TranslateContext<?> awaitContext;
     private final Set<JCTree> toReplaced;
     private ChildState childState;
 
-    public TransAwaitContext(AnalyzerContext analyzerContext, JCTree container, AwaitContext.AwaitPart awaitPart) {
+    public TransAwaitContext(AnalyzerContext analyzerContext, TranslateContext<?> targetContext, AwaitContext.AwaitPart awaitPart) {
         super(analyzerContext, awaitPart.getAwaitInvoker());
-        this.container = container;
+        this.targetContext = targetContext;
         this.hasAwait = true;
         this.toReplaced = new HashSet<>();
         this.proxyDecls = new ListBuffer<>();
         this.exprContexts = new ListBuffer<>();
     }
 
-    public JCTree getContainer() {
-        return container;
+    public TranslateContext<?> getTargetContext() {
+        return targetContext;
     }
 
     public boolean isExpr() {
-        return container instanceof JCTree.JCExpression;
+        return getTargetContext() instanceof TransExpressionContext;
+    }
+
+    public Type getExprType() {
+        if (isExpr()) {
+            return getTargetContext().getTree().type;
+        }
+        throw new IllegalArgumentException();
     }
 
     public ListBuffer<JCTree.JCVariableDecl> getProxyDecls() {
@@ -80,7 +89,7 @@ public class TransAwaitContext extends AbstractTransExpressionContext<JCTree.JCM
 
     public static void make(AnalyzerContext analyzerContext, AwaitContext awaitContext) {
         for (AwaitContext.AwaitPart awaitPart : awaitContext.getAwaitParts()) {
-            TransAwaitContext transAwaitContext = new TransAwaitContext(analyzerContext, awaitContext.getContainer(), awaitPart);
+            TransAwaitContext transAwaitContext = new TransAwaitContext(analyzerContext, awaitContext.getTranslateContext(), awaitPart);
             transAwaitContext.enter();
             try {
                 for (JCTree.JCExpression expression : awaitPart.getExpressions()) {
@@ -150,7 +159,7 @@ public class TransAwaitContext extends AbstractTransExpressionContext<JCTree.JCM
         int prePos = maker.pos;
         try {
             JCTree.JCMethodDecl methodDecl = isExpr()
-                    ? methodContext.addPromiseFunction(thenContext, getContainer().type)
+                    ? methodContext.addPromiseFunction(thenContext, getExprType())
                     : methodContext.addVoidPromiseFunction(thenContext);
             JCTree.JCReturn outTree = maker.Return(
                     maker.Apply(

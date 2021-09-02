@@ -70,27 +70,113 @@ public interface Promise<T> {
         });
     }
     Promise<T> doFinally(VoidPromiseSupplier block);
-    Promise<T> doWhile(BooleanSupplier predicate, PromiseFunction<T, T> block);
-    Promise<Void> doWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block);
-    Promise<T> doWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block);
-    Promise<Void> doWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block);
-    Promise<T> doDoWhile(BooleanSupplier predicate, PromiseFunction<T, T> block);
-    Promise<Void> doDoWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block);
-    Promise<T> doDoWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block);
-    Promise<Void> doDoWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block);
 
-    <E> Promise<Void> doForEachIterable(Iterable<E> iterable, VoidPromiseFunction<E> block);
-    <E> Promise<Void> doForEachObjectArray(E[] array, VoidPromiseFunction<E> block);
-    Promise<Void> doForEachByteArray(byte[] array, ByteVoidPromiseFunction block);
-    Promise<Void> doForEachCharArray(char[] array, CharVoidPromiseFunction block);
-    Promise<Void> doForEachBooleanArray(boolean[] array, BooleanVoidPromiseFunction block);
-    Promise<Void> doForEachShortArray(short[] array, ShortVoidPromiseFunction block);
-    Promise<Void> doForEachIntArray(int[] array, IntVoidPromiseFunction block);
-    Promise<Void> doForEachLongArray(long[] array, LongVoidPromiseFunction block);
-    Promise<Void> doForEachFloatArray(float[] array, FloatVoidPromiseFunction block);
-    Promise<Void> doForEachDoubleArray(double[] array, DoubleVoidPromiseFunction block);
+    Promise<T> doWhile(BooleanSupplier predicate, PromiseFunction<T, T> block, String label);
+    Promise<Void> doWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block, String label);
+    Promise<T> doWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block, String label);
+    Promise<Void> doWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label);
+    default Promise<T> doDoWhile(BooleanSupplier predicate, PromiseFunction<T, T> block, String label) {
+        return this.then(v -> block.apply(v).doCatch(ContinueException.class, e -> {
+            if (e.matchLabel(label)) {
+                return null;
+            }
+            return JAsync.error(e);
+        }).doWhile(predicate, block));
+    }
+    default Promise<Void> doDoWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block, String label) {
+        return this.thenVoid(() -> block.get().doCatch(ContinueException.class, e -> {
+            if (e.matchLabel(label)) {
+                return null;
+            }
+            return JAsync.error(e);
+        }).doWhileVoid(predicate, block));
+    }
+    default Promise<T> doDoWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block, String label) {
+        return this.then(v -> block.apply(v).doCatch(ContinueException.class, e -> {
+            if (e.matchLabel(label)) {
+                return null;
+            }
+            return JAsync.error(e);
+        }).doWhile(predicate, block));
+    }
+    default Promise<Void> doDoWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label) {
+        return this.thenVoid(() -> block.get().doCatch(ContinueException.class, e -> {
+            if (e.matchLabel(label)) {
+                return null;
+            }
+            return JAsync.error(e);
+        }).doWhileVoid(predicate, block));
+    }
+    default Promise<T> doWhile(BooleanSupplier predicate, PromiseFunction<T, T> block) {
+        return doWhile(predicate, block, null);
+    }
+    default Promise<Void> doWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block) {
+        return doWhileVoid(predicate, block, null);
+    }
+    default Promise<T> doWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block) {
+        return doWhile(predicate, block, null);
+    }
+    default Promise<Void> doWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block) {
+        return doWhileVoid(predicate, block, null);
+    }
+    default Promise<T> doDoWhile(BooleanSupplier predicate, PromiseFunction<T, T> block) {
+        return doDoWhile(predicate, block, null);
+    }
+    default Promise<Void> doDoWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block) {
+        return doDoWhileVoid(predicate, block, null);
+    }
+    default Promise<T> doDoWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block) {
+        return doDoWhile(predicate, block, null);
+    }
+    default Promise<Void> doDoWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block) {
+        return doDoWhileVoid(predicate, block, null);
+    }
 
-    <C> Promise<Void> doSwitch(C value, List<? extends ICase<C>> cases);
+    <E> Promise<Void> doForEachIterable(Iterable<E> iterable, VoidPromiseFunction<E> block, String label);
+    <E> Promise<Void> doForEachObjectArray(E[] array, VoidPromiseFunction<E> block, String label);
+    Promise<Void> doForEachByteArray(byte[] array, ByteVoidPromiseFunction block, String label);
+    Promise<Void> doForEachCharArray(char[] array, CharVoidPromiseFunction block, String label);
+    Promise<Void> doForEachBooleanArray(boolean[] array, BooleanVoidPromiseFunction block, String label);
+    Promise<Void> doForEachShortArray(short[] array, ShortVoidPromiseFunction block, String label);
+    Promise<Void> doForEachIntArray(int[] array, IntVoidPromiseFunction block, String label);
+    Promise<Void> doForEachLongArray(long[] array, LongVoidPromiseFunction block, String label);
+    Promise<Void> doForEachFloatArray(float[] array, FloatVoidPromiseFunction block, String label);
+    Promise<Void> doForEachDoubleArray(double[] array, DoubleVoidPromiseFunction block, String label);
+    default <E> Promise<Void> doForEachIterable(Iterable<E> iterable, VoidPromiseFunction<E> block) {
+        return doForEachIterable(iterable, block, null);
+    }
+    default <E> Promise<Void> doForEachObjectArray(E[] array, VoidPromiseFunction<E> block) {
+        return doForEachObjectArray(array, block, null);
+    }
+    default Promise<Void> doForEachByteArray(byte[] array, ByteVoidPromiseFunction block) {
+        return doForEachByteArray(array, block, null);
+    }
+    default Promise<Void> doForEachCharArray(char[] array, CharVoidPromiseFunction block) {
+        return doForEachCharArray(array, block, null);
+    }
+    default Promise<Void> doForEachBooleanArray(boolean[] array, BooleanVoidPromiseFunction block) {
+        return doForEachBooleanArray(array, block, null);
+    }
+    default Promise<Void> doForEachShortArray(short[] array, ShortVoidPromiseFunction block) {
+        return doForEachShortArray(array, block, null);
+    }
+    default Promise<Void> doForEachIntArray(int[] array, IntVoidPromiseFunction block) {
+        return doForEachIntArray(array, block, null);
+    }
+    default Promise<Void> doForEachLongArray(long[] array, LongVoidPromiseFunction block) {
+        return doForEachLongArray(array, block, null);
+    }
+    default Promise<Void> doForEachFloatArray(float[] array, FloatVoidPromiseFunction block) {
+        return doForEachFloatArray(array, block, null);
+    }
+    default Promise<Void> doForEachDoubleArray(double[] array, DoubleVoidPromiseFunction block) {
+        return doForEachDoubleArray(array, block, null);
+    }
+
+    <C> Promise<Void> doSwitch(C value, List<? extends ICase<C>> cases, String label);
+    default <C> Promise<Void> doSwitch(C value, List<? extends ICase<C>> cases) {
+        return doSwitch(value, cases, null);
+    }
 
     <O> Promise<O> catchReturn();
     Handle async();

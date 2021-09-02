@@ -9,7 +9,13 @@ public class ContinueException extends RuntimeException {
         this.label = label;
     }
 
-    public String getLabel() {
-        return label;
+    public boolean matchLabel(String label) {
+        if (this.label == null && label == null) {
+            return true;
+        } else if (this.label == null || label == null) {
+            return false;
+        } else {
+            return this.label.equals(label);
+        }
     }
 }

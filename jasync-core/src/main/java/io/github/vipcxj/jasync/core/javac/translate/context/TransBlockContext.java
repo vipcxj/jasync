@@ -22,7 +22,11 @@ public class TransBlockContext extends AbstractTransFrameHolderStatementContext<
     private boolean direct;
 
     public TransBlockContext(AnalyzerContext analyzerContext, JCTree.JCBlock tree) {
-        super(analyzerContext, tree);
+        this(analyzerContext, tree, false);
+    }
+
+    public TransBlockContext(AnalyzerContext analyzerContext, JCTree.JCBlock tree, boolean synthetic) {
+        super(analyzerContext, tree, synthetic);
         this.children = new ArrayDeque<>();
         this.nude = false;
         this.direct = false;
@@ -105,16 +109,17 @@ public class TransBlockContext extends AbstractTransFrameHolderStatementContext<
                 }
             }
         }
-        int prePos = maker.pos;
-        try {
-            maker.pos = getPos();
-            for (Frame.CapturedInfo capturedInfo : getFrame().getCapturedVars().values()) {
+        for (Frame.CapturedInfo capturedInfo : getFrame().getCapturedVars().values()) {
+            if (capturedInfo.isNotReadOnly()) {
+                stats = stats.append(capturedInfo.makeUsedDecl());
+            }
+        }
+        if (isDebug()) {
+            for (Frame.CapturedInfo capturedInfo : getFrame().getDebugCapturedVars().values()) {
                 if (capturedInfo.isNotReadOnly()) {
                     stats = stats.append(capturedInfo.makeUsedDecl());
                 }
             }
-        } finally {
-            maker.pos = prePos;
         }
         for (TranslateContext<?> child : children) {
             JCTree tree = child.buildTree(false);
@@ -150,13 +155,16 @@ public class TransBlockContext extends AbstractTransFrameHolderStatementContext<
         if (hasAwait() && !nude) {
             TransMethodContext methodContext = getEnclosingMethodContext();
             JCTree.JCMethodDecl methodDecl = methodContext.addVoidPromiseSupplier(getFrame(), tree);
-            prePos = maker.pos;
+            int prePos = maker.pos;
             try {
                 maker.pos = tree.pos;
                 return JavacUtils.makeReturn(jasyncContext, maker.Apply(
                         List.nil(),
                         symbols.makeJAsyncDeferVoid(),
-                        List.of(methodContext.makeFunctional(getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, methodDecl))
+                        List.of(
+                                methodContext.makeFunctional(getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, methodDecl),
+                                makeLabelArg()
+                        )
                 ));
             } finally {
                 maker.pos = prePos;

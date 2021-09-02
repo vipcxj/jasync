@@ -24,6 +24,7 @@ public class AbstractTransFrameHolderContext<T extends JCTree>
     public void complete() {
         Frame preFrame = analyzerContext.enter(this);
         frame = analyzerContext.currentFrame();
+        frame.markOrder();
         try {
             super.complete(false);
         } finally {

@@ -138,6 +138,16 @@ public class AnnotationUtils {
         throw new IllegalArgumentException("This is impossible.");
     }
 
+    public static long getLongAnnotationValue(@NonNull AnnotationMirror annotation, @NonNull Map<? extends ExecutableElement, ? extends AnnotationValue> annotationValues, @NonNull String name) {
+        AnnotationValue annotationValue = getAnnotationValue(annotation, annotationValues, name);
+        AnnotationValueKind kind = getAnnotationValueType(annotationValue);
+        if (kind == AnnotationValueKind.BOXED) {
+            return (Long) annotationValue.getValue();
+        }
+        throwCastAnnotationValueTypeError(annotation, name, kind, AnnotationValueKind.BOXED);
+        throw new IllegalArgumentException("This is impossible.");
+    }
+
     @NonNull
     public static String getAnnotationName(@NonNull AnnotationMirror mirror) {
         return toElement(mirror.getAnnotationType()).getQualifiedName().toString();

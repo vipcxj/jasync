@@ -33,8 +33,24 @@ public class JAsync {
         return defer(block);
     }
 
+    public static Promise<Void> deferVoid(VoidPromiseSupplier block, String label) {
+        return defer(block).doCatch(BreakException.class, e -> e.matchLabel(label) ? null : JAsync.error(e));
+    }
+
     public static <T> Promise<T> error(Throwable t) {
         return assertProvider().error(t);
+    }
+
+    public static Promise<Void> doIf(boolean test, VoidPromiseSupplier thenDo, VoidPromiseSupplier elseDo) {
+        try {
+            if (test) {
+                return thenDo.get();
+            } else {
+                return elseDo.get();
+            }
+        } catch (Throwable e) {
+            return JAsync.error(e);
+        }
     }
 
     public static void doContinue(String label) {
@@ -53,142 +69,198 @@ public class JAsync {
         }
     }
 
+    public static <C> Promise<Void> doSwitch(C value, List<? extends ICase<C>> cases, String label) {
+        return just().doSwitch(value, cases, label);
+    }
+
     public static <C> Promise<Void> doSwitch(C value, List<? extends ICase<C>> cases) {
         return just().doSwitch(value, cases);
+    }
+
+    public static Promise<Void> doWhile(BooleanSupplier predicate, VoidPromiseSupplier block, String label) {
+        return just().doWhileVoid(predicate, block, label);
     }
 
     public static Promise<Void> doWhile(BooleanSupplier predicate, VoidPromiseSupplier block) {
         return just().doWhileVoid(predicate, block);
     }
 
+    public static Promise<Void> doWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label) {
+        return just().doWhileVoid(predicate, block, label);
+    }
+
     public static Promise<Void> doWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block) {
         return just().doWhileVoid(predicate, block);
+    }
+
+    public static Promise<Void> doDoWhile(BooleanSupplier predicate, VoidPromiseSupplier block, String label) {
+        return just().doDoWhileVoid(predicate, block, label);
     }
 
     public static Promise<Void> doDoWhile(BooleanSupplier predicate, VoidPromiseSupplier block) {
         return just().doDoWhileVoid(predicate, block);
     }
 
+    public static Promise<Void> doDoWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label) {
+        return just().doDoWhileVoid(predicate, block, label);
+    }
+
     public static Promise<Void> doDoWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block) {
         return just().doDoWhileVoid(predicate, block);
     }
 
-    public static <E> Promise<Void> doForEachObject(Object iterableOrArray, VoidPromiseFunction<E> block) {
+    public static <E> Promise<Void> doForEachObject(Object iterableOrArray, VoidPromiseFunction<E> block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray.getClass().isArray() && !iterableOrArray.getClass().getComponentType().isPrimitive()) {
             //noinspection unchecked
-            return just().doForEachObjectArray((E[]) iterableOrArray, block);
+            return just().doForEachObjectArray((E[]) iterableOrArray, block, label);
         } else if (iterableOrArray instanceof Iterable) {
             //noinspection unchecked
-            return just().doForEachIterable((Iterable<E>) iterableOrArray, block);
+            return just().doForEachIterable((Iterable<E>) iterableOrArray, block, label);
         } else {
             throw new IllegalArgumentException("The iterable must be object array or iterable, but it is " + iterableOrArray.getClass().getName() + ".");
         }
     }
 
-    public static Promise<Void> doForEachByte(Object iterableOrArray, ByteVoidPromiseFunction block) {
+    public static <E> Promise<Void> doForEachObject(Object iterableOrArray, VoidPromiseFunction<E> block) {
+        return doForEachObject(iterableOrArray, block, null);
+    }
+
+    public static Promise<Void> doForEachByte(Object iterableOrArray, ByteVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof byte[]) {
-            return just().doForEachByteArray((byte[]) iterableOrArray, block);
+            return just().doForEachByteArray((byte[]) iterableOrArray, block, label);
         } else if (iterableOrArray instanceof Iterable) {
             //noinspection unchecked
-            return just().doForEachIterable((Iterable<Byte>) iterableOrArray, block::apply);
+            return just().doForEachIterable((Iterable<Byte>) iterableOrArray, block::apply, label);
         } else {
             throw new IllegalArgumentException("The iterable must be byte array or iterable of Byte, but it is " + iterableOrArray.getClass().getName() + ".");
         }
     }
 
-    public static Promise<Void> doForEachChar(Object iterableOrArray, CharVoidPromiseFunction block) {
+    public static Promise<Void> doForEachByte(Object iterableOrArray, ByteVoidPromiseFunction block) {
+        return doForEachByte(iterableOrArray, block, null);
+    }
+
+    public static Promise<Void> doForEachChar(Object iterableOrArray, CharVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof char[]) {
-            return just().doForEachCharArray((char[]) iterableOrArray, block);
+            return just().doForEachCharArray((char[]) iterableOrArray, block, label);
         } else if (iterableOrArray instanceof Iterable) {
             //noinspection unchecked
-            return just().doForEachIterable((Iterable<Character>) iterableOrArray, block::apply);
+            return just().doForEachIterable((Iterable<Character>) iterableOrArray, block::apply, label);
         } else {
             throw new IllegalArgumentException("The iterable must be char array or iterable of Character, but it is " + iterableOrArray.getClass().getName() + ".");
         }
     }
 
-    public static Promise<Void> doForEachBoolean(Object iterableOrArray, BooleanVoidPromiseFunction block) {
+    public static Promise<Void> doForEachChar(Object iterableOrArray, CharVoidPromiseFunction block) {
+        return doForEachChar(iterableOrArray, block, null);
+    }
+
+    public static Promise<Void> doForEachBoolean(Object iterableOrArray, BooleanVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof boolean[]) {
-            return just().doForEachBooleanArray((boolean[]) iterableOrArray, block);
+            return just().doForEachBooleanArray((boolean[]) iterableOrArray, block, label);
         } else if (iterableOrArray instanceof Iterable) {
             //noinspection unchecked
-            return just().doForEachIterable((Iterable<Boolean>) iterableOrArray, block::apply);
+            return just().doForEachIterable((Iterable<Boolean>) iterableOrArray, block::apply, label);
         } else {
             throw new IllegalArgumentException("The iterable must be boolean array or iterable of Boolean, but it is " + iterableOrArray.getClass().getName() + ".");
         }
     }
 
-    public static Promise<Void> doForEachShort(Object iterableOrArray, ShortVoidPromiseFunction block) {
+    public static Promise<Void> doForEachBoolean(Object iterableOrArray, BooleanVoidPromiseFunction block) {
+        return doForEachBoolean(iterableOrArray, block, null);
+    }
+
+    public static Promise<Void> doForEachShort(Object iterableOrArray, ShortVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof short[]) {
-            return just().doForEachShortArray((short[]) iterableOrArray, block);
+            return just().doForEachShortArray((short[]) iterableOrArray, block, label);
         } else if (iterableOrArray instanceof Iterable) {
             //noinspection unchecked
-            return just().doForEachIterable((Iterable<Short>) iterableOrArray, block::apply);
+            return just().doForEachIterable((Iterable<Short>) iterableOrArray, block::apply, label);
         } else {
             throw new IllegalArgumentException("The iterable must be short array or iterable of Short, but it is " + iterableOrArray.getClass().getName() + ".");
         }
     }
 
-    public static Promise<Void> doForEachInt(Object iterableOrArray, IntVoidPromiseFunction block) {
+    public static Promise<Void> doForEachShort(Object iterableOrArray, ShortVoidPromiseFunction block) {
+        return doForEachShort(iterableOrArray, block, null);
+    }
+
+    public static Promise<Void> doForEachInt(Object iterableOrArray, IntVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof int[]) {
-            return just().doForEachIntArray((int[]) iterableOrArray, block);
+            return just().doForEachIntArray((int[]) iterableOrArray, block, label);
         } else if (iterableOrArray instanceof Iterable) {
             //noinspection unchecked
-            return just().doForEachIterable((Iterable<Integer>) iterableOrArray, block::apply);
+            return just().doForEachIterable((Iterable<Integer>) iterableOrArray, block::apply, label);
         } else {
             throw new IllegalArgumentException("The iterable must be int array or iterable of Integer, but it is " + iterableOrArray.getClass().getName() + ".");
         }
     }
 
-    public static Promise<Void> doForEachLong(Object iterableOrArray, LongVoidPromiseFunction block) {
+    public static Promise<Void> doForEachInt(Object iterableOrArray, IntVoidPromiseFunction block) {
+        return doForEachInt(iterableOrArray, block, null);
+    }
+
+    public static Promise<Void> doForEachLong(Object iterableOrArray, LongVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof long[]) {
-            return just().doForEachLongArray((long[]) iterableOrArray, block);
+            return just().doForEachLongArray((long[]) iterableOrArray, block, label);
         } else if (iterableOrArray instanceof Iterable) {
             //noinspection unchecked
-            return just().doForEachIterable((Iterable<Long>) iterableOrArray, block::apply);
+            return just().doForEachIterable((Iterable<Long>) iterableOrArray, block::apply, label);
         } else {
             throw new IllegalArgumentException("The iterable must be long array or iterable of Long, but it is " + iterableOrArray.getClass().getName() + ".");
         }
     }
 
-    public static Promise<Void> doForEachFloat(Object iterableOrArray, FloatVoidPromiseFunction block) {
+    public static Promise<Void> doForEachLong(Object iterableOrArray, LongVoidPromiseFunction block) {
+        return doForEachLong(iterableOrArray, block, null);
+    }
+
+    public static Promise<Void> doForEachFloat(Object iterableOrArray, FloatVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof float[]) {
-            return just().doForEachFloatArray((float[]) iterableOrArray, block);
+            return just().doForEachFloatArray((float[]) iterableOrArray, block, label);
         } else if (iterableOrArray instanceof Iterable) {
             //noinspection unchecked
-            return just().doForEachIterable((Iterable<Float>) iterableOrArray, block::apply);
+            return just().doForEachIterable((Iterable<Float>) iterableOrArray, block::apply, label);
         } else {
             throw new IllegalArgumentException("The iterable must be float array or iterable of Float, but it is " + iterableOrArray.getClass().getName() + ".");
         }
     }
 
-    public static Promise<Void> doForEachDouble(Object iterableOrArray, DoubleVoidPromiseFunction block) {
+    public static Promise<Void> doForEachFloat(Object iterableOrArray, FloatVoidPromiseFunction block) {
+        return doForEachFloat(iterableOrArray, block, null);
+    }
+
+    public static Promise<Void> doForEachDouble(Object iterableOrArray, DoubleVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof double[]) {
-            return just().doForEachDoubleArray((double[]) iterableOrArray, block);
+            return just().doForEachDoubleArray((double[]) iterableOrArray, block, label);
         } else if (iterableOrArray instanceof Iterable) {
             //noinspection unchecked
-            return just().doForEachIterable((Iterable<Double>) iterableOrArray, block::apply);
+            return just().doForEachIterable((Iterable<Double>) iterableOrArray, block::apply, label);
         } else {
             throw new IllegalArgumentException("The iterable must be double array or iterable of Double, but it is " + iterableOrArray.getClass().getName() + ".");
         }
+    }
+
+    public static Promise<Void> doForEachDouble(Object iterableOrArray, DoubleVoidPromiseFunction block) {
+        return doForEachDouble(iterableOrArray, block, null);
     }
 
     public static boolean mustRethrowException(Throwable t, List<Class<? extends Throwable>> exceptionsType) {

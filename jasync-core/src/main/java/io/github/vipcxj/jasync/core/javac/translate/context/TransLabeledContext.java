@@ -22,18 +22,15 @@ public class TransLabeledContext extends AbstractTransStatementContext<JCTree.JC
     @Override
     public void onChildEnter(TranslateContext<?> child) {
         super.onChildEnter(child);
-        if (child.hasAwait()) {
-            if (child instanceof TransBlockContext || isLoop(child)) {
-                return;
-            }
-            new TransWrapBlockContext(analyzerContext).enter(false);
+        if (supportBreak(child)) {
+            return;
         }
+        new TransWrapBlockContext(analyzerContext).enter(false);
     }
 
     @Override
     protected void addNormalChildContext(TranslateContext<?> child) {
         if (statementContext == null) {
-            mustBeLoopOrBlockContext(child);
             checkContextTree(child, tree.body);
             this.statementContext = (TransStatementContext<?>) child;
             this.statementContext.setLabel(tree.label);
@@ -42,16 +39,25 @@ public class TransLabeledContext extends AbstractTransStatementContext<JCTree.JC
         }
     }
 
-    private boolean isLoop(TranslateContext<?> context) {
+    private boolean supportContinue(TranslateContext<?> context) {
         return context instanceof TransWhileContext
                 || context instanceof TransDoWhileContext
                 || context instanceof TransForeachContext;
     }
 
-    private void mustBeLoopOrBlockContext(TranslateContext<?> child) {
-        if (child instanceof TransBlockContext || isLoop(child)) {
-            return;
+    private boolean supportBreak(TranslateContext<?> context) {
+        return supportContinue(context)
+                || context instanceof TransSwitchContext
+                || context instanceof TransBlockContext;
+    }
+
+    @Override
+    protected JCTree buildTreeWithoutThen(boolean replaceSelf) {
+        if (hasAwait()) {
+            return statementContext.buildTree(false);
+        } else {
+            tree.body = (JCTree.JCStatement) statementContext.buildTree(false);
+            return tree;
         }
-        throw new IllegalArgumentException("The child must be loop or block context.");
     }
 }

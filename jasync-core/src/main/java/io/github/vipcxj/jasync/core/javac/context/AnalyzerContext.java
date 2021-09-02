@@ -102,4 +102,8 @@ public class AnalyzerContext {
         }
     }
 
+    public boolean isDebug() {
+        return getJasyncContext().getInfo().isDebug();
+    }
+
 }

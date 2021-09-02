@@ -12,6 +12,7 @@ public class Constants {
     public static final String ASYNC_LOG_RESULT_TREE = "logResultTree";
     public static final String ASYNC_LOG_RESULT_POS_TREE = "logResultPosTree";
     public static final String ASYNC_EXPERIMENT = "experiment";
+    public static final String ASYNC_DEBUG = "debug";
     public static final String ASYNC_METHOD = "method";
     public static final String PROMISE = Promise.class.getCanonicalName();
     public static final String JUST = "just";
@@ -19,6 +20,7 @@ public class Constants {
     public static final String THEN_VOID = "thenVoid";
     public static final String CATCH_RETURN = "catchReturn";
     public static final String DEFER_VOID = "deferVoid";
+    public static final String DO_IF = "doIf";
     public static final String DO_CATCH = "doCatch";
     public static final String DO_FINALLY = "doFinally";
     public static final String DO_SWITCH = "doSwitch";

@@ -17,6 +17,7 @@ public class JAsyncInfo {
     private final boolean logResultTree;
     private final boolean logResultPosTree;
     private final boolean experiment;
+    private final boolean debug;
     private final Async.Method method;
 
     public JAsyncInfo(IJAsyncContext context, AnnotationMirror annotationMirror) {
@@ -27,6 +28,7 @@ public class JAsyncInfo {
         this.logResultPosTree = AnnotationUtils.getBooleanAnnotationValue(annotationMirror, elementValues, Constants.ASYNC_LOG_RESULT_POS_TREE);
         this.disabled = AnnotationUtils.getBooleanAnnotationValue(annotationMirror, elementValues, Constants.ASYNC_DISABLED);
         this.experiment = AnnotationUtils.getBooleanAnnotationValue(annotationMirror, elementValues, Constants.ASYNC_EXPERIMENT);
+        this.debug = AnnotationUtils.getBooleanAnnotationValue(annotationMirror, elementValues, Constants.ASYNC_DEBUG);
         this.method = AnnotationUtils.getEnumAnnotationValue(annotationMirror, elementValues, Constants.ASYNC_METHOD, Async.Method.class);
     }
 
@@ -48,6 +50,10 @@ public class JAsyncInfo {
 
     public String getDebugId() {
         return debugId;
+    }
+
+    public boolean isDebug() {
+        return debug;
     }
 
     public Async.Method getMethod() {

@@ -13,6 +13,7 @@ public @interface Async {
     boolean logResultTree() default false;
     boolean logResultPosTree() default false;
     boolean experiment() default false;
+    boolean debug() default false;
     Method method() default Method.AUTO;
 
 

@@ -39,7 +39,7 @@ public class WhileTest {
         return JAsync.just(res);
     }
 
-    @Async
+    @Async(debug = true)
     public Promise<Integer> multi2(int a, int b) {
         int res = 0;
         int i = 0, j = 0;

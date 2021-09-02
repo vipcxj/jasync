@@ -50,11 +50,6 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
     }
 
     @Override
-    public JCTree.JCClassDecl getEnclosingClassTree() {
-        return enclosingClassTree;
-    }
-
-    @Override
     public TransMethodContext getEnclosingMethodContext() {
         return this;
     }
@@ -232,15 +227,16 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
 
     private List<Symbol.VarSymbol> getParamSymbols(Frame frame) {
         ListBuffer<Symbol.VarSymbol> symbols = new ListBuffer<>();
-//        for (Symbol.VarSymbol argSymbol : argSymbols) {
-//            argSymbol.owner = owner;
-//            symbols = symbols.append(argSymbol);
-//        }
         for (Frame.CapturedInfo capturedInfo : frame.getCapturedVars().values()) {
             symbols = symbols.append(capturedInfo.getDeclSymbol());
         }
         for (Frame.PlaceHolderInfo placeHolder : frame.getCapturedPlaceHolders().values()) {
             symbols = symbols.append(placeHolder.getSymbol());
+        }
+        if (isDebug()) {
+            for (Frame.CapturedInfo capturedInfo : frame.getDebugCapturedVars().values()) {
+                symbols = symbols.append(capturedInfo.getDeclSymbol());
+            }
         }
         for (Frame.DeclInfo declInfo : frame.getDeclaredVars().values()) {
             if (declInfo.isAsyncParam()) {
@@ -451,6 +447,11 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
             for (Frame.PlaceHolderInfo placeHolderInfo : frame.getCapturedPlaceHolders().values()) {
                 areExps = areExps.append(placeHolderInfo.makeInputExpr());
             }
+            if (isDebug()) {
+                for (Frame.CapturedInfo capturedInfo : frame.getDebugCapturedVars().values()) {
+                    areExps = areExps.append(capturedInfo.makeInputExpr());
+                }
+            }
             return safeMaker().Apply(
                     List.nil(),
                     safeMaker().Select(safeMaker().Ident(indyHelper), names.fromString(functionType)),
@@ -551,29 +552,29 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
 
         @Override
         public void visitMethodDef(JCTree.JCMethodDecl tree) {
-            PathData pathData = new PathData();
-            pathData.name = tree.name.toString();
-            pathData.index = 0;
-            path.push(pathData);
-            try {
-                if (methodDecl == tree) {
-                    targetClassDecl = currentClassDecl;
-                    StringBuilder sb = new StringBuilder();
-                    Iterator<PathData> iterator = path.descendingIterator();
-                    while (iterator.hasNext()) {
-                        PathData pd = iterator.next();
-                        if (sb.length() == 0) {
-                            sb.append(pd.name);
-                        } else {
-                            sb.append(".").append(pd.name);
-                        }
+            if (methodDecl == tree) {
+                targetClassDecl = currentClassDecl;
+                StringBuilder sb = new StringBuilder();
+                Iterator<PathData> iterator = path.descendingIterator();
+                while (iterator.hasNext()) {
+                    PathData pd = iterator.next();
+                    if (sb.length() == 0) {
+                        sb.append(pd.name);
+                    } else {
+                        sb.append(".").append(pd.name);
                     }
-                    targetName = sb.toString();
-                } else {
-                    super.visitMethodDef(tree);
                 }
-            } finally {
-                path.pop();
+                targetName = sb.toString();
+            } else {
+                PathData pathData = new PathData();
+                pathData.name = tree.name.toString();
+                pathData.index = 0;
+                path.push(pathData);
+                try {
+                    super.visitMethodDef(tree);
+                } finally {
+                    path.pop();
+                }
             }
         }
     }

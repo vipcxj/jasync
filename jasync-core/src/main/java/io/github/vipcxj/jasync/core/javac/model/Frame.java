@@ -19,28 +19,32 @@ import javax.lang.model.element.ElementKind;
 import java.util.*;
 
 public class Frame {
+    private final Frame root;
     private final Frame parent;
     private final Map<VarKey, DeclInfo> declaredVars;
     private final Map<VarKey, CapturedInfo> capturedVars;
+    private final Map<VarKey, CapturedInfo> debugCapturedVars;
     private final Map<JCTree, PlaceHolderInfo> declaredPlaceHolders;
     private final Map<JCTree, PlaceHolderInfo> capturedPlaceHolders;
     private final TransFrameHolderContext<?> holder;
+    private long orderBase;
+    private long order;
 
     public Frame(Frame parent, TransFrameHolderContext<?> holder) {
         this.parent = parent;
+        this.root = parent != null ? parent.root : this;
         this.holder = holder;
-        this.declaredVars = new HashMap<>();
-        this.capturedVars = new HashMap<>();
+        this.declaredVars = new LinkedHashMap<>();
+        this.capturedVars = new LinkedHashMap<>();
+        this.debugCapturedVars = new LinkedHashMap<>();
         this.declaredPlaceHolders = new LinkedHashMap<>();
         this.capturedPlaceHolders = new LinkedHashMap<>();
+        this.orderBase = 0;
+        this.order = 0;
     }
 
     public Frame getParent() {
         return parent;
-    }
-
-    public TransFrameHolderContext<?> getHolder() {
-        return holder;
     }
 
     public void bind(Symbol.MethodSymbol symbol) {
@@ -50,6 +54,10 @@ public class Frame {
         for (CapturedInfo capturedInfo : capturedVars.values()) {
             capturedInfo.bind(symbol);
         }
+        for (CapturedInfo capturedInfo : debugCapturedVars.values()) {
+            capturedInfo.bind(symbol);
+        }
+
         for (PlaceHolderInfo info : declaredPlaceHolders.values()) {
             info.bind(symbol);
         }
@@ -60,6 +68,10 @@ public class Frame {
 
     public void addPlaceHolder(JCTree expression, Name name, boolean param) {
         declaredPlaceHolders.put(expression, new PlaceHolderInfo(expression, name, param));
+    }
+
+    public void markOrder() {
+        this.order = this.root.orderBase++;
     }
 
     public void addLocal(TransVarDeclContext declContext) {
@@ -79,6 +91,10 @@ public class Frame {
 
     public Map<VarKey, CapturedInfo> getCapturedVars() {
         return capturedVars;
+    }
+
+    public Map<VarKey, CapturedInfo> getDebugCapturedVars() {
+        return debugCapturedVars;
     }
 
     public Map<JCTree, PlaceHolderInfo> getDeclaredPlaceHolders() {
@@ -148,7 +164,7 @@ public class Frame {
                 if (holder.hasAwait()) {
                     CapturedInfo capturedInfo = capturedVars.get(varKey);
                     if (capturedInfo == null) {
-                        capturedInfo = new CapturedInfo(declInfo, varKey);
+                        capturedInfo = new CapturedInfo(declInfo);
                         capturedVars.put(varKey, capturedInfo);
                     }
                     if (direct) {
@@ -187,7 +203,7 @@ public class Frame {
                 if (holder.hasAwait()) {
                     CapturedInfo capturedInfo = capturedVars.get(varKey);
                     if (capturedInfo == null) {
-                        capturedInfo = new CapturedInfo(declInfo, varKey);
+                        capturedInfo = new CapturedInfo(declInfo);
                         capturedVars.put(varKey, capturedInfo);
                     }
                     if (direct) {
@@ -209,6 +225,26 @@ public class Frame {
         writeVar(context, declInfo, true, holder.hasAwait());
     }
 
+    private List<DeclInfo> collectParentDecls() {
+        Set<VarKey> keys = new HashSet<>(capturedVars.keySet());
+        Frame frame = getParent();
+        List<DeclInfo> declInfos = new ArrayList<>();
+        while (frame != null) {
+            for (Map.Entry<VarKey, DeclInfo> entry : frame.getDeclaredVars().entrySet()) {
+                VarKey key = entry.getKey();
+                if (!keys.contains(key)) {
+                    keys.add(key);
+                    DeclInfo declInfo = entry.getValue();
+                    if (declInfo.order < order) {
+                        declInfos.add(declInfo);
+                    }
+                }
+            }
+            frame = frame.getParent();
+        }
+        return declInfos;
+    }
+
     public void lock() {
         for (DeclInfo declInfo : declaredVars.values()) {
             declInfo.lock();
@@ -216,14 +252,11 @@ public class Frame {
         for (CapturedInfo capturedInfo : capturedVars.values()) {
             capturedInfo.lock();
         }
-    }
-
-    private static boolean checkParam(JCTree.JCVariableDecl decl) {
-        return decl.sym.getKind() != ElementKind.LOCAL_VARIABLE;
-    }
-
-    private static boolean checkInitialized(JCTree.JCVariableDecl decl) {
-        return checkParam(decl) || decl.init != null;
+        for (DeclInfo declInfo : collectParentDecls()) {
+            CapturedInfo capturedInfo = new CapturedInfo(declInfo);
+            capturedInfo.lock();
+            debugCapturedVars.put(capturedInfo.createKey(), capturedInfo);
+        }
     }
 
     public class DeclInfo {
@@ -234,10 +267,10 @@ public class Frame {
         private JCTree.JCVariableDecl referenceDecl;
         private final List<TransIdentContext> readAts;
         private final List<TransWriteExprContext<?>> writeAts;
-        private boolean initialized;
         private boolean readOnly;
         private boolean captured;
         private boolean lock;
+        private long order;
 
         public DeclInfo(TransVarDeclContext context) {
             JCTree.JCVariableDecl decl = context.getTree();
@@ -245,10 +278,10 @@ public class Frame {
             this.symbol = decl.sym;
             this.readAts = new ArrayList<>();
             this.writeAts = new ArrayList<>();
-            this.initialized = checkInitialized(decl);
             this.readOnly = true;
             this.captured = false;
             this.lock = false;
+            this.order = root.orderBase++;
         }
 
         private void lock() {
@@ -265,17 +298,15 @@ public class Frame {
                     maker.pos = prePos;
                 }
             }
-            if (!readOnly && captured) {
+            if (!readOnly) {
+                assert captured;
                 referenceDecl = JavacUtils.makeReferenceDeclTree(
                         jasyncContext,
                         remapDecl != null ? remapDecl : context.getTree(),
                         jasyncContext.nextVar()
                 );
-                usedSymbol = new Symbol.VarSymbol(0L, symbol.name, symbol.type, symbol.owner);
-                usedSymbol.pos = context.getTree().pos + 1;
-            } else {
-                usedSymbol = remapDecl != null ? remapDecl.sym : symbol;
             }
+            usedSymbol = remapDecl != null ? remapDecl.sym : symbol;
             lock = true;
         }
 
@@ -296,7 +327,7 @@ public class Frame {
             if (!lock) {
                 throw new IllegalStateException("lock first.");
             }
-            return referenceDecl != null;
+            return !readOnly;
         }
 
         public JCTree.JCVariableDecl getRemapDecl() {
@@ -323,29 +354,17 @@ public class Frame {
             return writeAts;
         }
 
-        public boolean isInitialized() {
-            return initialized;
-        }
-
-        public DeclInfo setInitialized(boolean initialized) {
-            this.initialized = initialized;
-            return this;
-        }
-
         public boolean isAsyncParam() {
             return context.isAsyncParam();
         }
 
+        // if readonly == false，captured must be true. because only captured var is account to be not readonly.
         public boolean isReadOnly() {
             return readOnly;
         }
 
         public void setReadOnly(boolean readOnly) {
             this.readOnly = readOnly;
-        }
-
-        public boolean isCaptured() {
-            return captured;
         }
 
         public void setCaptured(boolean captured) {
@@ -365,12 +384,15 @@ public class Frame {
         return Frame.this.holder.getContext().getJasyncContext();
     }
 
+    private JAsyncSymbols symbols() {
+        return getContext().getJAsyncSymbols();
+    }
+
     private TreeMaker safeMaker() {
         return getContext().safeMaker();
     }
 
     public class CapturedInfo {
-        private final VarKey key;
         private final DeclInfo declInfo;
         private Symbol.VarSymbol declSymbol;
         private Symbol.VarSymbol usedSymbol;
@@ -378,16 +400,15 @@ public class Frame {
         private final List<TransIdentContext> readAts;
         private final List<TransWriteExprContext<?>> writeAts;
 
-        public CapturedInfo(DeclInfo declInfo, VarKey key) {
+        public CapturedInfo(DeclInfo declInfo) {
             this.declInfo = declInfo;
-            this.key = key;
             this.lock = false;
             this.readAts = new ArrayList<>();
             this.writeAts = new ArrayList<>();
         }
 
         private void lock() {
-            Symbol origSymbol = key.getSymbol();
+            Symbol origSymbol = declInfo.symbol;
             if (!isNotReadOnly()) {
                 declSymbol = new Symbol.VarSymbol(Flags.FINAL | Flags.PARAMETER, origSymbol.name, origSymbol.type, null);
                 usedSymbol = declSymbol;
@@ -412,34 +433,30 @@ public class Frame {
             usedSymbol.pos = maker.pos;
         }
 
+        private VarKey createKey() {
+            return new VarKey(declInfo.symbol);
+        }
+
         public JCTree.JCExpression makeInputExpr() {
-            JAsyncSymbols symbols = getContext().getJAsyncSymbols();
             Frame frame = parent;
             if (frame != null) {
                 do {
+                    VarKey key = createKey();
                     DeclInfo declInfo = frame.declaredVars.get(key);
                     if (declInfo != null) {
-                        if (!isNotReadOnly()) {
-                            return declInfo.readOnly
-                                    ? safeMaker().Ident(declInfo.symbol)
-                                    : symbols.makeRefGet(declInfo.getDeclSymbol());
-                        } else {
-                            return safeMaker().Ident(declInfo.getReferenceDecl());
-                        }
+                        Symbol.VarSymbol declSymbol = declInfo.getDeclSymbol();
+                        return safeMaker().Ident(declSymbol);
                     }
                     CapturedInfo capturedInfo = frame.capturedVars.get(key);
+                    if (capturedInfo == null) {
+                        capturedInfo = frame.debugCapturedVars.get(key);
+                    }
                     if (capturedInfo != null) {
-                        Symbol.VarSymbol outputSymbol = capturedInfo.getDeclSymbol();
-                        if (outputSymbol == null) {
+                        Symbol.VarSymbol declSymbol = capturedInfo.getDeclSymbol();
+                        if (declSymbol == null) {
                             throw new IllegalStateException();
                         }
-                        if (!isNotReadOnly()) {
-                            return !capturedInfo.isNotReadOnly()
-                                    ? safeMaker().Ident(outputSymbol)
-                                    : symbols.makeRefGet(outputSymbol) ;
-                        } else {
-                            return safeMaker().Ident(outputSymbol);
-                        }
+                        return safeMaker().Ident(declSymbol);
                     }
                     frame = frame.parent;
                 } while (frame != null);
@@ -448,13 +465,16 @@ public class Frame {
         }
 
         public JCTree.JCVariableDecl makeUsedDecl() {
-            IJAsyncInstanceContext context = Frame.this.holder.getContext().getJasyncContext();
-            TreeMaker maker = context.getTreeMaker();
-            return maker.VarDef(usedSymbol, null);
-        }
-
-        public VarKey getKey() {
-            return key;
+            TreeMaker maker = getContext().getTreeMaker();
+            int pos = maker.pos;
+            try {
+                return safeMaker().VarDef(
+                        getUsedSymbol(),
+                        symbols().makeRefGet(getDeclSymbol())
+                );
+            } finally {
+                maker.pos = pos;
+            }
         }
 
         public boolean isNotReadOnly() {

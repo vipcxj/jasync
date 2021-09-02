@@ -1,26 +1,21 @@
 package io.github.vipcxj.jasync.core.javac.translate.context;
 
-import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.List;
-import com.sun.tools.javac.util.Names;
 import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
-import io.github.vipcxj.jasync.core.javac.translate.TransStatementContext;
+import io.github.vipcxj.jasync.core.javac.context.JAsyncSymbols;
 import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
-import io.github.vipcxj.jasync.spec.JAsync;
 
-import javax.lang.model.util.Elements;
-
-public class TransIfContext extends AbstractTransFrameHolderStatementContext<JCTree.JCIf> {
+public class TransIfContext extends AbstractTransStatementContext<JCTree.JCIf> {
 
     private ChildState childState = ChildState.COND;
     private TranslateContext<?> condContext;
-    private TransStatementContext<?> thenContext;
-    private TransStatementContext<?> elseContext;
+    private TransBlockContext thenContext;
+    private TransBlockContext elseContext;
 
     public TransIfContext(AnalyzerContext analyzerContext, JCTree.JCIf tree) {
         super(analyzerContext, tree);
@@ -34,21 +29,23 @@ public class TransIfContext extends AbstractTransFrameHolderStatementContext<JCT
     }
 
     @Override
+    public void exit(boolean triggerCallback) {
+        if (hasAwait()) {
+            thenContext.setHasAwait(true);
+            elseContext.setHasAwait(true);
+        }
+        super.exit(triggerCallback);
+    }
+
+    @Override
     public void onChildEnter(TranslateContext<?> child) {
         super.onChildEnter(child);
         if (childState == ChildState.THEN || childState == ChildState.ELSE) {
-            if (child instanceof TransBlockContext || child instanceof TransIfContext) {
+            if (child instanceof TransBlockContext) {
                 return;
             }
             new TransWrapBlockContext(analyzerContext).enter(false);
         }
-    }
-
-    private void childContextMustBeIfOrBlock(TranslateContext<?> child) {
-        if (child instanceof TransBlockContext || child instanceof TransIfContext) {
-            return;
-        }
-        throw new IllegalArgumentException("The child context must be if or block context.");
     }
 
     @Override
@@ -58,20 +55,16 @@ public class TransIfContext extends AbstractTransFrameHolderStatementContext<JCT
             condContext = child;
             childState = ChildState.THEN;
         } else if (thenContext == null) {
-            childContextMustBeIfOrBlock(child);
+            childContextMustBeBlock(child);
             checkContextTree(child, tree.thenpart);
-            thenContext = (TransStatementContext<?>) child;
-            if (thenContext instanceof TransBlockContext) {
-                ((TransBlockContext) thenContext).setNude(true);
-            }
+            thenContext = (TransBlockContext) child;
+            thenContext.setNude(true);
             childState = ChildState.ELSE;
         } else if (elseContext == null) {
-            childContextMustBeIfOrBlock(child);
+            childContextMustBeBlock(child);
             checkContextTree(child, tree.elsepart);
-            elseContext = (TransStatementContext<?>) child;
-            if (elseContext instanceof TransBlockContext) {
-                ((TransBlockContext) elseContext).setNude(true);
-            }
+            elseContext = (TransBlockContext) child;
+            elseContext.setNude(true);
             childState = ChildState.COMPLETE;
         } else {
             throwIfFull();
@@ -80,29 +73,33 @@ public class TransIfContext extends AbstractTransFrameHolderStatementContext<JCT
 
     @Override
     protected JCTree buildTreeWithoutThen(boolean replaceSelf) {
-        tree.cond = (JCTree.JCExpression) condContext.buildTree(false);
-        tree.thenpart = (JCTree.JCStatement) thenContext.buildTree(false);
-        tree.elsepart = (JCTree.JCStatement) elseContext.buildTree(false);
-        if (!hasAwait()) {
+        if (hasAwait()) {
+            IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
+            TreeMaker maker = jasyncContext.getTreeMaker();
+            JAsyncSymbols symbols = jasyncContext.getJAsyncSymbols();
+            TransMethodContext methodContext = getEnclosingMethodContext();
+            JCTree.JCMethodDecl thenMethod = methodContext.addVoidPromiseSupplier(thenContext);
+            JCTree.JCMethodDecl elseMethod = methodContext.addVoidPromiseSupplier(elseContext);
+            int prePos = maker.pos;
+            try {
+                return JavacUtils.makeReturn(jasyncContext, safeMaker().Apply(
+                        List.nil(),
+                        symbols.makeJAsyncDoIf(),
+                        List.of(
+                                (JCTree.JCExpression) condContext.buildTree(false),
+                                methodContext.makeFunctional(thenContext.getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, thenMethod),
+                                methodContext.makeFunctional(elseContext.getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, elseMethod)
+                        )
+                ));
+            } finally {
+                maker.pos = prePos;
+            }
+        } else {
+            tree.cond = (JCTree.JCExpression) condContext.buildTree(false);
+            tree.thenpart = (JCTree.JCStatement) thenContext.buildTree(false);
+            tree.elsepart = (JCTree.JCStatement) elseContext.buildTree(false);
             return tree;
         }
-        IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
-        TreeMaker maker = jasyncContext.getTreeMaker();
-        Names names = jasyncContext.getNames();
-        Elements elements = jasyncContext.getEnvironment().getElementUtils();
-        TransMethodContext methodContext = getEnclosingMethodContext();
-        JCTree.JCMethodDecl methodDecl = methodContext.addVoidPromiseSupplier(
-                getFrame(),
-                JavacUtils.makeBlock(jasyncContext, tree)
-        );
-        Symbol.TypeSymbol jAsyncSymbol = (Symbol.TypeSymbol) elements.getTypeElement(JAsync.class.getCanonicalName());
-        return maker.Return(maker.Apply(
-                List.nil(),
-                maker.Select(maker.QualIdent(jAsyncSymbol), names.fromString(Constants.JASYNC_DEFER_VOID)),
-                List.of(
-                        methodContext.makeFunctional(getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, methodDecl)
-                )
-        ));
     }
 
     enum ChildState {

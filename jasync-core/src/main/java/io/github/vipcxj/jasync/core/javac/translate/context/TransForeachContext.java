@@ -94,7 +94,8 @@ public class TransForeachContext extends AbstractTransFrameHolderStatementContex
                         methodExpr,
                         List.of(
                                 (JCTree.JCExpression) exprContext.buildTree(false),
-                                methodContext.makeFunctional(getFrame(), Constants.INDY_MAKE_VOID_PROMISE_FUNCTION, methodDecl)
+                                methodContext.makeFunctional(getFrame(), Constants.INDY_MAKE_VOID_PROMISE_FUNCTION, methodDecl),
+                                makeLabelArg()
                         )
                 ));
             } finally {

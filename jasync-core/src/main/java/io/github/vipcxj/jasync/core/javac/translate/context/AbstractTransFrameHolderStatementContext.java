@@ -12,7 +12,11 @@ public class AbstractTransFrameHolderStatementContext<T extends JCTree.JCStateme
     private boolean proxyFrame;
 
     public AbstractTransFrameHolderStatementContext(AnalyzerContext analyzerContext, T tree) {
-        super(analyzerContext, tree);
+        this(analyzerContext, tree, false);
+    }
+
+    public AbstractTransFrameHolderStatementContext(AnalyzerContext analyzerContext, T tree, boolean synthetic) {
+        super(analyzerContext, tree, synthetic);
         this.proxyFrame = false;
     }
 
@@ -30,6 +34,7 @@ public class AbstractTransFrameHolderStatementContext<T extends JCTree.JCStateme
         if (!proxyFrame) {
             Frame preFrame = analyzerContext.enter(this);
             frame = analyzerContext.currentFrame();
+            frame.markOrder();
             try {
                 if (getParent().getThen() == this && getParent() instanceof TransAwaitContext) {
                     TransAwaitContext awaitContext = (TransAwaitContext) getParent();

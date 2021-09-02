@@ -9,11 +9,11 @@ public class TransWrapBlockContext extends TransBlockContext {
     private TranslateContext<?> wrappedContext;
 
     public TransWrapBlockContext(AnalyzerContext analyzerContext) {
-        super(analyzerContext, null);
+        super(analyzerContext, null, true);
     }
 
-    public JCTree getWrappedTree() {
-        return wrappedContext != null ? wrappedContext.getTree() : null;
+    public TranslateContext<?> getWrappedContext() {
+        return wrappedContext;
     }
 
     @Override

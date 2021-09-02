@@ -19,7 +19,7 @@ import java.util.List;
 public abstract class AbstractTranslateContext<T extends JCTree> implements TranslateContext<T> {
     protected final AnalyzerContext analyzerContext;
     private TranslateContext<?> parent;
-    private List<TranslateContext<?>> children;
+    private final List<TranslateContext<?>> children;
     protected T tree;
     protected TransBlockContext thenContext;
     protected boolean entered;
@@ -29,13 +29,14 @@ public abstract class AbstractTranslateContext<T extends JCTree> implements Tran
     protected boolean complete;
     protected boolean then;
     protected JCTree awaitContainer;
+    protected final boolean synthetic;
     protected final List<TransCallback> preEnterCallbacks;
     protected final List<TransCallback> postEnterCallbacks;
     protected final List<TransCallback> preExitCallbacks;
     protected final List<TransCallback> postExitCallbacks;
     protected final List<DecoratorBox> decorators;
 
-    public AbstractTranslateContext(AnalyzerContext analyzerContext, T tree) {
+    public AbstractTranslateContext(AnalyzerContext analyzerContext, T tree, boolean synthetic) {
         this.analyzerContext = analyzerContext;
         this.tree = tree;
         this.children = new ArrayList<>();
@@ -44,11 +45,16 @@ public abstract class AbstractTranslateContext<T extends JCTree> implements Tran
         this.entered = false;
         this.exited = false;
         this.then = false;
+        this.synthetic = synthetic;
         this.preEnterCallbacks = new ArrayList<>();
         this.postEnterCallbacks = new ArrayList<>();
         this.preExitCallbacks = new ArrayList<>();
         this.postExitCallbacks = new ArrayList<>();
         this.decorators = new ArrayList<>();
+    }
+
+    public AbstractTranslateContext(AnalyzerContext analyzerContext, T tree) {
+        this(analyzerContext, tree, false);
     }
 
     @Override
@@ -118,7 +124,7 @@ public abstract class AbstractTranslateContext<T extends JCTree> implements Tran
         JCTree container = awaitContainer();
         if (container != null) {
             IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
-            AwaitContext awaitContext = AwaitContext.scan(jasyncContext, container);
+            AwaitContext awaitContext = AwaitContext.scan(jasyncContext, this);
             if (awaitContext != null) {
                 TransAwaitContext.make(analyzerContext, awaitContext);
             }
@@ -139,17 +145,6 @@ public abstract class AbstractTranslateContext<T extends JCTree> implements Tran
             context = context.getParent();
         }
         throw new IllegalStateException("Unable to find the enclosing method context.");
-    }
-
-    public JCTree.JCClassDecl getEnclosingClassTree() {
-        TransMethodContext methodContext = getEnclosingMethodContext();
-        if (methodContext != null) {
-            JCTree.JCClassDecl enclosingClassTree = methodContext.getEnclosingClassTree();
-            if (enclosingClassTree != null) {
-                return enclosingClassTree;
-            }
-        }
-        throw new IllegalStateException("Unable to find the enclosing class tree.");
     }
 
     @Override
@@ -264,6 +259,11 @@ public abstract class AbstractTranslateContext<T extends JCTree> implements Tran
         this.hasAwait = hasAwait;
     }
 
+    @Override
+    public boolean isSynthetic() {
+        return synthetic;
+    }
+
     protected JCTree buildTreeWithoutThen(boolean replaceSelf) {
         for (TranslateContext<?> child : children) {
             child.buildTree(true);
@@ -347,7 +347,7 @@ public abstract class AbstractTranslateContext<T extends JCTree> implements Tran
         if (!this.then) {
             this.then = true;
             analyzerContext.currentTranslateContext = this;
-            thenContext = new TransBlockContext(analyzerContext, null);
+            thenContext = new TransBlockContext(analyzerContext, null, true);
             thenContext.setHasAwait(true);
             thenContext.setNude(true);
             thenContext.enter();
@@ -387,14 +387,12 @@ public abstract class AbstractTranslateContext<T extends JCTree> implements Tran
         if (context.getTree() == tree) return;
         if (context instanceof TransWrapBlockContext) {
             TransWrapBlockContext wrapBlockContext = (TransWrapBlockContext) context;
-            if (wrapBlockContext.getWrappedTree() == tree) {
-                return;
-            }
+            checkContextTree(wrapBlockContext.getWrappedContext(), tree);
+            return;
         }
         if (context instanceof TransAwaitContext) {
-            if (((TransAwaitContext) context).getContainer() == tree) {
-                return;
-            }
+            checkContextTree(((TransAwaitContext) context).getTargetContext(), tree);
+            return;
         }
         throw new IllegalArgumentException("Invalid context, the tree is not matched.");
     }
@@ -452,6 +450,10 @@ public abstract class AbstractTranslateContext<T extends JCTree> implements Tran
 
     protected TreeMaker safeMaker() {
         return analyzerContext.getJasyncContext().safeMaker();
+    }
+
+    protected boolean isDebug() {
+        return analyzerContext.isDebug();
     }
 
     static class DecoratorBox {

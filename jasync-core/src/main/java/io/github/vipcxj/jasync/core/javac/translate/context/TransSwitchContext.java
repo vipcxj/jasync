@@ -62,6 +62,7 @@ public class TransSwitchContext
         if (!hasAwait()) {
             Frame preFrame = analyzerContext.enter(this);
             frame = analyzerContext.currentFrame();
+            frame.markOrder();
             try {
                 for (TransCaseContext caseContext : caseContexts) {
                     caseContext.complete();
@@ -161,7 +162,8 @@ public class TransSwitchContext
                                         List.nil(),
                                         symbols.makeCasesOf(),
                                         args.toList()
-                                )
+                                ),
+                                makeLabelArg()
                         )
                 ));
             } finally {

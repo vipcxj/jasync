@@ -36,6 +36,7 @@ public class JAsyncSymbols {
     private final Symbol.ClassSymbol symJAsync;
     private final Symbol.MethodSymbol symJAsyncJustValue;
     private final Symbol.MethodSymbol symJAsyncDeferVoid;
+    private final Symbol.MethodSymbol symJAsyncDoIf;
     private final Symbol.MethodSymbol symJAsyncDoSwitch;
     private final Symbol.MethodSymbol symJAsyncDoWhile;
     private final Symbol.MethodSymbol symJAsyncDoPromiseWhile;
@@ -123,91 +124,97 @@ public class JAsyncSymbols {
                 types, symJAsync,
                 names.fromString(Constants.DEFER_VOID),
                 true,
-                VoidPromiseSupplier.class
+                VoidPromiseSupplier.class, String.class
+        );
+        symJAsyncDoIf = SymbolHelpers.INSTANCE.getMethodMember(
+                types, symJAsync,
+                names.fromString(Constants.DO_IF),
+                true,
+                boolean.class, VoidPromiseSupplier.class, VoidPromiseSupplier.class
         );
         symJAsyncDoSwitch = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_SWITCH),
                 true,
-                Object.class, List.class
+                Object.class, List.class, String.class
         );
         symJAsyncDoWhile = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_WHILE),
                 true,
-                BooleanSupplier.class, VoidPromiseSupplier.class
+                BooleanSupplier.class, VoidPromiseSupplier.class, String.class
         );
         symJAsyncDoPromiseWhile = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_WHILE),
                 true,
-                PromiseSupplier.class, VoidPromiseSupplier.class
+                PromiseSupplier.class, VoidPromiseSupplier.class, String.class
         );
         symJAsyncDoDoWhile = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_DO_WHILE),
                 true,
-                BooleanSupplier.class, VoidPromiseSupplier.class
+                BooleanSupplier.class, VoidPromiseSupplier.class, String.class
         );
         symJAsyncDoDoPromiseWhile = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_DO_WHILE),
                 true,
-                PromiseSupplier.class, VoidPromiseSupplier.class
+                PromiseSupplier.class, VoidPromiseSupplier.class, String.class
         );
         symJAsyncDoForEachByte = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_FOR_EACH_BYTE),
                 true,
-                Object.class, ByteVoidPromiseFunction.class
+                Object.class, ByteVoidPromiseFunction.class, String.class
         );
         symJAsyncDoForEachChar = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_FOR_EACH_CHAR),
                 true,
-                Object.class, CharVoidPromiseFunction.class
+                Object.class, CharVoidPromiseFunction.class, String.class
         );
         symJAsyncDoForEachShort = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_FOR_EACH_SHORT),
                 true,
-                Object.class, ShortVoidPromiseFunction.class
+                Object.class, ShortVoidPromiseFunction.class, String.class
         );
         symJAsyncDoForEachInt = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_FOR_EACH_INT),
                 true,
-                Object.class, IntVoidPromiseFunction.class
+                Object.class, IntVoidPromiseFunction.class, String.class
         );
         symJAsyncDoForEachLong = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_FOR_EACH_LONG),
                 true,
-                Object.class, LongVoidPromiseFunction.class
+                Object.class, LongVoidPromiseFunction.class, String.class
         );
         symJAsyncDoForEachFloat = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_FOR_EACH_FLOAT),
                 true,
-                Object.class, FloatVoidPromiseFunction.class
+                Object.class, FloatVoidPromiseFunction.class, String.class
         );
         symJAsyncDoForEachDouble = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_FOR_EACH_DOUBLE),
                 true,
-                Object.class, DoubleVoidPromiseFunction.class
+                Object.class, DoubleVoidPromiseFunction.class, String.class
         );
         symJAsyncDoForEachBoolean = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_FOR_EACH_BOOLEAN),
                 true,
-                Object.class, BooleanVoidPromiseFunction.class
+                Object.class, BooleanVoidPromiseFunction.class, String.class
         );
         symJAsyncDoForEachObject = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
                 names.fromString(Constants.DO_FOR_EACH_OBJECT),
                 true,
-                Object.class, VoidPromiseFunction.class
+                Object.class, VoidPromiseFunction.class, String.class
         );
         symJAsyncDoBreak = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
@@ -347,6 +354,10 @@ public class JAsyncSymbols {
 
     public JCTree.JCExpression makeJAsyncDeferVoid() {
         return maker.Select(maker.QualIdent(symJAsync), symJAsyncDeferVoid);
+    }
+
+    public JCTree.JCExpression makeJAsyncDoIf() {
+        return maker.Select(maker.QualIdent(symJAsync), symJAsyncDoIf);
     }
 
     public JCTree.JCExpression makeJAsyncDoSwitch() {
@@ -646,7 +657,7 @@ public class JAsyncSymbols {
         Symbol.ClassSymbol refOwnerSymbol = refOwnerSymbols[refOwnerIndex];
         RefMethod refMethod = getRefMethod(tag);
         Name refMethodName = names.fromString(refMethod.name);
-        long key = refOwnerIndex | (refMethod.ordinal() << 4);
+        long key = refOwnerIndex | ((long) refMethod.ordinal() << 4);
         Symbol.MethodSymbol methodSymbol = null;
         int refTagType = getRefTagType(tag);
         if (refTagType == 0) {

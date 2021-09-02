@@ -27,6 +27,7 @@ public interface TranslateContext<T extends JCTree> {
     Frame getFrame();
     boolean hasAwait();
     void setHasAwait(boolean hasAwait);
+    boolean isSynthetic();
     JCTree buildTree(boolean replace);
     AnalyzerContext getContext();
     JCTree awaitContainer();
