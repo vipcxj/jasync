@@ -82,94 +82,101 @@ public class TransBlockContext extends AbstractTransFrameHolderStatementContext<
         }
     }
 
-    private int getPos() {
-        if (tree != null) {
-            return tree.pos;
-        } else {
-            for (TranslateContext<?> child : children) {
-                if (child.getTree() != null && child.getTree().pos >= 0) {
-                    return child.getTree().pos;
-                }
-            }
-            return -1;
-        }
-    }
-
     @Override
     protected JCTree buildTreeWithoutThen(boolean replaceSelf) {
         ListBuffer<JCTree.JCStatement> stats = new ListBuffer<>();
         IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
-        TreeMaker maker = jasyncContext.getTreeMaker();
         JAsyncSymbols symbols = jasyncContext.getJAsyncSymbols();
-        for (Frame.DeclInfo declInfo : getFrame().getDeclaredVars().values()) {
-            if (declInfo.isAsyncParam()) {
-                JCTree.JCVariableDecl referenceDecl = declInfo.getReferenceDecl();
-                if (referenceDecl != null) {
-                    stats = stats.append(referenceDecl);
+        if (hasAwait()) {
+            TreeMaker maker = jasyncContext.getTreeMaker();
+            for (Frame.DeclInfo declInfo : getFrame().getDeclaredVars().values()) {
+                if (declInfo.isAsyncParam()) {
+                    JCTree.JCVariableDecl referenceDecl = declInfo.getReferenceDecl();
+                    if (referenceDecl != null) {
+                        stats = stats.append(referenceDecl);
+                    }
                 }
             }
-        }
-        for (Frame.CapturedInfo capturedInfo : getFrame().getCapturedVars().values()) {
-            if (capturedInfo.isNotReadOnly()) {
-                stats = stats.append(capturedInfo.makeUsedDecl());
-            }
-        }
-        if (isDebug()) {
-            for (Frame.CapturedInfo capturedInfo : getFrame().getDebugCapturedVars().values()) {
+            for (Frame.CapturedInfo capturedInfo : getFrame().getCapturedVars().values()) {
                 if (capturedInfo.isNotReadOnly()) {
                     stats = stats.append(capturedInfo.makeUsedDecl());
                 }
             }
-        }
-        for (TranslateContext<?> child : children) {
-            JCTree tree = child.buildTree(false);
-            JCTree.JCStatement statement = (JCTree.JCStatement) tree;
-            if (child instanceof TransAwaitContext) {
-                for (JCTree.JCVariableDecl decl : ((TransAwaitContext) child).getProxyDecls().toList()) {
-                    stats = stats.append(decl);
+            if (isDebug()) {
+                for (Frame.CapturedInfo capturedInfo : getFrame().getDebugCapturedVars().values()) {
+                    if (capturedInfo.isNotReadOnly()) {
+                        stats = stats.append(capturedInfo.makeUsedDecl());
+                    }
                 }
             }
-            if (child.hasAwait()) {
-                assert child == children.getLast();
-                if (direct) {
-                    assert statement instanceof JCTree.JCReturn;
-                    JCTree.JCReturn jcReturn = (JCTree.JCReturn) statement;
-                    jcReturn.expr = symbols.makeCatchReturn(jcReturn.expr);
+            for (TranslateContext<?> child : children) {
+                JCTree tree = child.buildTree(false);
+                if (tree == null) {
+                    continue;
+                }
+                JCTree.JCStatement statement = (JCTree.JCStatement) tree;
+                if (child instanceof TransAwaitContext) {
+                    for (JCTree.JCVariableDecl decl : ((TransAwaitContext) child).getProxyDecls().toList()) {
+                        stats = stats.append(decl);
+                    }
+                }
+                if (child.hasAwait()) {
+                    assert child == children.getLast();
+                    if (direct) {
+                        assert statement instanceof JCTree.JCReturn;
+                        JCTree.JCReturn jcReturn = (JCTree.JCReturn) statement;
+                        jcReturn.expr = symbols.makeCatchReturn(jcReturn.expr);
+                    }
+                }
+                stats = stats.append(statement);
+                if (child instanceof TransVarDeclContext) {
+                    JCTree.JCVariableDecl decl = (JCTree.JCVariableDecl) child.getTree();
+                    Frame.DeclInfo declInfo = getFrame().getDeclaredVars().get(new VarKey(decl.sym));
+                    JCTree.JCVariableDecl referenceDecl = declInfo.getReferenceDecl();
+                    if (referenceDecl != null) {
+                        stats = stats.append(referenceDecl);
+                    }
                 }
             }
-            stats = stats.append(statement);
-            if (child instanceof TransVarDeclContext) {
-                JCTree.JCVariableDecl decl = (JCTree.JCVariableDecl) child.getTree();
-                Frame.DeclInfo declInfo = getFrame().getDeclaredVars().get(new VarKey(decl.sym));
-                JCTree.JCVariableDecl referenceDecl = declInfo.getReferenceDecl();
-                if (referenceDecl != null) {
-                    stats = stats.append(referenceDecl);
-                }
+            if (tree == null) {
+                tree = JavacUtils.makeBlock(jasyncContext, stats.toList());
+            } else {
+                tree.stats = stats.toList();
             }
-        }
-        if (tree == null) {
-            tree = JavacUtils.makeBlock(jasyncContext, stats.toList());
+            if (!nude) {
+                TransMethodContext methodContext = getEnclosingMethodContext();
+                JCTree.JCMethodDecl methodDecl = methodContext.addVoidPromiseSupplier(getFrame(), tree);
+                int prePos = maker.pos;
+                try {
+                    maker.pos = tree.pos;
+                    return JavacUtils.makeReturn(jasyncContext, maker.Apply(
+                            List.nil(),
+                            symbols.makeJAsyncDeferVoid(),
+                            List.of(
+                                    methodContext.makeFunctional(getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, methodDecl),
+                                    makeLabelArg()
+                            )
+                    ));
+                } finally {
+                    maker.pos = prePos;
+                }
+            } else {
+                return tree;
+            }
         } else {
-            tree.stats = stats.toList();
-        }
-        if (hasAwait() && !nude) {
-            TransMethodContext methodContext = getEnclosingMethodContext();
-            JCTree.JCMethodDecl methodDecl = methodContext.addVoidPromiseSupplier(getFrame(), tree);
-            int prePos = maker.pos;
-            try {
-                maker.pos = tree.pos;
-                return JavacUtils.makeReturn(jasyncContext, maker.Apply(
-                        List.nil(),
-                        symbols.makeJAsyncDeferVoid(),
-                        List.of(
-                                methodContext.makeFunctional(getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, methodDecl),
-                                makeLabelArg()
-                        )
-                ));
-            } finally {
-                maker.pos = prePos;
+            for (TranslateContext<?> child : children) {
+                JCTree tree = child.buildTree(false);
+                if (tree == null) {
+                    continue;
+                }
+                JCTree.JCStatement statement = (JCTree.JCStatement) tree;
+                stats = stats.append(statement);
             }
-        } else {
+            if (tree == null) {
+                tree = JavacUtils.makeBlock(jasyncContext, stats.toList());
+            } else {
+                tree.stats = stats.toList();
+            }
             return tree;
         }
     }

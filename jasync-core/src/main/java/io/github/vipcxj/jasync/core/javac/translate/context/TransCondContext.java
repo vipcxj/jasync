@@ -38,13 +38,17 @@ public class TransCondContext extends AbstractTransFrameHolderExpressionContext<
 
     @Override
     public JCTree decorate(TranslateContext<?> ctx, JCTree tree) {
-        IJAsyncInstanceContext jasyncContext = getContext().getJasyncContext();
-        return JavacUtils.makeReturn(
-                jasyncContext,
-                hasAwaitExpr()
-                        ? jasyncContext.getJAsyncSymbols().makeJust((JCTree.JCExpression) tree)
-                        : (JCTree.JCExpression) tree
-        );
+        if (hasAwait()) {
+            IJAsyncInstanceContext jasyncContext = getContext().getJasyncContext();
+            return JavacUtils.makeReturn(
+                    jasyncContext,
+                    hasAwaitExpr()
+                            ? jasyncContext.getJAsyncSymbols().makeJust((JCTree.JCExpression) tree)
+                            : (JCTree.JCExpression) tree
+            );
+        } else {
+            return tree;
+        }
     }
 
     @Override

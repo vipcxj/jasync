@@ -109,15 +109,34 @@ public class MonoPromise<T> implements Promise<T> {
     }
 
     private Mono<? extends AtomicReference<T>> doWhileBody(PromiseFunction<T, T> body, String label, AtomicReference<T> ref) throws Throwable {
-        return body.apply(ref.get()).then(a -> {
-            ref.set(a);
-            return null;
-        }).doCatch(ContinueException.class, e -> {
-            if (e.matchLabel(label)) {
+        Promise<T> res = body.apply(ref.get());
+        if (res != null) {
+            return res.then(a -> {
+                ref.set(a);
                 return null;
-            }
-            return JAsync.error(e);
-        }).unwrap();
+            }).doCatch(ContinueException.class, e -> {
+                if (e.matchLabel(label)) {
+                    return null;
+                }
+                return JAsync.error(e);
+            }).unwrap();
+        } else {
+            return Mono.empty();
+        }
+    }
+
+    private Mono<? extends Integer> doWhileBody(VoidPromiseSupplier body, String label) throws Throwable {
+        Promise<Void> res = body.get();
+        if (res != null) {
+            return res.then(a -> null).doCatch(ContinueException.class, e -> {
+                if (e.matchLabel(label)) {
+                    return null;
+                }
+                return JAsync.error(e);
+            }).unwrap();
+        } else {
+            return Mono.empty();
+        }
     }
 
     @Override
@@ -148,12 +167,7 @@ public class MonoPromise<T> implements Promise<T> {
         return this.then(() -> new MonoPromise<Void>(Mono.defer(() -> {
             try {
                 if (predicate.getAsBoolean()) {
-                    return block.get().then(a -> null).doCatch(ContinueException.class, e -> {
-                        if (e.matchLabel(label)) {
-                            return null;
-                        }
-                        return JAsync.error(e);
-                    }).unwrap();
+                    return doWhileBody(block, label);
                 } else {
                     return Mono.just(1);
                 }
@@ -204,12 +218,7 @@ public class MonoPromise<T> implements Promise<T> {
                 return predicate.get().<Mono<Boolean>>unwrap().flatMap(test -> {
                     try {
                         if (Boolean.TRUE.equals(test)) {
-                            return block.get().then(a -> null).doCatch(ContinueException.class, e -> {
-                                if (e.matchLabel(label)) {
-                                    return null;
-                                }
-                                return JAsync.error(e);
-                            }).unwrap();
+                            return doWhileBody(block, label);
                         } else {
                             return Mono.just(1);
                         }

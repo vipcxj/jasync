@@ -10,10 +10,8 @@ public class ContinueException extends RuntimeException {
     }
 
     public boolean matchLabel(String label) {
-        if (this.label == null && label == null) {
+        if (this.label == null) {
             return true;
-        } else if (this.label == null || label == null) {
-            return false;
         } else {
             return this.label.equals(label);
         }

@@ -76,36 +76,36 @@ public interface Promise<T> {
     Promise<T> doWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block, String label);
     Promise<Void> doWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label);
     default Promise<T> doDoWhile(BooleanSupplier predicate, PromiseFunction<T, T> block, String label) {
-        return this.then(v -> block.apply(v).doCatch(ContinueException.class, e -> {
+        return this.then(v -> Utils.safeApply(block, v).doCatch(ContinueException.class, e -> {
             if (e.matchLabel(label)) {
                 return null;
             }
             return JAsync.error(e);
-        }).doWhile(predicate, block));
+        }).doWhile(predicate, block, label));
     }
     default Promise<Void> doDoWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block, String label) {
-        return this.thenVoid(() -> block.get().doCatch(ContinueException.class, e -> {
+        return this.thenVoid(() -> Utils.safeGet(block).doCatch(ContinueException.class, e -> {
             if (e.matchLabel(label)) {
                 return null;
             }
             return JAsync.error(e);
-        }).doWhileVoid(predicate, block));
+        }).doWhileVoid(predicate, block, label));
     }
     default Promise<T> doDoWhile(PromiseSupplier<Boolean> predicate, PromiseFunction<T, T> block, String label) {
-        return this.then(v -> block.apply(v).doCatch(ContinueException.class, e -> {
+        return this.then(v -> Utils.safeApply(block, v).doCatch(ContinueException.class, e -> {
             if (e.matchLabel(label)) {
                 return null;
             }
             return JAsync.error(e);
-        }).doWhile(predicate, block));
+        }).doWhile(predicate, block, label));
     }
     default Promise<Void> doDoWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label) {
-        return this.thenVoid(() -> block.get().doCatch(ContinueException.class, e -> {
+        return this.thenVoid(() -> Utils.safeGet(block).doCatch(ContinueException.class, e -> {
             if (e.matchLabel(label)) {
                 return null;
             }
             return JAsync.error(e);
-        }).doWhileVoid(predicate, block));
+        }).doWhileVoid(predicate, block, label));
     }
     default Promise<T> doWhile(BooleanSupplier predicate, PromiseFunction<T, T> block) {
         return doWhile(predicate, block, null);

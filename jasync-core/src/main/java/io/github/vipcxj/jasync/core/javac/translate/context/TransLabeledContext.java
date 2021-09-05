@@ -41,6 +41,7 @@ public class TransLabeledContext extends AbstractTransStatementContext<JCTree.JC
 
     private boolean supportContinue(TranslateContext<?> context) {
         return context instanceof TransWhileContext
+                || context instanceof TransForContext
                 || context instanceof TransDoWhileContext
                 || context instanceof TransForeachContext;
     }
