@@ -82,13 +82,12 @@ public class TransTryContext extends AbstractTransStatementContext<JCTree.JCTry>
         TreeMaker maker = jasyncContext.getTreeMaker();
         Names names = jasyncContext.getNames();
         TransMethodContext methodContext = getEnclosingMethodContext();
-        JCTree.JCMethodDecl methodDecl = methodContext.addThrowableConsumer(catchContext);
         return maker.Apply(
                 List.nil(),
                 maker.Select(outExpr, names.fromString(Constants.DO_CATCH)),
                 List.of(
                         maker.Select(exType, names._class),
-                        methodContext.makeFunctional(catchContext.getFrame(), Constants.INDY_MAKE_THROWABLE_CONSUMER, methodDecl)
+                        methodContext.makeThrowableConsumer(catchContext)
                 )
         );
     }
@@ -119,12 +118,11 @@ public class TransTryContext extends AbstractTransStatementContext<JCTree.JCTry>
             if (finallyContext != null) {
                 Names names = jasyncContext.getNames();
                 TransMethodContext methodContext = getEnclosingMethodContext();
-                JCTree.JCMethodDecl methodDecl = methodContext.addVoidPromiseSupplier(finallyContext);
                 bodyExpr = maker.Apply(
                         List.nil(),
                         maker.Select(bodyExpr, names.fromString(Constants.DO_FINALLY)),
                         List.of(
-                                methodContext.makeFunctional(finallyContext.getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, methodDecl)
+                                methodContext.makeVoidPromiseSupplier(finallyContext)
                         )
                 );
             }

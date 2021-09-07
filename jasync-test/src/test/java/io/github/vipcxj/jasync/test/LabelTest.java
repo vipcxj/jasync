@@ -697,7 +697,7 @@ public class LabelTest {
         }
     }
 
-    @Async(debug = true)
+    @Async(debug = true, logResultPosTree = true)
     public Promise<Integer> forHasAwait2(int num) {
         int a = 0;
         label1:

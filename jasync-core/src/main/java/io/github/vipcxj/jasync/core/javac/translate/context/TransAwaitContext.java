@@ -5,7 +5,6 @@ import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
-import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
 import io.github.vipcxj.jasync.core.javac.context.JAsyncSymbols;
@@ -158,16 +157,14 @@ public class TransAwaitContext extends AbstractTransExpressionContext<JCTree.JCM
         }
         int prePos = maker.pos;
         try {
-            JCTree.JCMethodDecl methodDecl = isExpr()
-                    ? methodContext.addPromiseFunction(thenContext, getExprType())
-                    : methodContext.addVoidPromiseFunction(thenContext);
             JCTree.JCExpression outTree = maker.Apply(
                     List.nil(),
                     makeAwaitThen(),
-                    List.of(methodContext.makeFunctional(
-                            thenContext.getFrame(),
-                            isExpr() ? Constants.INDY_MAKE_PROMISE_FUNCTION : Constants.INDY_MAKE_VOID_PROMISE_FUNCTION,
-                            methodDecl))
+                    List.of(
+                            isExpr()
+                                    ? methodContext.makePromiseFunction(thenContext, getExprType())
+                                    : methodContext.makeVoidPromiseFunction(thenContext)
+                    )
             );
             return decorate(outTree);
         } finally {

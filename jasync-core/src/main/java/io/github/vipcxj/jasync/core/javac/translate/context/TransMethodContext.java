@@ -334,6 +334,11 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         return addVoidPromiseFunction(context.getFrame(), (JCTree.JCBlock) context.buildTree(false));
     }
 
+    public JCTree.JCExpression makeVoidPromiseFunction(TransBlockContext context) {
+        JCTree.JCMethodDecl methodDecl = addVoidPromiseFunction(context);
+        return makeFunctional(context.getFrame(), Constants.INDY_MAKE_VOID_PROMISE_FUNCTION, methodDecl);
+    }
+
     public JCTree.JCMethodDecl addPromiseFunction(TransBlockContext context, Type type) {
         IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
         return addMethodDecl(
@@ -341,6 +346,11 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
                 JavacUtils.getType(jasyncContext, Promise.class, type),
                 (JCTree.JCBlock) context.buildTree(false)
         );
+    }
+
+    public JCTree.JCExpression makePromiseFunction(TransBlockContext context, Type type) {
+        JCTree.JCMethodDecl methodDecl = addPromiseFunction(context, type);
+        return makeFunctional(context.getFrame(), Constants.INDY_MAKE_PROMISE_FUNCTION, methodDecl);
     }
 
     public JCTree.JCMethodDecl addVoidPromiseSupplier(Frame frame, JCTree.JCBlock body) {
@@ -370,6 +380,10 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         return addThrowableConsumer(catchContext.getFrame(), body);
     }
 
+    public JCTree.JCExpression makeThrowableConsumer(TransCatchContext catchContext) {
+        JCTree.JCMethodDecl methodDecl = addThrowableConsumer(catchContext);
+        return makeFunctional(catchContext.getFrame(), Constants.INDY_MAKE_THROWABLE_CONSUMER, methodDecl);
+    }
 
     private void addFieldDecl(Symbol.ClassSymbol classSymbol, Symbol.MethodSymbol classCtrSymbol, Symbol.VarSymbol varSymbol, JCTree.JCNewClass newClass) {
         newClass.type = classSymbol.type;

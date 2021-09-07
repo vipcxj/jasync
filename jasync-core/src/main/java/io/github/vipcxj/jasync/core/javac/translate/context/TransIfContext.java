@@ -3,7 +3,6 @@ package io.github.vipcxj.jasync.core.javac.translate.context;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.List;
-import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
@@ -78,8 +77,6 @@ public class TransIfContext extends AbstractTransStatementContext<JCTree.JCIf> {
             TreeMaker maker = jasyncContext.getTreeMaker();
             JAsyncSymbols symbols = jasyncContext.getJAsyncSymbols();
             TransMethodContext methodContext = getEnclosingMethodContext();
-            JCTree.JCMethodDecl thenMethod = methodContext.addVoidPromiseSupplier(thenContext);
-            JCTree.JCMethodDecl elseMethod = methodContext.addVoidPromiseSupplier(elseContext);
             int prePos = maker.pos;
             try {
                 return JavacUtils.makeReturn(jasyncContext, safeMaker().Apply(
@@ -87,8 +84,8 @@ public class TransIfContext extends AbstractTransStatementContext<JCTree.JCIf> {
                         symbols.makeJAsyncDoIf(),
                         List.of(
                                 (JCTree.JCExpression) condContext.buildTree(false),
-                                methodContext.makeFunctional(thenContext.getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, thenMethod),
-                                methodContext.makeFunctional(elseContext.getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, elseMethod)
+                                methodContext.makeVoidPromiseSupplier(thenContext),
+                                methodContext.makeVoidPromiseSupplier(elseContext)
                         )
                 ));
             } finally {

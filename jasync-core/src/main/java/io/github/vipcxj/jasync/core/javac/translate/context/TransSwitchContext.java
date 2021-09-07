@@ -4,7 +4,6 @@ import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
-import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
@@ -107,8 +106,7 @@ public class TransSwitchContext
                     int caseType = JavacUtils.getCaseType(jasyncContext, caseContext.tree);
                     TranslateContext<?> patContext = caseContext.getPatContext();
                     TransBlockContext bodyContext = caseContext.getSingleBodyContext();
-                    JCTree.JCMethodDecl methodDecl = methodContext.addVoidPromiseSupplier(bodyContext);
-                    JCTree.JCExpression voidPromiseSupplier = methodContext.makeFunctional(bodyContext.getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, methodDecl);
+                    JCTree.JCExpression voidPromiseSupplier = methodContext.makeVoidPromiseSupplier(bodyContext);
                     JCTree.JCExpression argExpr;
                     switch (caseType) {
                         case 0: // default

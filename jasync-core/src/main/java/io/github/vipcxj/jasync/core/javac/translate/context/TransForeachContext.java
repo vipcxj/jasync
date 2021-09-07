@@ -4,7 +4,6 @@ import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.List;
-import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
@@ -88,13 +87,12 @@ public class TransForeachContext extends AbstractTransFrameHolderStatementContex
             int prePos = maker.pos;
             try {
                 maker.pos = tree.pos;
-                JCTree.JCMethodDecl methodDecl = methodContext.addVoidPromiseFunction(getFrame(), (JCTree.JCBlock) bodyContext.buildTree(false));
                 return JavacUtils.makeReturn(jasyncContext, maker.Apply(
                         List.nil(),
                         methodExpr,
                         List.of(
                                 (JCTree.JCExpression) exprContext.buildTree(false),
-                                methodContext.makeFunctional(getFrame(), Constants.INDY_MAKE_VOID_PROMISE_FUNCTION, methodDecl),
+                                methodContext.makeVoidPromiseFunction(bodyContext),
                                 makeLabelArg()
                         )
                 ));

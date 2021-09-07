@@ -3,7 +3,6 @@ package io.github.vipcxj.jasync.core.javac.translate.context;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.TreeTranslator;
-import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
@@ -277,18 +276,13 @@ public abstract class AbstractTranslateContext<T extends JCTree> implements Tran
             IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
             TreeMaker maker = jasyncContext.getTreeMaker();
             JAsyncSymbols symbols = jasyncContext.getJAsyncSymbols();
-            JCTree.JCMethodDecl methodDecl = methodContext.addVoidPromiseSupplier(thenContext);
             int prePos = maker.pos;
             try {
                 newTree.expr = maker.Apply(
                         com.sun.tools.javac.util.List.nil(),
                         symbols.makePromiseThenVoidSupplierArg(newTree.expr),
                         com.sun.tools.javac.util.List.of(
-                                methodContext.makeFunctional(
-                                        thenContext.getFrame(),
-                                        Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER,
-                                        methodDecl
-                                )
+                                methodContext.makeVoidPromiseSupplier(thenContext)
                         )
                 );
                 newTree = (JCTree.JCReturn) decorate(newTree);
