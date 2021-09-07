@@ -19,9 +19,9 @@ public class TransForContext extends AbstractTransStatementContext<JCTree.JCForL
     private TransBlockContext condContext;
     private TransBlockContext stepContext;
     private TransBlockContext bodyContext;
-    private boolean hasCond;
-    private boolean hasStep;
-    private boolean hasBody;
+    private final boolean hasCond;
+    private final boolean hasStep;
+    private final boolean hasBody;
 
     public TransForContext(AnalyzerContext analyzerContext, JCTree.JCForLoop tree) {
         super(analyzerContext, tree);
@@ -42,26 +42,23 @@ public class TransForContext extends AbstractTransStatementContext<JCTree.JCForL
 
     @Override
     protected void addNormalChildContext(TranslateContext<?> child) {
+        ChildState noCond = hasStep
+                ? ChildState.STEP
+                : hasBody
+                ? ChildState.BODY
+                : ChildState.COMPLETE;
         if (this.childState == ChildState.INIT) {
             childContextMustBeBlock(child);
             this.initContext = (TransBlockContext) child;
             this.initContext.setNude(true);
             this.childState = hasCond
                     ? ChildState.COND
-                    : hasStep
-                    ? ChildState.STEP
-                    : hasBody
-                    ? ChildState.BODY
-                    : ChildState.COMPLETE;
+                    : noCond;
         } else if (this.childState == ChildState.COND) {
             childContextMustBeBlock(child);
             this.condContext = (TransBlockContext) child;
             this.condContext.setNude(true);
-            this.childState = hasStep
-                    ? ChildState.STEP
-                    : hasBody
-                    ? ChildState.BODY
-                    : ChildState.COMPLETE;
+            this.childState = noCond;
         } else if (this.childState == ChildState.STEP) {
             childContextMustBeBlock(child);
             this.stepContext = (TransBlockContext) child;

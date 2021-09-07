@@ -11,7 +11,7 @@ import java.util.List;
 public class TransCaseContext extends AbstractTranslateContext<JCTree.JCCase> {
 
     private TranslateContext<?> patContext;
-    private List<TransStatementContext<?>> statementContexts;
+    private final List<TransStatementContext<?>> statementContexts;
 
     public TransCaseContext(AnalyzerContext analyzerContext, JCTree.JCCase tree) {
         super(analyzerContext, tree);

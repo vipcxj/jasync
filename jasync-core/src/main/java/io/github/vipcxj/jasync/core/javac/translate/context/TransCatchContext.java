@@ -13,10 +13,6 @@ public class TransCatchContext extends AbstractTransFrameHolderContext<JCTree.JC
         super(analyzerContext, tree);
     }
 
-    public TransVarDeclContext getParamContext() {
-        return paramContext;
-    }
-
     public TransBlockContext getBodyContext() {
         return bodyContext;
     }
