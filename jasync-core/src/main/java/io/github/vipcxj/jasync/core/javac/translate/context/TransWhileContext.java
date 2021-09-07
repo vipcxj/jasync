@@ -9,7 +9,11 @@ public class TransWhileContext extends TransWhileLikeContext<JCTree.JCWhileLoop>
 
     public TransWhileContext(AnalyzerContext analyzerContext, JCTree.JCWhileLoop tree) {
         super(analyzerContext, tree);
-        this.childState = ChildState.COND;
+        this.childState = tree.cond != null
+                ? ChildState.COND
+                : tree.body != null
+                ? ChildState.BODY
+                : ChildState.COMPLETE;
     }
 
     @Override
@@ -20,11 +24,13 @@ public class TransWhileContext extends TransWhileLikeContext<JCTree.JCWhileLoop>
 
     @Override
     protected void addNormalChildContext(TranslateContext<?> child) {
-        if (condContext == null) {
-            addCond(child, tree.cond);
-            childState = ChildState.BODY;
-        } else if (bodyContext == null) {
-            addBody(child, tree.body);
+        if (childState == ChildState.COND) {
+            addCond(child);
+            childState = tree.body != null
+                    ? ChildState.BODY
+                    : ChildState.COMPLETE;
+        } else if (childState == ChildState.BODY) {
+            addBody(child);
             childState = ChildState.COMPLETE;
         } else {
             throwIfFull();
@@ -34,17 +40,16 @@ public class TransWhileContext extends TransWhileLikeContext<JCTree.JCWhileLoop>
     @Override
     protected JCTree.JCExpression getBuildMethod() {
         JAsyncSymbols symbols = analyzerContext.getJasyncContext().getJAsyncSymbols();
-        return condContext.hasAwait() ? symbols.makeJAsyncDoPromiseWhile() : symbols.makeJAsyncDoWhile();
+        return hasAwaitCond() ? symbols.makeJAsyncDoPromiseWhile() : symbols.makeJAsyncDoWhile();
     }
 
     @Override
-    protected JCTree buildTreeWithoutThen(boolean replaceSelf) {
-        if (hasAwait()) {
-            return super.buildTreeWithoutThen(replaceSelf);
-        } else {
-            tree.cond = (JCTree.JCExpression) condContext.buildTree(false);
-            tree.body = (JCTree.JCStatement) bodyContext.buildTree(false);
-            return tree;
-        }
+    protected void setCondTree(JCTree.JCExpression condTree) {
+        tree.cond = condTree;
+    }
+
+    @Override
+    protected void setBodyTree(JCTree.JCStatement bodyTree) {
+        tree.body = bodyTree;
     }
 }

@@ -670,7 +670,7 @@ public class LabelTest {
         }
     }
 
-    @Async
+    @Async(debug = true)
     public Promise<Integer> forHasAwait1(int num) {
         int a = 0;
         label:
@@ -697,7 +697,7 @@ public class LabelTest {
         }
     }
 
-    @Async
+    @Async(debug = true)
     public Promise<Integer> forHasAwait2(int num) {
         int a = 0;
         label1:
@@ -750,6 +750,17 @@ public class LabelTest {
                 Assertions.assertEquals(90, forHasAwait2(i).block());
             } else {
                 Assertions.assertEquals(97, forHasAwait2(i).block());
+            }
+        }
+    }
+
+    @Test
+    public void ATest() {
+        for (int i = 0;;++i) {
+            try {
+                break;
+            } finally {
+                System.out.println("break");
             }
         }
     }

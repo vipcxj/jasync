@@ -37,6 +37,8 @@ public class JAsyncSymbols {
     private final Symbol.MethodSymbol symJAsyncJustValue;
     private final Symbol.MethodSymbol symJAsyncDeferVoid;
     private final Symbol.MethodSymbol symJAsyncDoIf;
+    private final Symbol.MethodSymbol symJAsyncDoFor;
+    private final Symbol.MethodSymbol symJAsyncDoPromiseFor;
     private final Symbol.MethodSymbol symJAsyncDoSwitch;
     private final Symbol.MethodSymbol symJAsyncDoWhile;
     private final Symbol.MethodSymbol symJAsyncDoPromiseWhile;
@@ -131,6 +133,18 @@ public class JAsyncSymbols {
                 names.fromString(Constants.DO_IF),
                 true,
                 boolean.class, VoidPromiseSupplier.class, VoidPromiseSupplier.class
+        );
+        symJAsyncDoFor = SymbolHelpers.INSTANCE.getMethodMember(
+                types, symJAsync,
+                names.fromString(Constants.DO_FOR),
+                true,
+                VoidPromiseSupplier.class, BooleanSupplier.class, VoidPromiseSupplier.class, VoidPromiseSupplier.class, String.class
+        );
+        symJAsyncDoPromiseFor = SymbolHelpers.INSTANCE.getMethodMember(
+                types, symJAsync,
+                names.fromString(Constants.DO_FOR),
+                true,
+                VoidPromiseSupplier.class, PromiseSupplier.class, VoidPromiseSupplier.class, VoidPromiseSupplier.class, String.class
         );
         symJAsyncDoSwitch = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symJAsync,
@@ -358,6 +372,14 @@ public class JAsyncSymbols {
 
     public JCTree.JCExpression makeJAsyncDoIf() {
         return maker.Select(maker.QualIdent(symJAsync), symJAsyncDoIf);
+    }
+
+    public JCTree.JCExpression makeJAsyncDoFor() {
+        return maker.Select(maker.QualIdent(symJAsync), symJAsyncDoFor);
+    }
+
+    public JCTree.JCExpression makeJAsyncDoPromiseFor() {
+        return maker.Select(maker.QualIdent(symJAsync), symJAsyncDoPromiseFor);
     }
 
     public JCTree.JCExpression makeJAsyncDoSwitch() {

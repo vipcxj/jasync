@@ -22,11 +22,7 @@ public class TransBlockContext extends AbstractTransFrameHolderStatementContext<
     private boolean direct;
 
     public TransBlockContext(AnalyzerContext analyzerContext, JCTree.JCBlock tree) {
-        this(analyzerContext, tree, false);
-    }
-
-    public TransBlockContext(AnalyzerContext analyzerContext, JCTree.JCBlock tree, boolean synthetic) {
-        super(analyzerContext, tree, synthetic);
+        super(analyzerContext, tree);
         this.children = new ArrayDeque<>();
         this.nude = false;
         this.direct = false;
@@ -44,28 +40,31 @@ public class TransBlockContext extends AbstractTransFrameHolderStatementContext<
         this.direct = direct;
     }
 
+    public boolean innerHasAwait() {
+        TranslateContext<?> lastContext = children.peekLast();
+        return lastContext != null && lastContext.hasAwait();
+    }
+
+    public TranslateContext<?> getSingleChild() {
+        if (children.size() == 1) {
+            return children.peekFirst();
+        }
+        throw new IllegalArgumentException("Only can be called when single statement in block");
+    }
+
     @Override
-    public TransBlockContext enter(boolean triggerCallback) {
-        super.enter(triggerCallback);
+    public TransBlockContext enter() {
+        super.enter();
         return this;
     }
 
     @Override
     public void exit(boolean triggerCallback) {
-        TranslateContext<?> promiseChild = getPromiseChild();
-        if (promiseChild != null) {
-            promiseChild.endThen();
+        TranslateContext<?> lastContext = children.peekLast();
+        if (lastContext != null && lastContext.hasAwait()) {
+            lastContext.endThen();
         }
         super.exit(triggerCallback);
-    }
-
-    private TranslateContext<?> getPromiseChild() {
-        TranslateContext<?> context = children.peekLast();
-        if (context != null && context.hasAwait()) {
-            return context;
-        } else {
-            return null;
-        }
     }
 
     @Override
@@ -87,7 +86,7 @@ public class TransBlockContext extends AbstractTransFrameHolderStatementContext<
         ListBuffer<JCTree.JCStatement> stats = new ListBuffer<>();
         IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
         JAsyncSymbols symbols = jasyncContext.getJAsyncSymbols();
-        if (hasAwait()) {
+        if (isAwaitScope()) {
             TreeMaker maker = jasyncContext.getTreeMaker();
             for (Frame.DeclInfo declInfo : getFrame().getDeclaredVars().values()) {
                 if (declInfo.isAsyncParam()) {
@@ -114,7 +113,18 @@ public class TransBlockContext extends AbstractTransFrameHolderStatementContext<
                 if (tree == null) {
                     continue;
                 }
-                JCTree.JCStatement statement = (JCTree.JCStatement) tree;
+                JCTree.JCStatement statement;
+                if (tree instanceof JCTree.JCExpression) {
+                    if (child.hasAwait()) {
+                        statement = JavacUtils.makeReturn(jasyncContext, (JCTree.JCExpression) tree);
+                    } else if (hasAwait()) {
+                        statement = JavacUtils.makeReturn(jasyncContext, symbols.makeJust((JCTree.JCExpression) tree));
+                    } else {
+                        statement = JavacUtils.makeReturn(jasyncContext, (JCTree.JCExpression) tree);
+                    }
+                } else {
+                    statement = (JCTree.JCStatement) tree;
+                }
                 if (child instanceof TransAwaitContext) {
                     for (JCTree.JCVariableDecl decl : ((TransAwaitContext) child).getProxyDecls().toList()) {
                         stats = stats.append(decl);
@@ -169,7 +179,12 @@ public class TransBlockContext extends AbstractTransFrameHolderStatementContext<
                 if (tree == null) {
                     continue;
                 }
-                JCTree.JCStatement statement = (JCTree.JCStatement) tree;
+                JCTree.JCStatement statement;
+                if (tree instanceof JCTree.JCExpression) {
+                    statement = JavacUtils.makeReturn(jasyncContext, (JCTree.JCExpression) tree);
+                } else {
+                    statement = (JCTree.JCStatement) tree;
+                }
                 stats = stats.append(statement);
             }
             if (tree == null) {

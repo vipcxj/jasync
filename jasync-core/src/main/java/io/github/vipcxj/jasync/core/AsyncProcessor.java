@@ -36,30 +36,35 @@ public class AsyncProcessor extends AbstractProcessor {
         for (TypeElement annotation : annotations) {
             if (annotation.getQualifiedName().toString().equals(Constants.ASYNC)) {
                 for (Element element : roundEnv.getElementsAnnotatedWith(annotation)) {
-                    IJAsyncInstanceContext instanceContext = new JAsyncInstanceContext(context, (ExecutableElement) element);
-                    if (instanceContext.getInfo().isEnabled()) {
-                        JCTree.JCMethodDecl tree = (JCTree.JCMethodDecl) instanceContext.getTrees().getTree(element);
-                        StringWriter writer = new StringWriter();
-                        // tree.accept(new PosVisitor(writer, false));
-                        // System.out.println(writer.toString());
-                        // System.out.println();
-                        new NormalizeTranslator(instanceContext).translate(tree);
-                        TransMethodContext transContext = JAsyncAnalyzer.scan(instanceContext, tree);
-                        transContext.complete();
-                        transContext.lock();
-                        transContext.buildTree(true);
+                    try {
+                        IJAsyncInstanceContext instanceContext = new JAsyncInstanceContext(context, (ExecutableElement) element);
+                        if (instanceContext.getInfo().isEnabled()) {
+                            JCTree.JCMethodDecl tree = (JCTree.JCMethodDecl) instanceContext.getTrees().getTree(element);
+                            StringWriter writer = new StringWriter();
+                            // tree.accept(new PosVisitor(writer, false));
+                            // System.out.println(writer.toString());
+                            // System.out.println();
+                            new NormalizeTranslator(instanceContext).translate(tree);
+                            TransMethodContext transContext = JAsyncAnalyzer.scan(instanceContext, tree);
+                            transContext.complete();
+                            transContext.lock();
+                            transContext.buildTree(true);
 //                        tree.body.accept(new TryWithResourceTranslator(instanceContext));
 //                        tree.body.accept(new ReturnTranslator(instanceContext));
 //                        new PromiseTranslator(instanceContext, false).reshape(tree);
 //                        tree.body.accept(new SimplifiedTranslator());
-                        writer = new StringWriter();
-                        if (instanceContext.getInfo().isLogResultPosTree()) {
-                            tree.accept(new PosVisitor(writer, false));
-                            System.out.println(writer.toString());
+                            writer = new StringWriter();
+                            if (instanceContext.getInfo().isLogResultPosTree()) {
+                                tree.accept(new PosVisitor(writer, false));
+                                System.out.println(writer.toString());
+                            }
+                            if (instanceContext.getInfo().isLogResultTree()) {
+                                System.out.println(tree);
+                            }
                         }
-                        if (instanceContext.getInfo().isLogResultTree()) {
-                            System.out.println(tree);
-                        }
+                    } catch (RuntimeException t) {
+                        t.printStackTrace();
+                        throw t;
                     }
                 }
             }

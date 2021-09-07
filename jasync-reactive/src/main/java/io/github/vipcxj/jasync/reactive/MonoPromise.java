@@ -41,23 +41,19 @@ public class MonoPromise<T> implements Promise<T> {
         return new MonoPromise<>(mono.<O>flatMap(v -> {
             resolve(v);
             empty.set(false);
-            Promise<O> res;
             try {
-                res = resolver.apply(v);
+                return Utils.safeApply(resolver, v).unwrap();
             } catch (Throwable t) {
                 return Mono.error(t);
             }
-            return res != null ? res.unwrap() : Mono.empty();
         }).switchIfEmpty(Mono.defer(() -> {
             if (empty.get()) {
                 resolve(null);
-                Promise<O> res;
                 try {
-                    res = resolver.apply(null);
+                    return Utils.safeApply(resolver, null).unwrap();
                 } catch (Throwable t) {
                     return Mono.error(t);
                 }
-                return res != null ? res.unwrap() : Mono.empty();
             } else {
                 return Mono.empty();
             }
@@ -74,16 +70,10 @@ public class MonoPromise<T> implements Promise<T> {
                             if (JAsync.mustRethrowException(t, exceptionsType)) {
                                 return Mono.error(t);
                             }
-                            Promise<T> res;
                             try {
-                                res = reject.apply(t);
+                                return Utils.safeApply(reject, t).unwrap();
                             } catch (Throwable e) {
                                 return Mono.error(e);
-                            }
-                            if (res == null) {
-                                return Mono.empty();
-                            } else {
-                                return res.unwrap();
                             }
                         }
                 ));
@@ -94,14 +84,10 @@ public class MonoPromise<T> implements Promise<T> {
         AtomicReference<Boolean> isCatch = new AtomicReference<>(false);
         return doCatch(t -> {
             isCatch.set(true);
-            Promise<Void> promise = block.get();
-            promise = promise != null ? promise : just(null);
-            return promise.then(() -> new MonoPromise<>(Mono.error(t)));
+            return Utils.safeGetVoid(block).then(() -> JAsync.error(t));
         }).then(v -> {
             if (!isCatch.get()) {
-                Promise<Void> promise = block.get();
-                promise = promise != null ? promise : just(null);
-                return promise.then(() -> just(v));
+                return Utils.safeGetVoid(block).then(() -> just(v));
             } else {
                 return just(v);
             }
@@ -109,34 +95,24 @@ public class MonoPromise<T> implements Promise<T> {
     }
 
     private Mono<? extends AtomicReference<T>> doWhileBody(PromiseFunction<T, T> body, String label, AtomicReference<T> ref) throws Throwable {
-        Promise<T> res = body.apply(ref.get());
-        if (res != null) {
-            return res.then(a -> {
-                ref.set(a);
+        return Utils.safeApply(body, ref.get()).then(a -> {
+            ref.set(a);
+            return null;
+        }).doCatch(ContinueException.class, e -> {
+            if (e.matchLabel(label)) {
                 return null;
-            }).doCatch(ContinueException.class, e -> {
-                if (e.matchLabel(label)) {
-                    return null;
-                }
-                return JAsync.error(e);
-            }).unwrap();
-        } else {
-            return Mono.empty();
-        }
+            }
+            return JAsync.error(e);
+        }).unwrap();
     }
 
     private Mono<? extends Integer> doWhileBody(VoidPromiseSupplier body, String label) throws Throwable {
-        Promise<Void> res = body.get();
-        if (res != null) {
-            return res.then(a -> null).doCatch(ContinueException.class, e -> {
-                if (e.matchLabel(label)) {
-                    return null;
-                }
-                return JAsync.error(e);
-            }).unwrap();
-        } else {
-            return Mono.empty();
-        }
+        return Utils.safeGetVoid(body).then(a -> null).doCatch(ContinueException.class, e -> {
+            if (e.matchLabel(label)) {
+                return null;
+            }
+            return JAsync.error(e);
+        }).unwrap();
     }
 
     @Override
@@ -166,7 +142,7 @@ public class MonoPromise<T> implements Promise<T> {
     public Promise<Void> doWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block, String label) {
         return this.then(() -> new MonoPromise<Void>(Mono.defer(() -> {
             try {
-                if (predicate.getAsBoolean()) {
+                if (Utils.safeTest(predicate)) {
                     return doWhileBody(block, label);
                 } else {
                     return Mono.just(1);
@@ -188,9 +164,9 @@ public class MonoPromise<T> implements Promise<T> {
             AtomicReference<T> ref = new AtomicReference<>(v);
             return new MonoPromise<>(Mono.defer(() -> {
                 try {
-                    return predicate.get().<Mono<Boolean>>unwrap().flatMap(test -> {
+                    return Utils.safeTest(predicate).<Mono<Boolean>>unwrap().flatMap(test -> {
                         try {
-                            if (Boolean.TRUE.equals(test)) {
+                            if (test) {
                                 return doWhileBody(block, label, ref);
                             } else {
                                 return Mono.just(ref);
@@ -215,9 +191,9 @@ public class MonoPromise<T> implements Promise<T> {
     public Promise<Void> doWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label) {
         return this.then(() -> new MonoPromise<Void>(Mono.defer(() -> {
             try {
-                return predicate.get().<Mono<Boolean>>unwrap().flatMap(test -> {
+                return Utils.safeTest(predicate).<Mono<Boolean>>unwrap().flatMap(test -> {
                     try {
-                        if (Boolean.TRUE.equals(test)) {
+                        if (test) {
                             return doWhileBody(block, label);
                         } else {
                             return Mono.just(1);
@@ -242,7 +218,7 @@ public class MonoPromise<T> implements Promise<T> {
                 iterator::hasNext,
                 () -> {
                     E next = iterator.next();
-                    return block.apply(next);
+                    return Utils.safeApply(block, next);
                 },
                 label
         );
@@ -266,7 +242,7 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> index.get() < length,
                 () -> {
                     boolean next = array[index.getAndIncrement()];
-                    return block.apply(next);
+                    return Utils.safeApply(block, next);
                 },
                 label
         );
@@ -280,7 +256,7 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> index.get() < length,
                 () -> {
                     byte next = array[index.getAndIncrement()];
-                    return block.apply(next);
+                    return Utils.safeApply(block, next);
                 },
                 label
         );
@@ -294,7 +270,7 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> index.get() < length,
                 () -> {
                     char next = array[index.getAndIncrement()];
-                    return block.apply(next);
+                    return Utils.safeApply(block, next);
                 },
                 label
         );
@@ -308,7 +284,7 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> index.get() < length,
                 () -> {
                     short next = array[index.getAndIncrement()];
-                    return block.apply(next);
+                    return Utils.safeApply(block, next);
                 },
                 label
         );
@@ -322,7 +298,7 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> index.get() < length,
                 () -> {
                     int next = array[index.getAndIncrement()];
-                    return block.apply(next);
+                    return Utils.safeApply(block, next);
                 },
                 label
         );
@@ -336,7 +312,7 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> index.get() < length,
                 () -> {
                     long next = array[index.getAndIncrement()];
-                    return block.apply(next);
+                    return Utils.safeApply(block, next);
                 },
                 label
         );
@@ -350,7 +326,7 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> index.get() < length,
                 () -> {
                     float next = array[index.getAndIncrement()];
-                    return block.apply(next);
+                    return Utils.safeApply(block, next);
                 },
                 label
         );
@@ -364,7 +340,7 @@ public class MonoPromise<T> implements Promise<T> {
                 () -> index.get() < length,
                 () -> {
                     double next = array[index.getAndIncrement()];
-                    return block.apply(next);
+                    return Utils.safeApply(block, next);
                 },
                 label
         );
@@ -374,25 +350,26 @@ public class MonoPromise<T> implements Promise<T> {
     public <C> Promise<Void> doSwitch(C value, List<? extends ICase<C>> cases, String label) {
         boolean matched = false;
         Promise<Void> result = null;
-        for (int i = 0; i < 2; ++i) {
-            for (ICase<C> aCase : cases) {
-                if (!matched && aCase.is(value, i != 0)) {
-                    matched = true;
+        if (cases != null) {
+            for (int i = 0; i < 2; ++i) {
+                for (ICase<C> aCase : cases) {
+                    if (!matched && aCase.is(value, i != 0)) {
+                        matched = true;
+                    }
+                    if (matched) {
+                        result = (result != null ? result : this).then(() -> {
+                            try {
+                                VoidPromiseSupplier body = aCase.getBody();
+                                return Utils.safeGetVoid(body);
+                            } catch (Throwable t) {
+                                return JAsync.error(t);
+                            }
+                        });
+                    }
                 }
                 if (matched) {
-                    result = (result != null ? result : this).then(() -> {
-                        try {
-                            VoidPromiseSupplier body = aCase.getBody();
-                            Promise<Void> promise = body != null ? body.get() : null;
-                            return promise != null ? promise : JAsync.just();
-                        } catch (Throwable t) {
-                            return JAsync.error(t);
-                        }
-                    });
+                    break;
                 }
-            }
-            if (matched) {
-                break;
             }
         }
         return result != null ? result.doCatch(BreakException.class, e -> {

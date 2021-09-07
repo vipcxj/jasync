@@ -7,6 +7,7 @@ import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.TreeScanner;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.*;
+import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.core.javac.IJAsyncContext;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
@@ -58,6 +59,11 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
     public TranslateContext<JCTree.JCMethodDecl> enter() {
         super.enter();
         return this;
+    }
+
+    @Override
+    public boolean isAwaitGap() {
+        return true;
     }
 
     @Override
@@ -283,10 +289,10 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         }
     }
 
-    public JCTree.JCMethodDecl addCondSupplier(TransCondContext condContext) {
+    public JCTree.JCMethodDecl addCondSupplier(TransBlockContext condContext) {
         IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
         JCTree condTree = condContext.buildTree(false);
-        if (condContext.hasAwaitExpr()) {
+        if (condContext.innerHasAwait()) {
             Symtab symbols = jasyncContext.getSymbols();
             Types types = jasyncContext.getTypes();
             Type booleanType = types.boxedTypeOrType(symbols.booleanType);
@@ -301,6 +307,15 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
                     JavacUtils.getType(jasyncContext, boolean.class),
                     (JCTree.JCBlock) condTree
             );
+        }
+    }
+
+    public JCTree.JCExpression makeCondSupplier(TransBlockContext condContext) {
+        JCTree.JCMethodDecl methodDecl = addCondSupplier(condContext);
+        if (condContext.innerHasAwait()) {
+            return makeFunctional(condContext.getFrame(), Constants.INDY_MAKE_PROMISE_SUPPLIER, methodDecl);
+        } else {
+            return makeFunctional(condContext.getFrame(), Constants.INDY_MAKE_BOOLEAN_SUPPLIER, methodDecl);
         }
     }
 
@@ -335,6 +350,11 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
 
     public JCTree.JCMethodDecl addVoidPromiseSupplier(TransBlockContext bodyContext) {
         return addVoidPromiseSupplier(bodyContext.getFrame(), (JCTree.JCBlock) bodyContext.buildTree(false));
+    }
+
+    public JCTree.JCExpression makeVoidPromiseSupplier(TransBlockContext bodyContext) {
+        JCTree.JCMethodDecl methodDecl = addVoidPromiseSupplier(bodyContext);
+        return makeFunctional(bodyContext.getFrame(), Constants.INDY_MAKE_VOID_PROMISE_SUPPLIER, methodDecl);
     }
 
     public JCTree.JCMethodDecl addThrowableConsumer(Frame frame, JCTree.JCBlock body) {

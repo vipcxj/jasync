@@ -29,6 +29,9 @@ import javax.lang.model.util.Types;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class JavacUtils {
 
@@ -38,6 +41,28 @@ public class JavacUtils {
             listBuffer.append(mapper.apply(el));
         }
         return listBuffer.toList();
+    }
+
+    public static <I, O> ListBuffer<O> mapList(ListBuffer<I> list, Function<I, O> mapper) {
+        ListBuffer<O> listBuffer = new ListBuffer<>();
+        for (I el : list) {
+            listBuffer.append(mapper.apply(el));
+        }
+        return listBuffer;
+    }
+
+    public static <T> ListBuffer<T> filterList(ListBuffer<T> list, Predicate<T> tester) {
+        ListBuffer<T> listBuffer = new ListBuffer<>();
+        for (T el : list) {
+            if (tester.test(el)) {
+                listBuffer = listBuffer.append(el);
+            }
+        }
+        return listBuffer;
+    }
+
+    public static <T> ListBuffer<T> toListBuffer(Stream<T> stream) {
+        return stream.collect(ListBuffer::new, ListBuffer::append, ListBuffer::appendList);
     }
 
     public static JCTree.JCExpression makeQualifiedIdent(IJAsyncContext context, String qName) {

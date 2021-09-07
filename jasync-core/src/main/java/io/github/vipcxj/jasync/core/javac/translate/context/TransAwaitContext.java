@@ -161,15 +161,13 @@ public class TransAwaitContext extends AbstractTransExpressionContext<JCTree.JCM
             JCTree.JCMethodDecl methodDecl = isExpr()
                     ? methodContext.addPromiseFunction(thenContext, getExprType())
                     : methodContext.addVoidPromiseFunction(thenContext);
-            JCTree.JCReturn outTree = maker.Return(
-                    maker.Apply(
-                            List.nil(),
-                            makeAwaitThen(),
-                            List.of(methodContext.makeFunctional(
-                                    thenContext.getFrame(),
-                                    isExpr() ? Constants.INDY_MAKE_PROMISE_FUNCTION : Constants.INDY_MAKE_VOID_PROMISE_FUNCTION,
-                                    methodDecl))
-                    )
+            JCTree.JCExpression outTree = maker.Apply(
+                    List.nil(),
+                    makeAwaitThen(),
+                    List.of(methodContext.makeFunctional(
+                            thenContext.getFrame(),
+                            isExpr() ? Constants.INDY_MAKE_PROMISE_FUNCTION : Constants.INDY_MAKE_VOID_PROMISE_FUNCTION,
+                            methodDecl))
             );
             return decorate(outTree);
         } finally {

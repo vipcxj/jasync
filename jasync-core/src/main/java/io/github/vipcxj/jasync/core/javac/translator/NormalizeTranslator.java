@@ -2,10 +2,7 @@ package io.github.vipcxj.jasync.core.javac.translator;
 
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.tree.*;
-import com.sun.tools.javac.util.JCDiagnostic;
-import com.sun.tools.javac.util.List;
-import com.sun.tools.javac.util.Name;
-import com.sun.tools.javac.util.Names;
+import com.sun.tools.javac.util.*;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.model.Ancestors;
@@ -226,33 +223,69 @@ public class NormalizeTranslator extends TreeTranslator {
         try {
             super.visitForLoop(tree);
             result = tree;
-            if (containAwait) {
+            if (containAwait && tree.init != null && !tree.init.isEmpty()) {
                 TreeMaker maker = context.getTreeMaker();
                 int prePos = maker.pos;
                 try {
-                    JCTree.JCBlock body = JavacUtils.makeBlock(context, tree.body);
-                    if (tree.step != null) {
-                        for (JCTree.JCExpressionStatement step : tree.step) {
-                            body.stats = body.stats.append(step);
-                        }
-                    }
-                    JCTree.JCWhileLoop whileLoop = JavacUtils.wrapPos(context, maker.WhileLoop(tree.cond, body), tree);
-                    if (tree.init != null && !tree.init.isEmpty() ){
-                        if (!ancestors.insertBefore(tree.init)) {
-                            JCTree.JCBlock block = JavacUtils.wrapPos(context, maker.Block(0L, List.nil()), tree);
-                            block.stats = block.stats.prepend(whileLoop);
-                            block.stats = block.stats.prependList(tree.init);
-                            result = block;
+                    ListBuffer<JCTree.JCStatement> newStatements = new ListBuffer<>();
+                    ListBuffer<JCTree.JCStatement> newInits = new ListBuffer<>();
+                    for (JCTree.JCStatement statement : tree.init) {
+                        if (statement instanceof JCTree.JCVariableDecl) {
+                            JCTree.JCVariableDecl decl = (JCTree.JCVariableDecl) statement;
+                            if (decl.init != null) {
+                                maker.at(statement);
+                                JCTree.JCStatement newInit = maker.Exec(
+                                        maker.Assign(
+                                                maker.Ident(decl.sym),
+                                                decl.init
+                                        )
+                                );
+                                newInits = newInits.append(newInit);
+                                decl.init = null;
+                            }
+                            newStatements = newStatements.append(decl);
                         } else {
-                            result = whileLoop;
+                            newInits = newInits.append(statement);
                         }
                     }
+                    tree.init = newInits.toList();
+                    newStatements = newStatements.append(tree);
+                    result = maker.Block(0L, newStatements.toList());
                 } finally {
                     maker.pos = prePos;
                 }
             }
         } finally {
             containAwait = containAwait || preContainAwait;
+        }
+    }
+
+    @Override
+    public void visitLabelled(JCTree.JCLabeledStatement tree) {
+        boolean forLoop = tree.body instanceof JCTree.JCForLoop;
+        JCTree.JCStatement body = tree.body;
+        super.visitLabelled(tree);
+        if (forLoop && tree.body instanceof JCTree.JCBlock) {
+            TreeMaker maker = context.getTreeMaker();
+            int prePos = maker.pos;
+            try {
+                JCTree.JCBlock block = (JCTree.JCBlock) tree.body;
+                ListBuffer<JCTree.JCStatement> newStatements = new ListBuffer<>();
+                int i = 0;
+                for (JCTree.JCStatement statement : block.stats) {
+                    if (++i == block.stats.size()) {
+                        newStatements = newStatements.append(
+                                maker.at(tree).Labelled(tree.label, body)
+                        );
+                    } else {
+                        newStatements = newStatements.append(statement);
+                    }
+                }
+                block.stats = newStatements.toList();
+                result = block;
+            } finally {
+                maker.pos = prePos;
+            }
         }
     }
 

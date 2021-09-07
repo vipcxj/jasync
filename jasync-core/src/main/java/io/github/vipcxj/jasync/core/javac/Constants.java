@@ -21,6 +21,7 @@ public class Constants {
     public static final String CATCH_RETURN = "catchReturn";
     public static final String DEFER_VOID = "deferVoid";
     public static final String DO_IF = "doIf";
+    public static final String DO_FOR = "doFor";
     public static final String DO_CATCH = "doCatch";
     public static final String DO_FINALLY = "doFinally";
     public static final String DO_SWITCH = "doSwitch";

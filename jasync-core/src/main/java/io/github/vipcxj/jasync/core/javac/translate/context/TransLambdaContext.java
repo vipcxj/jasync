@@ -7,4 +7,9 @@ public class TransLambdaContext extends AbstractTransFrameHolderExpressionContex
     public TransLambdaContext(AnalyzerContext analyzerContext, JCTree.JCLambda tree) {
         super(analyzerContext, tree);
     }
+
+    @Override
+    public boolean isAwaitGap() {
+        return true;
+    }
 }

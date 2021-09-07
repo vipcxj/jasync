@@ -12,11 +12,7 @@ public abstract class AbstractTransStatementContext<T extends JCTree.JCStatement
     private Name label;
 
     public AbstractTransStatementContext(AnalyzerContext analyzerContext, T tree) {
-        this(analyzerContext, tree, false);
-    }
-
-    public AbstractTransStatementContext(AnalyzerContext analyzerContext, T tree, boolean synthetic) {
-        super(analyzerContext, tree, synthetic);
+        super(analyzerContext, tree);
     }
 
     @Override

@@ -84,7 +84,7 @@ public interface Promise<T> {
         }).doWhile(predicate, block, label));
     }
     default Promise<Void> doDoWhileVoid(BooleanSupplier predicate, VoidPromiseSupplier block, String label) {
-        return this.thenVoid(() -> Utils.safeGet(block).doCatch(ContinueException.class, e -> {
+        return this.thenVoid(() -> Utils.safeGetVoid(block).doCatch(ContinueException.class, e -> {
             if (e.matchLabel(label)) {
                 return null;
             }
@@ -100,7 +100,7 @@ public interface Promise<T> {
         }).doWhile(predicate, block, label));
     }
     default Promise<Void> doDoWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label) {
-        return this.thenVoid(() -> Utils.safeGet(block).doCatch(ContinueException.class, e -> {
+        return this.thenVoid(() -> Utils.safeGetVoid(block).doCatch(ContinueException.class, e -> {
             if (e.matchLabel(label)) {
                 return null;
             }

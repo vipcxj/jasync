@@ -10,13 +10,10 @@ public class AbstractTransFrameHolderStatementContext<T extends JCTree.JCStateme
         implements TransFrameHolderContext<T> {
     protected Frame frame;
     private boolean proxyFrame;
+    private boolean awaitScope;
 
     public AbstractTransFrameHolderStatementContext(AnalyzerContext analyzerContext, T tree) {
-        this(analyzerContext, tree, false);
-    }
-
-    public AbstractTransFrameHolderStatementContext(AnalyzerContext analyzerContext, T tree, boolean synthetic) {
-        super(analyzerContext, tree, synthetic);
+        super(analyzerContext, tree);
         this.proxyFrame = false;
     }
 
@@ -27,6 +24,23 @@ public class AbstractTransFrameHolderStatementContext<T extends JCTree.JCStateme
 
     public void setProxyFrame(boolean proxyFrame) {
         this.proxyFrame = proxyFrame;
+    }
+
+    public void setHasAwait(boolean hasAwait) {
+        super.setHasAwait(hasAwait);
+        if (hasAwait) {
+            setAwaitScope(true);
+        }
+    }
+
+    @Override
+    public boolean isAwaitScope() {
+        return awaitScope;
+    }
+
+    @Override
+    public void setAwaitScope(boolean awaitScope) {
+        this.awaitScope = awaitScope;
     }
 
     @Override

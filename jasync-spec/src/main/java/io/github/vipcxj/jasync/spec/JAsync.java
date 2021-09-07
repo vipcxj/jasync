@@ -44,9 +44,9 @@ public class JAsync {
     public static Promise<Void> doIf(boolean test, VoidPromiseSupplier thenDo, VoidPromiseSupplier elseDo) {
         try {
             if (test) {
-                return thenDo.get();
+                return Utils.safeGetVoid(thenDo);
             } else {
-                return elseDo.get();
+                return Utils.safeGetVoid(elseDo);
             }
         } catch (Throwable e) {
             return JAsync.error(e);
@@ -261,6 +261,38 @@ public class JAsync {
 
     public static Promise<Void> doForEachDouble(Object iterableOrArray, DoubleVoidPromiseFunction block) {
         return doForEachDouble(iterableOrArray, block, null);
+    }
+
+    private static Promise<Void> doForBody(VoidPromiseSupplier step, VoidPromiseSupplier body) throws Throwable {
+        return Utils.safeGetVoid(body).doCatch(ContinueException.class, (ThrowableConsumer<ContinueException>) (e) -> {
+            Utils.safeGetVoid(step);
+            throw e;
+        }).thenVoid(() -> {
+            Utils.safeGetVoid(step);
+            return null;
+        });
+    }
+
+    public static Promise<Void> doFor(VoidPromiseSupplier init, BooleanSupplier cond, VoidPromiseSupplier step, VoidPromiseSupplier body, String label) {
+        if (cond == null) {
+            cond = () -> true;
+        }
+        try {
+            return Utils.safeGetVoid(init).doWhileVoid(cond, () -> doForBody(step, body), label);
+        } catch (Throwable t) {
+            return JAsync.error(t);
+        }
+    }
+
+    public static Promise<Void> doFor(VoidPromiseSupplier init, PromiseSupplier<Boolean> cond, VoidPromiseSupplier step, VoidPromiseSupplier body, String label) {
+        if (cond == null) {
+            cond = () -> JAsync.just(true);
+        }
+        try {
+            return Utils.safeGetVoid(init).doWhileVoid(cond, () -> doForBody(step, body), label);
+        } catch (Throwable t) {
+            return JAsync.error(t);
+        }
     }
 
     public static boolean mustRethrowException(Throwable t, List<Class<? extends Throwable>> exceptionsType) {

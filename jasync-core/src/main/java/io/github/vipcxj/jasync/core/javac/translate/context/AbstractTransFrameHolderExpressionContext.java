@@ -9,6 +9,7 @@ public class AbstractTransFrameHolderExpressionContext<T extends JCTree.JCExpres
         extends AbstractTransExpressionContext<T>
         implements TransFrameHolderContext<T> {
 
+    private boolean awaitScope;
     private Frame frame;
 
     public AbstractTransFrameHolderExpressionContext(AnalyzerContext analyzerContext, T tree) {
@@ -18,6 +19,24 @@ public class AbstractTransFrameHolderExpressionContext<T extends JCTree.JCExpres
     @Override
     public Frame getFrame() {
         return frame;
+    }
+
+    @Override
+    public void setHasAwait(boolean hasAwait) {
+        super.setHasAwait(hasAwait);
+        if (hasAwait) {
+            setAwaitScope(true);
+        }
+    }
+
+    @Override
+    public boolean isAwaitScope() {
+        return awaitScope;
+    }
+
+    @Override
+    public void setAwaitScope(boolean awaitScope) {
+        this.awaitScope = awaitScope;
     }
 
     @Override

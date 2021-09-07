@@ -9,7 +9,7 @@ public class TransWrapBlockContext extends TransBlockContext {
     private TranslateContext<?> wrappedContext;
 
     public TransWrapBlockContext(AnalyzerContext analyzerContext) {
-        super(analyzerContext, null, true);
+        super(analyzerContext, null);
     }
 
     public TranslateContext<?> getWrappedContext() {

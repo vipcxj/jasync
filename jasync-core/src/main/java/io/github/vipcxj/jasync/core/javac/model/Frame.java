@@ -116,7 +116,7 @@ public class Frame {
         PlaceHolderInfo placeHolder = context.getDeclPlaceHolder();
         PlaceHolderInfo declInfo = declaredPlaceHolders.get(placeHolder.tree);
         if (declInfo == null) {
-            if (holder.hasAwait()) {
+            if (holder.isAwaitScope()) {
                 PlaceHolderInfo capturedInfo = capturedPlaceHolders.get(placeHolder.tree);
                 if (capturedInfo == null) {
                     capturedInfo = new PlaceHolderInfo(placeHolder.tree, placeHolder.symbol.name, true);
@@ -161,7 +161,7 @@ public class Frame {
                 }
                 context.setDeclInfo(localDeclInfo);
             } else {
-                if (holder.hasAwait()) {
+                if (holder.isAwaitScope()) {
                     CapturedInfo capturedInfo = capturedVars.get(varKey);
                     if (capturedInfo == null) {
                         capturedInfo = new CapturedInfo(declInfo);
@@ -183,7 +183,7 @@ public class Frame {
     public void readVar(TransIdentContext context) {
         VarKey key = new VarKey(context.getTree().sym);
         DeclInfo declInfo = getDeclInfo(key);
-        readVar(context, declInfo, true, holder.hasAwait());
+        readVar(context, declInfo, true, holder.isAwaitScope());
     }
 
     private void writeVar(TransWriteExprContext<?> context, DeclInfo declInfo, boolean direct, boolean fromAwait) {
@@ -200,7 +200,7 @@ public class Frame {
                 }
                 context.setDeclInfo(localDeclInfo);
             } else {
-                if (holder.hasAwait()) {
+                if (holder.isAwaitScope()) {
                     CapturedInfo capturedInfo = capturedVars.get(varKey);
                     if (capturedInfo == null) {
                         capturedInfo = new CapturedInfo(declInfo);
@@ -213,7 +213,7 @@ public class Frame {
                     }
                 }
                 if (parent != null) {
-                    parent.writeVar(context, declInfo, direct, holder.hasAwait());
+                    parent.writeVar(context, declInfo, direct, holder.isAwaitScope());
                 }
             }
         }
@@ -222,7 +222,7 @@ public class Frame {
     public void writeVar(TransWriteExprContext<?> context) {
         VarKey key = new VarKey(context.getSymbol());
         DeclInfo declInfo = getDeclInfo(key);
-        writeVar(context, declInfo, true, holder.hasAwait());
+        writeVar(context, declInfo, true, holder.isAwaitScope());
     }
 
     private List<DeclInfo> collectParentDecls() {

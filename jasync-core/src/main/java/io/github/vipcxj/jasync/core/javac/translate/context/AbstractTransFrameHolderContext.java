@@ -10,6 +10,7 @@ public class AbstractTransFrameHolderContext<T extends JCTree>
         implements TransFrameHolderContext<T> {
 
     private Frame frame;
+    private boolean awaitScope;
 
     public AbstractTransFrameHolderContext(AnalyzerContext analyzerContext, T tree) {
         super(analyzerContext, tree);
@@ -18,6 +19,24 @@ public class AbstractTransFrameHolderContext<T extends JCTree>
     @Override
     public Frame getFrame() {
         return frame;
+    }
+
+    @Override
+    public void setHasAwait(boolean hasAwait) {
+        super.setHasAwait(hasAwait);
+        if (hasAwait) {
+            setAwaitScope(true);
+        }
+    }
+
+    @Override
+    public boolean isAwaitScope() {
+        return awaitScope;
+    }
+
+    @Override
+    public void setAwaitScope(boolean awaitScope) {
+        this.awaitScope = awaitScope;
     }
 
     @Override
