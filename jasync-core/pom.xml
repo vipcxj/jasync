@@ -5,7 +5,7 @@
     <parent>
         <artifactId>jasync-parent</artifactId>
         <groupId>io.github.vipcxj</groupId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>0.0.1-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -82,6 +82,12 @@
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <artifactId>maven-source-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
