@@ -85,5 +85,74 @@ public class MyRestController {
 }
 ```
 
+How to use?
+=======
+First, select a implementation library to the Maven dependency. Currently, only one implementation is available.
+```xml
+<dependency>
+    <groupId>io.github.vipcxj</groupId>
+    <artifactId>jasync-reactive</artifactId>
+    <version>0.0.1</version>
+</dependency>
+```
+This implementation uses the famous library **Reactor**. The `Promise` object is a wrapper of `Mono` object.
+So the `Promise` object can be created from a `Mono` object using static method `io.github.vipcxj.jasync.reactive.Promises.from(reactor.core.publisher.Mono<T>)`.
+And the `Promise` object can be converted back to the `Mono` object using instance method `io.github.vipcxj.jasync.spec.Promise.unwrap`.
+
+Then add the core library to the Maven dependency.
+```xml
+<dependency>
+    <groupId>io.github.vipcxj</groupId>
+    <artifactId>jasync-core</artifactId>
+    <version>0.0.1</version>
+    <scope>provided</scope>
+</dependency>
+```
+The core library is only need at compile stage, so here use the **provided** scope.
+Generally, the annotation processor should be discovered by jdk automatically.
+However, if something went wrong, jdk can not find the annotation processor, try this:
+```xml
+<plugins>
+  <plugin>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <configuration>
+      <annotationProcessorPaths>
+        <path>
+          <groupId>io.github.vipcxj</groupId>
+          <artifactId>jasync-core</artifactId>
+          <version>0.0.1</version>
+        </path>
+      </annotationProcessorPaths>
+    </configuration>
+  </plugin>
+</plugins>
+```
+If you are using a jdk >= 9, you should use this instead:
+```xml
+<dependency>
+    <groupId>io.github.vipcxj</groupId>
+    <artifactId>jasync-core-java9</artifactId>
+    <version>0.0.1</version>
+    <scope>provided</scope>
+</dependency>
+```
+or
+```xml
+<plugins>
+  <plugin>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <configuration>
+      <annotationProcessorPaths>
+        <path>
+          <groupId>io.github.vipcxj</groupId>
+          <artifactId>jasync-core-java9</artifactId>
+          <version>0.0.1</version>
+        </path>
+      </annotationProcessorPaths>
+    </configuration>
+  </plugin>
+</plugins>
+```
+
 [maven-shield]: https://img.shields.io/maven-central/v/io.github.vipcxj/jasync-parent.png
 [maven-link]: https://search.maven.org/artifact/io.github.vipcxj/jasync-parent

@@ -84,5 +84,73 @@ public class MyRestController {
 }
 ```
 
+怎样使用？
+=======
+首先选择一个实现库加到maven依赖中。目前只内置了一个实现库。
+```xml
+<dependency>
+    <groupId>io.github.vipcxj</groupId>
+    <artifactId>jasync-reactive</artifactId>
+    <version>0.0.1</version>
+</dependency>
+```
+这个实现库是基于著名的响应式框架 **Reactor** 的。在这个实现中，`Promise` 对象是 `Mono` 对象的封装。
+所以 `Promise` 可以使用静态方法 `io.github.vipcxj.jasync.reactive.Promises.from(reactor.core.publisher.Mono<T>)` 来通过`Mono` 构造。 
+并且 `Promise` 也可以使用实例方法 `io.github.vipcxj.jasync.spec.Promise.unwrap` 转换回 `Mono`。
+
+然后将核心库添加到maven依赖中。核心库用于语法树的转换。
+```xml
+<dependency>
+    <groupId>io.github.vipcxj</groupId>
+    <artifactId>jasync-core</artifactId>
+    <version>0.0.1</version>
+    <scope>provided</scope>
+</dependency>
+```
+核心库仅用于编译阶段，所以这里使用了 **provided** 作用域。
+通常，APT（注解处理器）会被JDK自动发现。但如果哪里出了问题，JDK不能找到APT，试试这个：
+```xml
+<plugins>
+  <plugin>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <configuration>
+      <annotationProcessorPaths>
+        <path>
+          <groupId>io.github.vipcxj</groupId>
+          <artifactId>jasync-core</artifactId>
+          <version>0.0.1</version>
+        </path>
+      </annotationProcessorPaths>
+    </configuration>
+  </plugin>
+</plugins>
+```
+如果你试用的JDK版本大于等于9，你应该用这个库代替：
+```xml
+<dependency>
+    <groupId>io.github.vipcxj</groupId>
+    <artifactId>jasync-core-java9</artifactId>
+    <version>0.0.1</version>
+    <scope>provided</scope>
+</dependency>
+```
+or
+```xml
+<plugins>
+  <plugin>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <configuration>
+      <annotationProcessorPaths>
+        <path>
+          <groupId>io.github.vipcxj</groupId>
+          <artifactId>jasync-core-java9</artifactId>
+          <version>0.0.1</version>
+        </path>
+      </annotationProcessorPaths>
+    </configuration>
+  </plugin>
+</plugins>
+```
+
 [maven-shield]: https://img.shields.io/maven-central/v/io.github.vipcxj/jasync-parent.png
 [maven-link]: https://search.maven.org/artifact/io.github.vipcxj/jasync-parent
