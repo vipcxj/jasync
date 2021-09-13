@@ -5,7 +5,7 @@
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-parent</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.1</version>
+    <version>0.0.2-SNAPSHOT</version>
     <url>https://github.com/vipcxj/jasync</url>
     <description>
         JAsync implements Async-Await fashion for Java just like es and c#.
@@ -20,7 +20,7 @@
         <url>https://github.com/vipcxj/jasync</url>
         <connection>scm:git:git://github.com/vipcxj/jasync.git</connection>
         <developerConnection>scm:git:https://github.com/vipcxj/jasync.git</developerConnection>
-        <tag>v0.0.1</tag>
+        <tag>HEAD</tag>
     </scm>
     <developers>
         <developer>
