@@ -1,1 +1,1 @@
-mvn release:prepare
+mvn release:prepare -DskipTests

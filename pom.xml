@@ -8,6 +8,7 @@
     <artifactId>jasync-parent</artifactId>
     <packaging>pom</packaging>
     <version>0.0.1-SNAPSHOT</version>
+    <name>JAsync Parent</name>
     <url>https://github.com/vipcxj/jasync</url>
     <description>
         JAsync implements Async-Await fashion for Java just like es and c#.

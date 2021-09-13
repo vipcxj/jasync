@@ -1,1 +1,1 @@
-mvn release:perform -Pdeploy
+mvn release:perform -Pdeploy -DskipTests

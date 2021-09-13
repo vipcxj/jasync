@@ -8,8 +8,37 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-
     <artifactId>jasync-reactive</artifactId>
+
+    <name>JAsync Reactive</name>
+    <url>https://github.com/vipcxj/jasync</url>
+    <description>
+        JAsync implements Async-Await fashion for Java just like es and c#.
+        This is the adaptor library for Reactor
+    </description>
+    <licenses>
+        <license>
+            <name>Apache 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+    <scm>
+        <url>https://github.com/vipcxj/jasync</url>
+        <connection>scm:git:git://github.com/vipcxj/jasync.git</connection>
+        <developerConnection>scm:git:https://github.com/vipcxj/jasync.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+    <developers>
+        <developer>
+            <name>XiaoJing Chen</name>
+            <id>vipcxj</id>
+            <email>vipcxj@126.com</email>
+            <roles>
+                <role>Developer</role>
+            </roles>
+            <timezone>+8</timezone>
+        </developer>
+    </developers>
 
     <dependencies>
         <dependency>
