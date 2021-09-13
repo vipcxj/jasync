@@ -16,18 +16,29 @@ import javax.lang.model.element.ExecutableElement;
 
 public class JAsyncInstanceContext extends JAsyncContext implements IJAsyncInstanceContext {
 
-    protected ExecutableElement methodRoot;
-    protected CompilationUnitTree cu;
-    protected JAsyncInfo info;
+    protected final JAsyncInstanceContext parent;
+    protected final ExecutableElement methodRoot;
+    protected final CompilationUnitTree cu;
+    protected final JAsyncInfo info;
     protected int pos;
 
     public JAsyncInstanceContext(IJAsyncContext asyncContext, ExecutableElement methodRoot) {
         super(asyncContext);
+        this.parent = null;
         this.methodRoot = methodRoot;
         JavacTrees javacTrees = getTrees();
         TreePath path = javacTrees.getPath(methodRoot);
         this.cu = path.getCompilationUnit();
         this.pos = calcSafePos((JCTree.JCCompilationUnit) cu);
+        AnnotationMirror async = AnnotationUtils.getAnnotationDirectOn(methodRoot, Constants.ASYNC);
+        this.info = new JAsyncInfo(this, async);
+    }
+
+    public JAsyncInstanceContext(ExecutableElement methodRoot, JAsyncInstanceContext parent) {
+        super(parent);
+        this.parent = parent;
+        this.methodRoot = methodRoot;
+        this.cu = null;
         AnnotationMirror async = AnnotationUtils.getAnnotationDirectOn(methodRoot, Constants.ASYNC);
         this.info = new JAsyncInfo(this, async);
     }
@@ -50,12 +61,12 @@ public class JAsyncInstanceContext extends JAsyncContext implements IJAsyncInsta
 
     @Override
     public CompilationUnitTree getCompilationUnitTree() {
-        return cu;
+        return parent != null ? parent.cu : cu;
     }
 
     @Override
     public TreePath getPath(JCTree tree) {
-        return trees.getPath(cu, tree);
+        return trees.getPath(getCompilationUnitTree(), tree);
     }
 
     @Override
@@ -78,8 +89,15 @@ public class JAsyncInstanceContext extends JAsyncContext implements IJAsyncInsta
     @Override
     public TreeMaker safeMaker() {
         TreeMaker maker = getTreeMaker();
-        maker.pos = pos++;
+        maker.pos = incPos();
         return maker;
+    }
+
+    private int incPos() {
+        if (parent != null) {
+            return parent.incPos();
+        }
+        return pos++;
     }
 
     static class TreeSafePosCalculator extends TreeScanner {

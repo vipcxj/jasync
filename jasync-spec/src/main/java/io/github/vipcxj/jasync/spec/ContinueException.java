@@ -1,6 +1,6 @@
 package io.github.vipcxj.jasync.spec;
 
-public class ContinueException extends RuntimeException {
+public class ContinueException extends JAsyncException {
     private static final long serialVersionUID = 1075004752344694554L;
     private String label;
 

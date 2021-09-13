@@ -7,6 +7,7 @@ import io.github.vipcxj.jasync.spec.switchexpr.ICase;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -42,7 +43,7 @@ public class MonoPromise<T> implements Promise<T> {
             resolve(v);
             empty.set(false);
             try {
-                return Utils.safeApply(resolver, v).unwrap();
+                return Utils.safeApply(resolver, v).unwrap(Mono.class);
             } catch (Throwable t) {
                 return Mono.error(t);
             }
@@ -50,7 +51,7 @@ public class MonoPromise<T> implements Promise<T> {
             if (empty.get()) {
                 resolve(null);
                 try {
-                    return Utils.safeApply(resolver, null).unwrap();
+                    return Utils.safeApply(resolver, null).unwrap(Mono.class);
                 } catch (Throwable t) {
                     return Mono.error(t);
                 }
@@ -62,16 +63,20 @@ public class MonoPromise<T> implements Promise<T> {
 
     @Override
     public Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, PromiseFunction<Throwable, T> reject) {
+        return doCatch(exceptionsType, reject, true);
+    }
+
+    private Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, PromiseFunction<Throwable, T> reject, boolean processInnerExceptions) {
         return new MonoPromise<>(mono
                 .onErrorResume(
                         t -> exceptionsType.stream().anyMatch(e -> e.isAssignableFrom(t.getClass())),
                         t -> {
                             reject(t);
-                            if (JAsync.mustRethrowException(t, exceptionsType)) {
+                            if (processInnerExceptions && JAsync.mustRethrowException(t, exceptionsType)) {
                                 return Mono.error(t);
                             }
                             try {
-                                return Utils.safeApply(reject, t).unwrap();
+                                return Utils.safeApply(reject, t).unwrap(Mono.class);
                             } catch (Throwable e) {
                                 return Mono.error(e);
                             }
@@ -82,10 +87,10 @@ public class MonoPromise<T> implements Promise<T> {
     @Override
     public Promise<T> doFinally(VoidPromiseSupplier block) {
         AtomicReference<Boolean> isCatch = new AtomicReference<>(false);
-        return doCatch(t -> {
+        return doCatch(Collections.singletonList(Throwable.class), t -> {
             isCatch.set(true);
             return Utils.safeGetVoid(block).then(() -> JAsync.error(t));
-        }).then(v -> {
+        }, false).then(v -> {
             if (!isCatch.get()) {
                 return Utils.safeGetVoid(block).then(() -> just(v));
             } else {
@@ -103,7 +108,7 @@ public class MonoPromise<T> implements Promise<T> {
                 return null;
             }
             return JAsync.error(e);
-        }).unwrap();
+        }).unwrap(Mono.class);
     }
 
     private Mono<? extends Integer> doWhileBody(VoidPromiseSupplier body, String label) throws Throwable {
@@ -112,7 +117,7 @@ public class MonoPromise<T> implements Promise<T> {
                 return null;
             }
             return JAsync.error(e);
-        }).unwrap();
+        }).unwrap(Mono.class);
     }
 
     @Override
@@ -164,7 +169,7 @@ public class MonoPromise<T> implements Promise<T> {
             AtomicReference<T> ref = new AtomicReference<>(v);
             return new MonoPromise<>(Mono.defer(() -> {
                 try {
-                    return Utils.safeTest(predicate).<Mono<Boolean>>unwrap().flatMap(test -> {
+                    return Utils.safeTest(predicate).<Mono<Boolean>>unwrap(Mono.class).flatMap(test -> {
                         try {
                             if (test) {
                                 return doWhileBody(block, label, ref);
@@ -191,7 +196,7 @@ public class MonoPromise<T> implements Promise<T> {
     public Promise<Void> doWhileVoid(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label) {
         return this.then(() -> new MonoPromise<Void>(Mono.defer(() -> {
             try {
-                return Utils.safeTest(predicate).<Mono<Boolean>>unwrap().flatMap(test -> {
+                return Utils.safeTest(predicate).<Mono<Boolean>>unwrap(Mono.class).flatMap(test -> {
                     try {
                         if (test) {
                             return doWhileBody(block, label);
@@ -426,7 +431,10 @@ public class MonoPromise<T> implements Promise<T> {
     }
 
     @Override
-    public <I> I unwrap() {
+    public <I> I unwrap(Class<?> type) {
+        if (!Mono.class.equals(type)) {
+            throw new UnwrapUnsupportedException(type, Mono.class);
+        }
         //noinspection unchecked
         return (I) mono;
     }

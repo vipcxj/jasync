@@ -10,25 +10,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class MonoPromiseTest {
 
-    private boolean always() {
-        return true;
-    }
-
-    private void test1_() {
-        Integer a = Promises.from(Mono.just(6).delayElement(Duration.ofSeconds(1))).await();
-        Integer b = Promises.from(Mono.just(8).delayElement(Duration.ofSeconds(1))).await();
-        for (int i = 0; i < a; ++i) {
-            for (int j = 0; j < b; ++j) {
-                System.out.println(Promises.from(Mono.just(i * j).delayElement(Duration.ofSeconds(1))).await());
-                if (i == 5) {
-                    break;
-                } else if (i == 3 && j == 4) {
-                    return;
-                }
-            }
-        }
-    }
-
     @Test
     public void test1() {
         Promises.from(Mono.just(6).delayElement(Duration.ofSeconds(1))).then(a ->

@@ -12,6 +12,12 @@ public class Promises implements PromiseProvider {
         return new MonoPromise<>(mono);
     }
 
+    @Override
+    public <T> Promise<T> from(Object from) {
+        //noinspection unchecked
+        return Promises.from((Mono<T>) from);
+    }
+
     public <T> Promise<T> just(T value) {
         return new MonoPromise<>(Mono.justOrEmpty(value));
     }
@@ -19,7 +25,7 @@ public class Promises implements PromiseProvider {
     public <T> Promise<T> defer(PromiseSupplier<T> block) {
         return from(Mono.defer(() -> {
             try {
-                return Utils.safeGet(block).unwrap();
+                return Utils.safeGet(block).unwrap(Mono.class);
             } catch (Throwable t) {
                 return Mono.error(t);
             }

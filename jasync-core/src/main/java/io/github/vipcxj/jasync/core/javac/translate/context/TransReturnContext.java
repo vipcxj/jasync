@@ -2,8 +2,8 @@ package io.github.vipcxj.jasync.core.javac.translate.context;
 
 import com.sun.tools.javac.tree.JCTree;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
-import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
+import io.github.vipcxj.jasync.core.javac.context.JAsyncSymbols;
 import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
 
 public class TransReturnContext extends AbstractTransStatementContext<JCTree.JCReturn> {
@@ -18,6 +18,14 @@ public class TransReturnContext extends AbstractTransStatementContext<JCTree.JCR
     protected void addNormalChildContext(TranslateContext<?> child) {
         checkContextTree(child, tree.expr);
         exprContext = child;
+    }
+
+    private static boolean isNull(JCTree tree) {
+        if (tree instanceof JCTree.JCLiteral) {
+            JCTree.JCLiteral literal = (JCTree.JCLiteral) tree;
+            return literal.value == null;
+        }
+        return false;
     }
 
     private boolean inAwaitScope() {
@@ -43,12 +51,16 @@ public class TransReturnContext extends AbstractTransStatementContext<JCTree.JCR
 
     @Override
     public JCTree buildTreeWithoutThen(boolean replaceSelf) {
+        JCTree.JCExpression expr = exprContext != null ? (JCTree.JCExpression) exprContext.buildTree(false) : null;
+        IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
+        JAsyncSymbols symbols = jasyncContext.getJAsyncSymbols();
         if (inAwaitScope()) {
-            IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
-            JCTree.JCExpression expr = exprContext != null ? (JCTree.JCExpression) exprContext.buildTree(false) : null;
-            return JavacUtils.makeReturn(jasyncContext, jasyncContext.getJAsyncSymbols().makeDoReturn(tree, expr));
+            tree.expr = symbols.makeDoReturn(tree, expr);
+        } else if (isNull(getTree().expr)) {
+            tree.expr = symbols.makeJust();
         } else {
-            return tree;
+            tree.expr = expr;
         }
+        return tree;
     }
 }

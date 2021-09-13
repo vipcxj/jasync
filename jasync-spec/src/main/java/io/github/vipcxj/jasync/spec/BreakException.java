@@ -1,6 +1,6 @@
 package io.github.vipcxj.jasync.spec;
 
-public class BreakException extends RuntimeException {
+public class BreakException extends JAsyncException {
 
     private static final long serialVersionUID = -6532237818800947165L;
     private String label;

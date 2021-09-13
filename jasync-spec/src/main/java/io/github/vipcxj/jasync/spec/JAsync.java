@@ -264,10 +264,7 @@ public class JAsync {
     }
 
     private static Promise<Void> doForBody(VoidPromiseSupplier step, VoidPromiseSupplier body) throws Throwable {
-        return Utils.safeGetVoid(body).doCatch(ContinueException.class, (ThrowableConsumer<ContinueException>) (e) -> {
-            Utils.safeGetVoid(step);
-            throw e;
-        }).thenVoid(() -> {
+        return Utils.safeGetVoid(body).doFinally(() -> {
             Utils.safeGetVoid(step);
             return null;
         });

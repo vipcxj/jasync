@@ -5,6 +5,8 @@ import io.github.vipcxj.jasync.spec.functional.PromiseSupplier;
 
 public interface PromiseProvider {
 
+    <T> Promise<T> from(Object from);
+
     <T> Promise<T> just(T value);
 
     <T> Promise<T> defer(PromiseSupplier<T> block);

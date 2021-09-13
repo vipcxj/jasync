@@ -89,6 +89,14 @@ public class Constants {
 
     public static final String INDY_MAKE_VOID_PROMISE_FUNCTION = "voidPromiseFunction";
     public static final String INDY_MAKE_VOID_PROMISE_SUPPLIER = "voidPromiseSupplier";
+    public static final String INDY_MAKE_BOOLEAN_VOID_PROMISE_FUNCTION = "booleanVoidPromiseFunction";
+    public static final String INDY_MAKE_BYTE_VOID_PROMISE_FUNCTION = "byteVoidPromiseFunction";
+    public static final String INDY_MAKE_CHAR_VOID_PROMISE_FUNCTION = "charVoidPromiseFunction";
+    public static final String INDY_MAKE_DOUBLE_VOID_PROMISE_FUNCTION = "doubleVoidPromiseFunction";
+    public static final String INDY_MAKE_FLOAT_VOID_PROMISE_FUNCTION = "floatVoidPromiseFunction";
+    public static final String INDY_MAKE_INT_VOID_PROMISE_FUNCTION = "intVoidPromiseFunction";
+    public static final String INDY_MAKE_LONG_VOID_PROMISE_FUNCTION = "longVoidPromiseFunction";
+    public static final String INDY_MAKE_SHORT_VOID_PROMISE_FUNCTION = "shortVoidPromiseFunction";
     public static final String INDY_MAKE_THROWABLE_CONSUMER = "throwableConsumer";
     public static final String INDY_MAKE_PROMISE_FUNCTION = "promiseFunction";
     public static final String INDY_MAKE_BOOLEAN_SUPPLIER = "booleanSupplier";

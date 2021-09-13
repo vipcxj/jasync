@@ -3,7 +3,10 @@ package io.github.vipcxj.jasync.core.javac.visitor;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeScanner;
 import com.sun.tools.javac.util.List;
+import io.github.vipcxj.jasync.core.javac.AnnotationUtils;
+import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
+import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
 import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
 import io.github.vipcxj.jasync.core.javac.translate.context.TransBlockContext;
@@ -12,6 +15,9 @@ import io.github.vipcxj.jasync.core.javac.translate.context.TransNullContext;
 import io.github.vipcxj.jasync.core.javac.translate.context.TransTreePlaceHolderContext;
 import io.github.vipcxj.jasync.core.javac.translate.factories.TranslateContextFactories;
 import io.github.vipcxj.jasync.core.javac.translate.spi.TranslateContextFactory;
+
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
 
 public class JAsyncAnalyzer extends TreeScanner {
 
@@ -30,6 +36,14 @@ public class JAsyncAnalyzer extends TreeScanner {
         if (tree == null) {
             new TransNullContext(context).enter().exit();
         } else {
+            if (tree instanceof JCTree.JCMethodDecl) {
+                Element element = context.getJasyncContext().getElement(tree);
+                AnnotationMirror async = AnnotationUtils.getAnnotationDirectOn(element, Constants.ASYNC);
+                if (async != null) {
+                    JavacUtils.processAsyncMethod(context.getJasyncContext(), element);
+                    return;
+                }
+            }
             if (context.shouldBeReplaced(tree)) {
                 TransTreePlaceHolderContext.createContext(context, tree).enter().exit();
             } else {
@@ -52,6 +66,17 @@ public class JAsyncAnalyzer extends TreeScanner {
     @Override
     public void scan(JCTree tree) {
         scan(tree, false);
+    }
+
+    public void scanMethod(JCTree.JCMethodDecl methodDecl) {
+        TransMethodContext methodContext = new TransMethodContext(context, methodDecl);
+        methodContext.enter();
+        try {
+            super.scan(methodDecl);
+        } finally {
+            result = methodContext;
+            methodContext.exit();
+        }
     }
 
     private void wrapScan(JCTree tree, boolean forceAwait) {
@@ -104,9 +129,17 @@ public class JAsyncAnalyzer extends TreeScanner {
         wrapScan(tree.body);
     }
 
+    @Override
+    public void visitLambda(JCTree.JCLambda tree) { }
+
+    @Override
+    public void visitClassDef(JCTree.JCClassDecl tree) {
+        super.scan(tree.defs);
+    }
+
     public static TransMethodContext scan(IJAsyncInstanceContext context, JCTree.JCMethodDecl methodDecl) {
         JAsyncAnalyzer analyzer = new JAsyncAnalyzer(context);
-        analyzer.scan(methodDecl);
+        analyzer.scanMethod(methodDecl);
         return (TransMethodContext) analyzer.result;
     }
 }

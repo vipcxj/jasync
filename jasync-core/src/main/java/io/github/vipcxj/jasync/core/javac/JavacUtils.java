@@ -12,7 +12,11 @@ import io.github.vipcxj.jasync.core.javac.model.TreeFactory;
 import io.github.vipcxj.jasync.core.javac.model.VarInfo;
 import io.github.vipcxj.jasync.core.javac.model.VarKey;
 import io.github.vipcxj.jasync.core.javac.model.VarUseState;
+import io.github.vipcxj.jasync.core.javac.translate.context.TransMethodContext;
+import io.github.vipcxj.jasync.core.javac.translator.NormalizeTranslator;
 import io.github.vipcxj.jasync.core.javac.utils.SymbolHelpers;
+import io.github.vipcxj.jasync.core.javac.visitor.JAsyncAnalyzer;
+import io.github.vipcxj.jasync.core.javac.visitor.PosVisitor;
 import io.github.vipcxj.jasync.core.javac.visitor.ReturnScanner;
 import io.github.vipcxj.jasync.core.javac.visitor.TypeCalculator;
 import io.github.vipcxj.jasync.runtime.helpers.*;
@@ -26,6 +30,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import java.io.StringWriter;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -1291,6 +1296,35 @@ public class JavacUtils {
                 newTypes[i] = context.getTypes().boxedTypeOrType(argTypes[i]);
             }
             return (Type) typeUtils.getDeclaredType(elements.getTypeElement(canonicalName), newTypes);
+        }
+    }
+
+    public static void processAsyncMethod(IJAsyncContext context, Element element) {
+        IJAsyncInstanceContext instanceContext;
+        if (context instanceof IJAsyncInstanceContext) {
+            instanceContext = new JAsyncInstanceContext((ExecutableElement) element, (JAsyncInstanceContext) context);
+        } else {
+            instanceContext = new JAsyncInstanceContext(context, (ExecutableElement) element);
+        }
+        if (instanceContext.getInfo().isEnabled()) {
+            JCTree.JCMethodDecl tree = (JCTree.JCMethodDecl) instanceContext.getTrees().getTree(element);
+            new NormalizeTranslator(instanceContext).translate(tree);
+            TransMethodContext transContext = JAsyncAnalyzer.scan(instanceContext, tree);
+            transContext.complete();
+            transContext.lock();
+            transContext.buildTree(true);
+//                        tree.body.accept(new TryWithResourceTranslator(instanceContext));
+//                        tree.body.accept(new ReturnTranslator(instanceContext));
+//                        new PromiseTranslator(instanceContext, false).reshape(tree);
+//                        tree.body.accept(new SimplifiedTranslator());
+            StringWriter writer = new StringWriter();
+            if (instanceContext.getInfo().isLogResultPosTree()) {
+                tree.accept(new PosVisitor(writer, false));
+                System.out.println(writer);
+            }
+            if (instanceContext.getInfo().isLogResultTree()) {
+                System.out.println(tree);
+            }
         }
     }
 }

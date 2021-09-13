@@ -182,5 +182,5 @@ public interface Promise<T> {
     Handle async();
     T block();
     T block(Duration duration);
-    <I> I unwrap();
+    <I> I unwrap(Class<?> type);
 }

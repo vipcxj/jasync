@@ -6,6 +6,11 @@ import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 @SuppressWarnings("UnusedLabel")
 public class LabelTest {
 
@@ -754,11 +759,94 @@ public class LabelTest {
         }
     }
 
+    @Async
+    private Promise<Integer> foreachContinueNoAwait() {
+        int[] array = new int[] {1, 2, 3, 4};
+        List<Integer> list = new ArrayList<>();
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        list.add(4);
+        Set<Integer> set = new LinkedHashSet<>();
+        set.add(1);
+        set.add(2);
+        set.add(3);
+        set.add(4);
+        set.add(5);
+        int a = 4;
+        label0:
+        label1:
+        for (int i : array) {
+            label2:
+            for (int j : list) {
+                if (j == 3) {
+                    continue label1;
+                }
+                label3:
+                for (int k : set) {
+                    if (k == 5) {
+                        continue label2;
+                    }
+                    a += k;
+                }
+                a += j;
+            }
+            a += i;
+        }
+        return JAsync.just(a);
+    }
+
+    @Async
+    private Promise<Integer> foreachContinueHasAwait() {
+        int[] array = new int[] {1, 2, 3, 4};
+        List<Integer> list = new ArrayList<>();
+        list.add(1);
+        list.add(2);
+        list.add(3);
+        list.add(4);
+        Set<Integer> set = new LinkedHashSet<>();
+        set.add(1);
+        set.add(2);
+        set.add(3);
+        set.add(4);
+        set.add(5);
+        int a = 4;
+        label0:
+        label1:
+        for (int i : JAsync.just(array).await()) {
+            label2:
+            for (int j : list) {
+                if (JAsync.just(j).await() == 3) {
+                    continue label1;
+                }
+                label3:
+                for (int k : JAsync.just(set).await()) {
+                    if (JAsync.just(k).await().equals(JAsync.just(5).await())) {
+                        continue label2;
+                    }
+                    a += JAsync.just(k).await();
+                }
+                a += JAsync.just(j).await();
+            }
+            a += i;
+        }
+        return JAsync.just(a);
+    }
+
+    @Test
+    public void testForeach() {
+        Assertions.assertEquals(foreachContinueNoAwait().block(), foreachContinueHasAwait().block());
+    }
+
     @Test
     public void ATest() {
         for (int i = 0;;++i) {
             try {
-                break;
+                if (i < 10) {
+                    continue;
+                } else {
+                    break;
+                }
             } finally {
                 System.out.println("break");
             }
