@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.spec;
 
+import io.github.vipcxj.jasync.spec.catcher.Catcher;
 import io.github.vipcxj.jasync.spec.functional.*;
 import io.github.vipcxj.jasync.spec.switchexpr.ICase;
 
@@ -69,6 +70,7 @@ public interface Promise<T> {
             return null;
         });
     }
+    Promise<T> doCatch(List<Catcher<?, T>> catchers);
     Promise<T> doFinally(VoidPromiseSupplier block);
 
     Promise<T> doWhile(BooleanSupplier predicate, PromiseFunction<T, T> block, String label);

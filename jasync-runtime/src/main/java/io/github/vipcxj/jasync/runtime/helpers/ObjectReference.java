@@ -13,6 +13,7 @@ public class ObjectReference<T> implements java.io.Serializable {
     public static final int FLAG_LONG = 5;
     public static final int FLAG_FLOAT = 6;
     public static final int FLAG_DOUBLE = 7;
+    public static final int FLAG_STRING = 8;
     private final AtomicReference<T> atomic;
     private final int flag;
 
@@ -42,12 +43,50 @@ public class ObjectReference<T> implements java.io.Serializable {
         return flag;
     }
 
+    private boolean isInteger(Object value) {
+        return value instanceof Integer || value instanceof Long || value instanceof Byte || value instanceof Short || value instanceof Character;
+    }
+
+    private Long castLong(Object value) {
+        if (value instanceof Integer) {
+            return (long) (Integer) value;
+        } else if (value instanceof Long) {
+            return (Long) value;
+        } else if (value instanceof Byte) {
+            return (long) (Byte) value;
+        } else if (value instanceof Short) {
+            return (long) (Short) value;
+        } else if (value instanceof Character) {
+            return (long) (Character) value;
+        } else {
+            throw new IllegalArgumentException("Invalid type: " + (value != null ? value.getClass() : null) + ".");
+        }
+    }
+
     private boolean isInteger() {
-        return flag != FLAG_OTHER && flag != FLAG_FLOAT && flag != FLAG_DOUBLE;
+        return flag != FLAG_OTHER && flag != FLAG_FLOAT && flag != FLAG_DOUBLE && flag != FLAG_STRING;
+    }
+
+    private boolean isDecimal(Object value) {
+        return value instanceof Float || value instanceof Double;
+    }
+
+    private Double castDouble(Object value) {
+        if (value instanceof Float) {
+            return (double) (Float) value;
+        } else if (value instanceof Double) {
+            return (Double) value;
+        } else {
+            throw new IllegalArgumentException("Invalid type: " + (value != null ? value.getClass() : null) + ".");
+        }
     }
 
     private boolean isDecimal() {
         return flag == FLAG_FLOAT || flag == FLAG_DOUBLE;
+    }
+
+    private boolean isString() {
+        return flag == FLAG_STRING;
     }
 
     private void assertInteger(String op) {
@@ -57,8 +96,14 @@ public class ObjectReference<T> implements java.io.Serializable {
     }
 
     private void assertNumber(String op) {
-        if (flag == FLAG_OTHER) {
+        if (flag == FLAG_OTHER || flag == FLAG_STRING) {
             throw new UnsupportedOperationException("The operation " + op + " only support on number value.");
+        }
+    }
+
+    private void assertNumberOrString(String op) {
+        if (flag == FLAG_OTHER) {
+            throw new UnsupportedOperationException("The operation " + op + " only support on number or string value.");
         }
     }
 
@@ -108,6 +153,10 @@ public class ObjectReference<T> implements java.io.Serializable {
         }
     }
 
+    private String toString(T value) {
+        return value != null ? value.toString() : null;
+    }
+
     @SuppressWarnings("unchecked")
     private T toT(long value) {
         switch (flag) {
@@ -152,6 +201,11 @@ public class ObjectReference<T> implements java.io.Serializable {
         }
     }
 
+    private T toT(String value) {
+        //noinspection unchecked
+        return (T) value;
+    }
+
     private T plus(T a, T b) {
         return plus(a, b, false);
     }
@@ -165,8 +219,12 @@ public class ObjectReference<T> implements java.io.Serializable {
             double da = toDouble(a);
             double db = toDouble(b);
             return toT(da + db);
+        } else if (isString()) {
+            String sa = toString(a);
+            String sb = toString(b);
+            return toT("" + sa + sb);
         }
-        throw new IllegalArgumentException("The current value is not number, plus is not permit.");
+        throw new IllegalArgumentException("The current value is not number or string, plus is not permit.");
     }
 
     private T minus(T a, T b) {
@@ -349,6 +407,36 @@ public class ObjectReference<T> implements java.io.Serializable {
             next = plus(prev, toT(v), true);
         } while (!atomic.compareAndSet(prev, next));
         return next;
+    }
+
+    public T addAndGetValue(Object v) {
+        if (isString()) {
+            T prev, next;
+            do {
+                prev = atomic.get();
+                next = plus(prev, toT(v != null ? v.toString() : null));
+            } while (!atomic.compareAndSet(prev, next));
+            return next;
+        } else {
+            assertNumber("plus and assign");
+            if (v == null) {
+                throw new NullPointerException();
+            }
+            T arg;
+            if (isInteger(v)) {
+                arg = toT(castLong(v));
+            } else if (isDecimal(v)) {
+                arg = toT(castDouble(v));
+            } else {
+                throw new IllegalArgumentException("This is impossible.");
+            }
+            T prev, next;
+            do {
+                prev = atomic.get();
+                next = plus(prev, arg);
+            } while (!atomic.compareAndSet(prev, next));
+            return next;
+        }
     }
 
     public T minusAndGetValue(long v) {

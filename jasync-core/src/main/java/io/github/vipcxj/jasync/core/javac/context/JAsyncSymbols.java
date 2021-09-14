@@ -15,6 +15,8 @@ import io.github.vipcxj.jasync.core.javac.utils.SymbolHelpers;
 import io.github.vipcxj.jasync.runtime.helpers.*;
 import io.github.vipcxj.jasync.spec.JAsync;
 import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.catcher.Catcher;
+import io.github.vipcxj.jasync.spec.catcher.Catchers;
 import io.github.vipcxj.jasync.spec.functional.*;
 import io.github.vipcxj.jasync.spec.switchexpr.*;
 
@@ -32,6 +34,8 @@ public class JAsyncSymbols {
     private final Symbol.MethodSymbol symPromiseThenFuncArg;
     private final Symbol.MethodSymbol symPromiseThenVoidSupplierArg;
     private final Symbol.MethodSymbol symPromiseThenVoidFuncArg;
+    private final Symbol.MethodSymbol symPromiseDoCatch;
+    private final Symbol.MethodSymbol symPromiseDoFinally;
     private final Symbol.MethodSymbol symPromiseCatchReturn;
     private final Symbol.ClassSymbol symJAsync;
     private final Symbol.MethodSymbol symJAsyncJustValue;
@@ -66,6 +70,10 @@ public class JAsyncSymbols {
     private final Symbol.MethodSymbol symEnumCaseOf;
     private final Symbol.ClassSymbol symCases;
     private final Symbol.MethodSymbol symCasesOf;
+    private final Symbol.ClassSymbol symCatcher;
+    private final Symbol.MethodSymbol symCatcherOf;
+    private final Symbol.ClassSymbol symCatchers;
+    private final Symbol.MethodSymbol symCatchersOf;
     private final Symbol.MethodSymbol symBooleanRefGet;
     private final Symbol.MethodSymbol symByteRefGet;
     private final Symbol.MethodSymbol symCharRefGet;
@@ -109,6 +117,18 @@ public class JAsyncSymbols {
                 names.fromString(Constants.THEN_VOID),
                 false,
                 VoidPromiseFunction.class
+        );
+        symPromiseDoCatch = SymbolHelpers.INSTANCE.getMethodMember(
+                types, symPromise,
+                names.fromString(Constants.DO_CATCH),
+                false,
+                List.class
+        );
+        symPromiseDoFinally = SymbolHelpers.INSTANCE.getMethodMember(
+                types, symPromise,
+                names.fromString(Constants.DO_FINALLY),
+                false,
+                VoidPromiseSupplier.class
         );
         symPromiseCatchReturn = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symPromise,
@@ -282,6 +302,20 @@ public class JAsyncSymbols {
                 names.fromString(Constants.OF),
                 true,
                 ICase[].class
+        );
+        symCatcher = elements.getTypeElement(Catcher.class.getCanonicalName());
+        symCatcherOf = SymbolHelpers.INSTANCE.getMethodMember(
+                types, symCatcher,
+                names.fromString(Constants.OF),
+                true,
+                Class.class, PromiseFunction.class
+        );
+        symCatchers = elements.getTypeElement(Catchers.class.getCanonicalName());
+        symCatchersOf = SymbolHelpers.INSTANCE.getMethodMember(
+                types, symCatchers,
+                names.fromString(Constants.OF),
+                true,
+                Catcher[].class
         );
         Name refGet = names.fromString(Constants.REFERENCE_GET);
         Symbol.ClassSymbol symBooleanRef = elements.getTypeElement(BooleanReference.class.getCanonicalName());
@@ -499,6 +533,14 @@ public class JAsyncSymbols {
         return maker.Select(maker.QualIdent(symCases), symCasesOf);
     }
 
+    public JCTree.JCExpression makeCatcherOf() {
+        return maker.Select(maker.QualIdent(symCatcher), symCatcherOf);
+    }
+
+    public JCTree.JCExpression makeCatchersOf() {
+        return maker.Select(maker.QualIdent(symCatchers), symCatchersOf);
+    }
+
     public JCTree.JCExpression makeRefGet(Symbol.VarSymbol symRef) {
         String qName = symRef.type.asElement().getQualifiedName().toString();
         Symbol.MethodSymbol methodSymbol;
@@ -604,6 +646,7 @@ public class JAsyncSymbols {
      * 1: one arg, accept only integer.
      * 2: one arg, accept integer or decimal.
      * 3: one arg, accept self type.
+     * 4: one arg, accept integer or decimal or string.
      * -1: others.
      * @param tag tag
      * @return type
@@ -612,12 +655,13 @@ public class JAsyncSymbols {
         switch (tag) {
             case ASSIGN:
                 return 3;
+            case PLUS_ASG:
+                return 4;
             case PREINC:
             case PREDEC:
             case POSTINC:
             case POSTDEC:
                 return 0;
-            case PLUS_ASG:
             case MINUS_ASG:
             case DIV_ASG:
             case MUL_ASG:
@@ -694,10 +738,12 @@ public class JAsyncSymbols {
                 methodSymbol = SymbolHelpers.INSTANCE.getMethodMember(types, refOwnerSymbol, refMethodName, false, long.class);
                 refMethodSymbols.put(key, methodSymbol);
             }
-        } else if (refTagType == 2) {
+        } else if (refTagType == 2 || refTagType == 4) {
             int refExprType = getRefExprType(expr.type);
             if (refExprType == 2) {
                 key |= 1 << 8;
+            } else if (refExprType == 0) {
+                key |= 2 << 8;
             }
             methodSymbol = refMethodSymbols.get(key);
             if (methodSymbol == null) {
@@ -705,6 +751,8 @@ public class JAsyncSymbols {
                     methodSymbol = SymbolHelpers.INSTANCE.getMethodMember(types, refOwnerSymbol, refMethodName, false, long.class);
                 } else if (refExprType == 2) {
                     methodSymbol = SymbolHelpers.INSTANCE.getMethodMember(types, refOwnerSymbol, refMethodName, false, double.class);
+                } else if (refExprType == 0) {
+                    methodSymbol = SymbolHelpers.INSTANCE.getMethodMember(types, refOwnerSymbol, refMethodName, false, Object.class);
                 } else {
                     throw new IllegalArgumentException("Invalid expr type: " + expr.type + ".");
                 }
@@ -748,6 +796,14 @@ public class JAsyncSymbols {
 
     public JCTree.JCExpression makePromiseThenVoidSupplierArg(JCTree.JCExpression expr) {
         return expr != null ? maker.Select(expr, symPromiseThenVoidSupplierArg) : maker.Ident(symPromiseThenVoidSupplierArg);
+    }
+
+    public JCTree.JCExpression makePromiseDoCatch(JCTree.JCExpression expr) {
+        return expr != null ? maker.Select(expr, symPromiseDoCatch) : maker.Ident(symPromiseDoCatch);
+    }
+
+    public JCTree.JCExpression makePromiseDoFinally(JCTree.JCExpression expr) {
+        return expr != null ? maker.Select(expr, symPromiseDoFinally) : maker.Ident(symPromiseDoFinally);
     }
 
     enum RefMethod {

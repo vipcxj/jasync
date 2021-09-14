@@ -29,6 +29,9 @@ public class AsyncProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+        if (context.getLog().nerrors > 0) {
+            return false;
+        }
         for (TypeElement annotation : annotations) {
             if (annotation.getQualifiedName().toString().equals(Constants.ASYNC)) {
                 for (Element element : roundEnv.getElementsAnnotatedWith(annotation)) {

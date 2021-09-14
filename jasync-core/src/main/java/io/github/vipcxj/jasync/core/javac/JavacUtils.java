@@ -872,6 +872,8 @@ public class JavacUtils {
             return ObjectReference.FLAG_FLOAT;
         } else if (Double.class.getCanonicalName().equals(qName)) {
             return ObjectReference.FLAG_DOUBLE;
+        } else if (String.class.getCanonicalName().equals(qName)) {
+            return ObjectReference.FLAG_STRING;
         } else {
             return ObjectReference.FLAG_OTHER;
         }
@@ -1297,6 +1299,12 @@ public class JavacUtils {
             }
             return (Type) typeUtils.getDeclaredType(elements.getTypeElement(canonicalName), newTypes);
         }
+    }
+
+    public static Type getBoxedVoidType(IJAsyncContext context) {
+        Symtab symbols = context.getSymbols();
+        com.sun.tools.javac.code.Types types = context.getTypes();
+        return types.boxedClass(symbols.voidType).type;
     }
 
     public static void processAsyncMethod(IJAsyncContext context, Element element) {

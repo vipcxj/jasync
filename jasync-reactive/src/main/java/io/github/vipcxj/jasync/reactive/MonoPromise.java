@@ -2,6 +2,7 @@ package io.github.vipcxj.jasync.reactive;
 
 import io.github.vipcxj.jasync.runtime.helpers.ArrayIterator;
 import io.github.vipcxj.jasync.spec.*;
+import io.github.vipcxj.jasync.spec.catcher.Catcher;
 import io.github.vipcxj.jasync.spec.functional.*;
 import io.github.vipcxj.jasync.spec.switchexpr.ICase;
 import reactor.core.publisher.Mono;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 public class MonoPromise<T> implements Promise<T> {
     private boolean resolved;
@@ -66,15 +68,34 @@ public class MonoPromise<T> implements Promise<T> {
         return doCatch(exceptionsType, reject, true);
     }
 
+    @Override
+    public Promise<T> doCatch(List<Catcher<?, T>> catchers) {
+        return this.doCatch(Collections.singletonList(Throwable.class), t -> {
+            List<? extends Class<? extends Throwable>> exceptionsType = catchers.stream().map(Catcher::getExceptionType).collect(Collectors.toList());
+            if (JAsync.mustRethrowException(t, exceptionsType)) {
+                return JAsync.error(t);
+            }
+            for (Catcher<?, T> catcher : catchers) {
+                if (catcher.match(t)) {
+                    //noinspection unchecked
+                    PromiseFunction<Throwable, T> reject = (PromiseFunction<Throwable, T>) catcher.getReject();
+                    Promise<T> res = reject != null ? reject.apply(t) : null;
+                    return res != null ? res : JAsync.just();
+                }
+            }
+            return null;
+        }, false);
+    }
+
     private Promise<T> doCatch(List<Class<? extends Throwable>> exceptionsType, PromiseFunction<Throwable, T> reject, boolean processInnerExceptions) {
         return new MonoPromise<>(mono
                 .onErrorResume(
                         t -> exceptionsType.stream().anyMatch(e -> e.isAssignableFrom(t.getClass())),
                         t -> {
-                            reject(t);
                             if (processInnerExceptions && JAsync.mustRethrowException(t, exceptionsType)) {
                                 return Mono.error(t);
                             }
+                            reject(t);
                             try {
                                 return Utils.safeApply(reject, t).unwrap(Mono.class);
                             } catch (Throwable e) {

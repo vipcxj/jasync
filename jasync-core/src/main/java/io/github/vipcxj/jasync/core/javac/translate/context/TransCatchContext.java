@@ -24,13 +24,10 @@ public class TransCatchContext extends AbstractTransFrameHolderContext<JCTree.JC
     }
 
     @Override
-    public void setHasAwait(boolean hasAwait) {
-        super.setHasAwait(hasAwait);
-        if (paramContext != null) {
-            paramContext.setHasAwait(hasAwait);
-        }
+    public void setAwaitScope(boolean awaitScope) {
+        super.setAwaitScope(awaitScope);
         if (bodyContext != null)
-            bodyContext.setHasAwait(hasAwait);
+            bodyContext.setAwaitScope(awaitScope);
     }
 
     @Override

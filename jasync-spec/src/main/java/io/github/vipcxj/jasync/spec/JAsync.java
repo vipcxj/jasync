@@ -34,7 +34,7 @@ public class JAsync {
     }
 
     public static Promise<Void> deferVoid(VoidPromiseSupplier block, String label) {
-        return defer(block).doCatch(BreakException.class, e -> e.matchLabel(label) ? null : JAsync.error(e));
+        return defer(block).doCatch(BreakException.class, e -> e.matchLabel(label, true) ? null : JAsync.error(e));
     }
 
     public static <T> Promise<T> error(Throwable t) {
@@ -292,7 +292,7 @@ public class JAsync {
         }
     }
 
-    public static boolean mustRethrowException(Throwable t, List<Class<? extends Throwable>> exceptionsType) {
+    public static boolean mustRethrowException(Throwable t, List<? extends Class<? extends Throwable>> exceptionsType) {
         if (t instanceof ReturnException) {
             return exceptionsType.stream().noneMatch(ReturnException.class::equals);
         }

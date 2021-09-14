@@ -11,8 +11,14 @@ public class BreakException extends JAsyncException {
     }
 
     public boolean matchLabel(String label) {
-        if (this.label == null) {
+        return matchLabel(label, false);
+    }
+
+    public boolean matchLabel(String label, boolean block) {
+        if (!block && this.label == null) {
             return true;
+        } else if (block && this.label == null) {
+            return false;
         } else {
             return this.label.equals(label);
         }
