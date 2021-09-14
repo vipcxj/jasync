@@ -5,6 +5,8 @@ JAsync - 在Java中实现async-await模式
 
 [English Version](/README_CN.md)
 
+QQ群： 696195080
+
 **JAsync** 实现了类似 ES，C# 中的async-await模式。这允许开发者以传统顺序的方式编写异步代码。 
 它将同时在编码和调试两方面使开发者编写异步代码的体验尽可能接近传统的同步代码。
 
@@ -91,7 +93,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-reactive</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2</version>
 </dependency>
 ```
 这个实现库是基于著名的响应式框架 **Reactor** 的。在这个实现中，`Promise` 对象是 `Mono` 对象的封装。
@@ -103,7 +105,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -118,7 +120,7 @@ public class MyRestController {
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core</artifactId>
-          <version>0.0.1</version>
+          <version>0.0.2</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
@@ -130,7 +132,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core-java9</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -144,7 +146,7 @@ or
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core-java9</artifactId>
-          <version>0.0.1</version>
+          <version>0.0.2</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
