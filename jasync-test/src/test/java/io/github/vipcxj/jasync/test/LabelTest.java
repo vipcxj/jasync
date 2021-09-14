@@ -1,7 +1,7 @@
 package io.github.vipcxj.jasync.test;
 
 import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JPromise;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -15,7 +15,7 @@ import java.util.Set;
 public class LabelTest {
 
     @Async
-    public Promise<Integer> justBreak() {
+    public JPromise<Integer> justBreak() {
         int a = 1;
         label: break label;
         return JAsync.just(a);
@@ -27,7 +27,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> singleStatementNoAwait() {
+    public JPromise<Integer> singleStatementNoAwait() {
         int a = 1;
         label: ++a;
         return JAsync.just(a);
@@ -39,7 +39,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> singleStatementHasAwait() {
+    public JPromise<Integer> singleStatementHasAwait() {
         int a = 1;
         int b;
         label: b = JAsync.just(a).await() + 1;
@@ -52,7 +52,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> ifNoAwait(boolean input) {
+    public JPromise<Integer> ifNoAwait(boolean input) {
         int a = 1;
         label:
         if (input) {
@@ -70,7 +70,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> ifHasAwait1(boolean input) {
+    public JPromise<Integer> ifHasAwait1(boolean input) {
         int a = 1;
         label:
         if (JAsync.just(input).await()) {
@@ -88,7 +88,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> ifHasAwait2(boolean input) {
+    public JPromise<Integer> ifHasAwait2(boolean input) {
         int a = 1;
         label:
         if (input) {
@@ -106,7 +106,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> ifHasAwait3(boolean input) {
+    public JPromise<Integer> ifHasAwait3(boolean input) {
         int a = 1;
         label:
         if (JAsync.just(input).await()) {
@@ -124,7 +124,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> whileNoAwait1() {
+    public JPromise<Integer> whileNoAwait1() {
         int a = 1;
         label:
         while (a < 3) {
@@ -142,7 +142,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> whileNoAwait2() {
+    public JPromise<Integer> whileNoAwait2() {
         int a = 0;
         int i = 0;
         label:
@@ -167,7 +167,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> whileNoAwait3() {
+    public JPromise<Integer> whileNoAwait3() {
         int a = 0;
         int i = 0;
         label:
@@ -192,7 +192,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> whileNoAwait4() {
+    public JPromise<Integer> whileNoAwait4() {
         int a = 0;
         int i = 0;
         label1:
@@ -234,7 +234,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> whileHasAwait1() {
+    public JPromise<Integer> whileHasAwait1() {
         int a = 1;
         label:
         while (a < JAsync.just(3).await()) {
@@ -252,7 +252,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> whileHasAwait2() {
+    public JPromise<Integer> whileHasAwait2() {
         int a = 0;
         int i = 0;
         label:
@@ -277,7 +277,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> whileHasAwait3() {
+    public JPromise<Integer> whileHasAwait3() {
         int a = 0;
         int i = 0;
         label:
@@ -302,7 +302,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> whileHasAwait4() {
+    public JPromise<Integer> whileHasAwait4() {
         int a = 0;
         int i = 0;
         label1:
@@ -345,7 +345,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> doWhileNoAwait1() {
+    public JPromise<Integer> doWhileNoAwait1() {
         int a = 1;
         label:
         do {
@@ -364,7 +364,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> doWhileNoAwait2() {
+    public JPromise<Integer> doWhileNoAwait2() {
         int a = 0;
         int i = 0;
         label:
@@ -391,7 +391,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> doWhileNoAwait3() {
+    public JPromise<Integer> doWhileNoAwait3() {
         int a = 0;
         int i = 0;
         label:
@@ -418,7 +418,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> doWhileNoAwait4() {
+    public JPromise<Integer> doWhileNoAwait4() {
         int a = 0;
         int i = 0;
         label1:
@@ -468,7 +468,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> doWhileHasAwait1() {
+    public JPromise<Integer> doWhileHasAwait1() {
         int a = 1;
         label:
         do {
@@ -487,7 +487,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> doWhileHasAwait2() {
+    public JPromise<Integer> doWhileHasAwait2() {
         int a = 0;
         int i = 0;
         label:
@@ -514,7 +514,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> doWhileHasAwait3() {
+    public JPromise<Integer> doWhileHasAwait3() {
         int a = 0;
         int i = 0;
         label:
@@ -541,7 +541,7 @@ public class LabelTest {
     }
 
     @Async(debug = true)
-    public Promise<Integer> doWhileHasAwait4() {
+    public JPromise<Integer> doWhileHasAwait4() {
         int a = 0;
         int i = 0;
         label1:
@@ -592,7 +592,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> forNoAwait1(int num) {
+    public JPromise<Integer> forNoAwait1(int num) {
         int a = 0;
         label:
         for (int i = 0; i < num; ++i) {
@@ -619,7 +619,7 @@ public class LabelTest {
     }
 
     @Async
-    public Promise<Integer> forNoAwait2(int num) {
+    public JPromise<Integer> forNoAwait2(int num) {
         int a = 0;
         label1:
         for (int i = 0; i < num; ++i) {
@@ -676,7 +676,7 @@ public class LabelTest {
     }
 
     @Async(debug = true)
-    public Promise<Integer> forHasAwait1(int num) {
+    public JPromise<Integer> forHasAwait1(int num) {
         int a = 0;
         label:
         for (int i = JAsync.just(0).await(); i < JAsync.just(num).await(); ++i) {
@@ -703,7 +703,7 @@ public class LabelTest {
     }
 
     @Async(debug = true, logResultPosTree = true)
-    public Promise<Integer> forHasAwait2(int num) {
+    public JPromise<Integer> forHasAwait2(int num) {
         int a = 0;
         label1:
         for (int i = 0; JAsync.just(i).await() < num; ++i) {
@@ -760,7 +760,7 @@ public class LabelTest {
     }
 
     @Async
-    private Promise<Integer> foreachContinueNoAwait() {
+    private JPromise<Integer> foreachContinueNoAwait() {
         int[] array = new int[] {1, 2, 3, 4};
         List<Integer> list = new ArrayList<>();
         list.add(1);
@@ -797,7 +797,7 @@ public class LabelTest {
     }
 
     @Async
-    private Promise<Integer> foreachContinueHasAwait() {
+    private JPromise<Integer> foreachContinueHasAwait() {
         int[] array = new int[] {1, 2, 3, 4};
         List<Integer> list = new ArrayList<>();
         list.add(1);

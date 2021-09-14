@@ -24,28 +24,28 @@ public class MyRestController {
     @Inject
     private SalaryRepository salaryRepository;
 
-    // The standard JAsync async method must be annotated with the Async annotation, and return a Promise object.
+    // The standard JAsync async method must be annotated with the Async annotation, and return a JPromise object.
     @Async()
-    private Promise<Double> _getEmployeeTotalSalaryByDepartment(String department) {
+    private JPromise<Double> _getEmployeeTotalSalaryByDepartment(String department) {
         double money = 0.0;
-        // A Mono object can be transformed to the Promise object. So we get a Mono object first.
+        // A Mono object can be transformed to the JPromise object. So we get a Mono object first.
         Mono<List<Employee>> empsMono = employeeRepository.findEmployeeByDepartment(department);
-        // Transformed the Mono object to the Promise object.
-        Promise<List<Employee>> empsPromise = JAsync.from(empsMono);
-        // Use await just like es and c# to get the value of the Promise without blocking the current thread.
+        // Transformed the Mono object to the JPromise object.
+        JPromise<List<Employee>> empsPromise = JAsync.from(empsMono);
+        // Use await just like es and c# to get the value of the JPromise without blocking the current thread.
         for (Employee employee : empsPromise.await()) {
-            // The method findSalaryByEmployee also return a Mono object. We transform it to the Promise just like above. And then await to get the result.
+            // The method findSalaryByEmployee also return a Mono object. We transform it to the JPromise just like above. And then await to get the result.
             Salary salary = JAsync.from(salaryRepository.findSalaryByEmployee(employee.id)).await();
             money += salary.total;
         }
-        // The async method must return a Promise object, so we use just method to wrap the result to a Promise.
+        // The async method must return a JPromise object, so we use just method to wrap the result to a JPromise.
         return JAsync.just(money);
     }
 
     // This is a normal webflux method.
     @GetMapping("/{department}/salary")
     public Mono<Double> getEmployeeTotalSalaryByDepartment(@PathVariable String department) { 
-        // Use unwrap method to transform the Promise object back to the Mono object.
+        // Use unwrap method to transform the JPromise object back to the Mono object.
         return _getEmployeeTotalSalaryByDepartment(department).unwrap(Mono.class);
     }
 }
@@ -64,11 +64,11 @@ public class MyRestController {
     private SalaryRepository salaryRepository;
 
     @Async()
-    private Promise<Double> _getEmployeeTotalSalaryByDepartment(String department) {
+    private JPromise<Double> _getEmployeeTotalSalaryByDepartment(String department) {
         double money = 0.0;
         DoubleReference moneyRef = new DoubleReference(money);
         Mono<List<Employee>> empsMono = employeeRepository.findEmployeeByDepartment(department);
-        Promise<List<Employee>> empsPromise = JAsync.from(empsMono);
+        JPromise<List<Employee>> empsPromise = JAsync.from(empsMono);
         return empsPromise.thenVoid(v0 -> JAsync.doForEachObject(v0, employee -> 
                 JAsync.from(salaryRepository.findSalaryByEmployee(employee.id)).thenVoid(v1 -> {
                     moneyRef.addAndGet(v1.total);
@@ -79,7 +79,7 @@ public class MyRestController {
     // This is a normal webflux method.
     @GetMapping("/{department}/salary")
     public Mono<Double> getEmployeeTotalSalaryByDepartment(@PathVariable String department) { 
-        // Use unwrap method to transform the Promise object back to the Mono object.
+        // Use unwrap method to transform the JPromise object back to the Mono object.
         return _getEmployeeTotalSalaryByDepartment(department).unwrap(Mono.class);
     }
 }
@@ -95,9 +95,9 @@ First, select a implementation library to the Maven dependency. Currently, only 
     <version>0.0.2</version>
 </dependency>
 ```
-This implementation uses the famous library **Reactor**. The `Promise` object is a wrapper of `Mono` object.
-So the `Promise` object can be created from a `Mono` object using static method `io.github.vipcxj.jasync.reactive.Promises.from(reactor.core.publisher.Mono<T>)`.
-And the `Promise` object can be converted back to the `Mono` object using instance method `io.github.vipcxj.jasync.spec.Promise.unwrap`.
+This implementation uses the famous library **Reactor**. The `JPromise` object is a wrapper of `Mono` object.
+So the `JPromise` object can be created from a `Mono` object using static method `io.github.vipcxj.jasync.reactive.Promises.from(reactor.core.publisher.Mono<T>)`.
+And the `JPromise` object can be converted back to the `Mono` object using instance method `io.github.vipcxj.jasync.spec.JPromise.unwrap`.
 
 Then add the core library to the Maven dependency.
 ```xml

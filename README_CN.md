@@ -25,28 +25,28 @@ public class MyRestController {
     @Inject
     private SalaryRepository salaryRepository;
 
-    // 一个标准的 JAsync 异步方法必须带上 Async 注解，并且返回一个 Promise 对象.
+    // 一个标准的 JAsync 异步方法必须带上 Async 注解，并且返回一个 JPromise 对象.
     @Async()
-    private Promise<Double> _getEmployeeTotalSalaryByDepartment(String department) {
+    private JPromise<Double> _getEmployeeTotalSalaryByDepartment(String department) {
         double money = 0.0;
-        // 一个 Reactor 的 Mono 对象可以被转换为标准 Promise 对象。 所以我们先获取一个 Mono 对象。
+        // 一个 Reactor 的 Mono 对象可以被转换为标准 JPromise 对象。 所以我们先获取一个 Mono 对象。
         Mono<List<Employee>> empsMono = employeeRepository.findEmployeeByDepartment(department);
-        // 将Mono对象转换为标准 Promise 对象.
-        Promise<List<Employee>> empsPromise = JAsync.from(empsMono);
-        // 像es和c#里那样使用 await 来在不阻塞当前线程的前提下获取 Promise 的结果。
+        // 将Mono对象转换为标准 JPromise 对象.
+        JPromise<List<Employee>> empsPromise = JAsync.from(empsMono);
+        // 像es和c#里那样使用 await 来在不阻塞当前线程的前提下获取 JPromise 的结果。
         for (Employee employee : empsPromise.await()) {
-            // 方法 findSalaryByEmployee 同样返回一个 Mono 对象。我们将其转换为标准 Promise 对象，并像上面提到的那样使用 await 获取其结果。
+            // 方法 findSalaryByEmployee 同样返回一个 Mono 对象。我们将其转换为标准 JPromise 对象，并像上面提到的那样使用 await 获取其结果。
             Salary salary = JAsync.from(salaryRepository.findSalaryByEmployee(employee.id)).await();
             money += salary.total;
         }
-        // JAsync 异步方法必须返回一个 Promise 对象，所以我们使用 just 方法封装返回值。
+        // JAsync 异步方法必须返回一个 JPromise 对象，所以我们使用 just 方法封装返回值。
         return JAsync.just(money);
     }
 
     // 这是一个普通的 webflux 方法.
     @GetMapping("/{department}/salary")
     public Mono<Double> getEmployeeTotalSalaryByDepartment(@PathVariable String department) {
-        // 使用 unwrap 方法将 Promise 对象转换回 Mono 对象。
+        // 使用 unwrap 方法将 JPromise 对象转换回 Mono 对象。
         return _getEmployeeTotalSalaryByDepartment(department).unwrap(Mono.class);
     }
 }
@@ -65,11 +65,11 @@ public class MyRestController {
     private SalaryRepository salaryRepository;
 
     @Async()
-    private Promise<Double> _getEmployeeTotalSalaryByDepartment(String department) {
+    private JPromise<Double> _getEmployeeTotalSalaryByDepartment(String department) {
         double money = 0.0;
         DoubleReference moneyRef = new DoubleReference(money);
         Mono<List<Employee>> empsMono = employeeRepository.findEmployeeByDepartment(department);
-        Promise<List<Employee>> empsPromise = JAsync.from(empsMono);
+        JPromise<List<Employee>> empsPromise = JAsync.from(empsMono);
         return empsPromise.thenVoid(v0 -> JAsync.doForEachObject(v0, employee -> 
                 JAsync.from(salaryRepository.findSalaryByEmployee(employee.id)).thenVoid(v1 -> {
                     moneyRef.addAndGet(v1.total);
@@ -80,7 +80,7 @@ public class MyRestController {
     // This is a normal webflux method.
     @GetMapping("/{department}/salary")
     public Mono<Double> getEmployeeTotalSalaryByDepartment(@PathVariable String department) { 
-        // Use unwrap method to transform the Promise object back to the Mono object.
+        // Use unwrap method to transform the JPromise object back to the Mono object.
         return _getEmployeeTotalSalaryByDepartment(department).unwrap(Mono.class);
     }
 }
@@ -96,9 +96,9 @@ public class MyRestController {
     <version>0.0.2</version>
 </dependency>
 ```
-这个实现库是基于著名的响应式框架 **Reactor** 的。在这个实现中，`Promise` 对象是 `Mono` 对象的封装。
-所以 `Promise` 可以使用静态方法 `io.github.vipcxj.jasync.reactive.Promises.from(reactor.core.publisher.Mono<T>)` 来通过`Mono` 构造。 
-并且 `Promise` 也可以使用实例方法 `io.github.vipcxj.jasync.spec.Promise.unwrap` 转换回 `Mono`。
+这个实现库是基于著名的响应式框架 **Reactor** 的。在这个实现中，`JPromise` 对象是 `Mono` 对象的封装。
+所以 `JPromise` 可以使用静态方法 `io.github.vipcxj.jasync.reactive.Promises.from(reactor.core.publisher.Mono<T>)` 来通过`Mono` 构造。 
+并且 `JPromise` 也可以使用实例方法 `io.github.vipcxj.jasync.spec.JPromise.unwrap` 转换回 `Mono`。
 
 然后将核心库添加到maven依赖中。核心库用于语法树的转换。
 ```xml

@@ -15,7 +15,7 @@ import io.github.vipcxj.jasync.core.javac.model.Frame;
 import io.github.vipcxj.jasync.core.javac.translate.TransFrameHolderContext;
 import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
 import io.github.vipcxj.jasync.core.javac.utils.SymbolHelpers;
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JPromise;
 
 import javax.lang.model.util.Elements;
 import java.util.*;
@@ -298,7 +298,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
             Type booleanType = types.boxedTypeOrType(symbols.booleanType);
             return addMethodDecl(
                     condContext.getFrame(),
-                    JavacUtils.getType(jasyncContext, Promise.class, booleanType),
+                    JavacUtils.getType(jasyncContext, JPromise.class, booleanType),
                     (JCTree.JCBlock) condTree
             );
         } else {
@@ -321,7 +321,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
 
     public JCTree.JCMethodDecl addVoidPromiseFunction(Frame frame, JCTree.JCBlock body) {
         IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
-        return addMethodDecl(frame, JavacUtils.getType(jasyncContext, Promise.class, JavacUtils.getBoxedVoidType(jasyncContext)), body);
+        return addMethodDecl(frame, JavacUtils.getType(jasyncContext, JPromise.class, JavacUtils.getBoxedVoidType(jasyncContext)), body);
     }
 
     public JCTree.JCMethodDecl addVoidPromiseFunction(TransBlockContext context) {
@@ -337,7 +337,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
         return addMethodDecl(
                 context.getFrame(),
-                JavacUtils.getType(jasyncContext, Promise.class, type),
+                JavacUtils.getType(jasyncContext, JPromise.class, type),
                 (JCTree.JCBlock) context.buildTree(false)
         );
     }
@@ -349,7 +349,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
 
     public JCTree.JCMethodDecl addVoidPromiseSupplier(Frame frame, JCTree.JCBlock body) {
         IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
-        return addMethodDecl(frame, JavacUtils.getType(jasyncContext, Promise.class, JavacUtils.getBoxedVoidType(jasyncContext)), body);
+        return addMethodDecl(frame, JavacUtils.getType(jasyncContext, JPromise.class, JavacUtils.getBoxedVoidType(jasyncContext)), body);
     }
 
     public JCTree.JCMethodDecl addVoidPromiseSupplier(TransBlockContext bodyContext) {

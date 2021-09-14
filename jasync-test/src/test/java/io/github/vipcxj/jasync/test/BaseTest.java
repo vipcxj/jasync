@@ -1,6 +1,6 @@
 package io.github.vipcxj.jasync.test;
 
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JPromise;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 public class BaseTest {
 
     @Async
-    private Promise<Void> returnNull() {
+    private JPromise<Void> returnNull() {
         return null;
     }
 
@@ -19,10 +19,10 @@ public class BaseTest {
     }
 
     @Async
-    private Promise<Integer> asyncMethodInnerClassReturnNull() {
+    private JPromise<Integer> asyncMethodInnerClassReturnNull() {
         class Tmp {
             @Async
-            private Promise<Integer> run() {
+            private JPromise<Integer> run() {
                 return null;
             }
         }

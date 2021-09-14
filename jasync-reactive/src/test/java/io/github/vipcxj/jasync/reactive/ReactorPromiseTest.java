@@ -8,7 +8,7 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MonoPromiseTest {
+public class ReactorPromiseTest {
 
     @Test
     public void test1() {

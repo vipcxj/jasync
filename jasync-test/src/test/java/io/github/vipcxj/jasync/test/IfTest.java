@@ -1,7 +1,7 @@
 package io.github.vipcxj.jasync.test;
 
 import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JPromise;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 public class IfTest {
 
     @Async
-    private Promise<String> ifTest1(int toTest) {
+    private JPromise<String> ifTest1(int toTest) {
         if (JAsync.just(3).await().equals(toTest)) {
             return JAsync.just("yes");
         }
@@ -23,8 +23,8 @@ public class IfTest {
     }
 
     @Async
-    private Promise<String> ifTest2(int toTest) {
-        Promise<Integer> three = JAsync.just(3);
+    private JPromise<String> ifTest2(int toTest) {
+        JPromise<Integer> three = JAsync.just(3);
         if (three.await().equals(toTest)) {
             return JAsync.just("yes");
         } else {
@@ -39,7 +39,7 @@ public class IfTest {
     }
 
     @Async
-    private Promise<String> ifTest3(String message) {
+    private JPromise<String> ifTest3(String message) {
         if (message != null) {
             String hello = JAsync.just("hello ").await();
             return JAsync.just(hello + message);
@@ -55,7 +55,7 @@ public class IfTest {
     }
 
     @Async
-    private Promise<String> ifTest4(int i) {
+    private JPromise<String> ifTest4(int i) {
         if (i == 0) {
             return JAsync.just("0");
         } else if (i == JAsync.just(1).await()) {

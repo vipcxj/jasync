@@ -1,6 +1,6 @@
 package io.github.vipcxj.jasync.runtime.java8.helpers;
 
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JPromise;
 import io.github.vipcxj.jasync.spec.functional.*;
 
 import java.lang.invoke.MethodType;
@@ -27,7 +27,7 @@ public class IndyHelper {
         return helpers.createFunction(
                 BooleanVoidPromiseFunction.class,
                 "apply",
-                MethodType.methodType(Promise.class, boolean.class),
+                MethodType.methodType(JPromise.class, boolean.class),
                 method, methodType,
                 false, thisObj, args
         );
@@ -37,7 +37,7 @@ public class IndyHelper {
         return helpers.createFunction(
                 ByteVoidPromiseFunction.class,
                 "apply",
-                MethodType.methodType(Promise.class, byte.class),
+                MethodType.methodType(JPromise.class, byte.class),
                 method, methodType,
                 false, thisObj, args
         );
@@ -47,7 +47,7 @@ public class IndyHelper {
         return helpers.createFunction(
                 CharVoidPromiseFunction.class,
                 "apply",
-                MethodType.methodType(Promise.class, char.class),
+                MethodType.methodType(JPromise.class, char.class),
                 method, methodType,
                 false, thisObj, args
         );
@@ -57,7 +57,7 @@ public class IndyHelper {
         return helpers.createFunction(
                 DoubleVoidPromiseFunction.class,
                 "apply",
-                MethodType.methodType(Promise.class, double.class),
+                MethodType.methodType(JPromise.class, double.class),
                 method, methodType,
                 false, thisObj, args
         );
@@ -67,7 +67,7 @@ public class IndyHelper {
         return helpers.createFunction(
                 FloatVoidPromiseFunction.class,
                 "apply",
-                MethodType.methodType(Promise.class, float.class),
+                MethodType.methodType(JPromise.class, float.class),
                 method, methodType,
                 false, thisObj, args
         );
@@ -77,7 +77,7 @@ public class IndyHelper {
         return helpers.createFunction(
                 IntVoidPromiseFunction.class,
                 "apply",
-                MethodType.methodType(Promise.class, int.class),
+                MethodType.methodType(JPromise.class, int.class),
                 method, methodType,
                 false, thisObj, args
         );
@@ -87,7 +87,7 @@ public class IndyHelper {
         return helpers.createFunction(
                 LongVoidPromiseFunction.class,
                 "apply",
-                MethodType.methodType(Promise.class, long.class),
+                MethodType.methodType(JPromise.class, long.class),
                 method, methodType,
                 false, thisObj, args
         );
@@ -98,7 +98,7 @@ public class IndyHelper {
         return helpers.createFunction(
                 PromiseFunction.class,
                 "apply",
-                MethodType.methodType(Promise.class, Object.class),
+                MethodType.methodType(JPromise.class, Object.class),
                 method, methodType,
                 false, thisObj, args
         );
@@ -107,7 +107,7 @@ public class IndyHelper {
     public <T> PromiseSupplier<T> promiseSupplier(String method, MethodType methodType, Object... args) {
         //noinspection unchecked
         return helpers.createFunction(
-                PromiseSupplier.class, "get", MethodType.methodType(Promise.class),
+                PromiseSupplier.class, "get", MethodType.methodType(JPromise.class),
                 method, methodType,
                 false, thisObj, args
         );
@@ -117,7 +117,7 @@ public class IndyHelper {
         return helpers.createFunction(
                 ShortVoidPromiseFunction.class,
                 "apply",
-                MethodType.methodType(Promise.class, short.class),
+                MethodType.methodType(JPromise.class, short.class),
                 method, methodType,
                 false, thisObj, args
         );
@@ -137,7 +137,7 @@ public class IndyHelper {
     public  <T> VoidPromiseFunction<T> voidPromiseFunction(String method, MethodType methodType, Object... args) {
         //noinspection unchecked
         return helpers.createFunction(
-                VoidPromiseFunction.class, "apply", MethodType.methodType(Promise.class, Object.class),
+                VoidPromiseFunction.class, "apply", MethodType.methodType(JPromise.class, Object.class),
                 method, methodType,
                 false, thisObj, args
         );
@@ -145,7 +145,7 @@ public class IndyHelper {
 
     public VoidPromiseSupplier voidPromiseSupplier(String method, MethodType methodType, Object... args) {
         return helpers.createFunction(
-                VoidPromiseSupplier.class, "get", MethodType.methodType(Promise.class),
+                VoidPromiseSupplier.class, "get", MethodType.methodType(JPromise.class),
                 method, methodType,
                 false, thisObj, args
         );

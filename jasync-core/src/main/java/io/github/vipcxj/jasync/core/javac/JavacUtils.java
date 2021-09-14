@@ -20,7 +20,7 @@ import io.github.vipcxj.jasync.core.javac.visitor.PosVisitor;
 import io.github.vipcxj.jasync.core.javac.visitor.ReturnScanner;
 import io.github.vipcxj.jasync.core.javac.visitor.TypeCalculator;
 import io.github.vipcxj.jasync.runtime.helpers.*;
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JPromise;
 import io.github.vipcxj.jasync.spec.functional.*;
 
 import javax.lang.model.element.Element;
@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class JavacUtils {
@@ -401,7 +400,7 @@ public class JavacUtils {
                         )
                 ),
                 ctx -> ctx.getTreeMaker().TypeApply(
-                        JavacUtils.makeQualifiedIdent(ctx, Promise.class.getCanonicalName()),
+                        JavacUtils.makeQualifiedIdent(ctx, JPromise.class.getCanonicalName()),
                         List.of(JavacUtils.makeQualifiedIdent(ctx, Boolean.class.getCanonicalName()))
                 ),
                 "get"

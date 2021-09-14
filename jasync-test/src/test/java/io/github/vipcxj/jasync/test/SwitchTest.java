@@ -1,7 +1,7 @@
 package io.github.vipcxj.jasync.test;
 
 import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JPromise;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -11,7 +11,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 public class SwitchTest {
 
     @Async
-    private Promise<Integer> testReturn(int i) {
+    private JPromise<Integer> testReturn(int i) {
         int res;
         switch (i) {
             case 1:
@@ -29,7 +29,7 @@ public class SwitchTest {
     }
 
     @Async
-    private Promise<Integer> testBreak(int i) {
+    private JPromise<Integer> testBreak(int i) {
         int res;
         switch (i) {
             case 1:
@@ -48,7 +48,7 @@ public class SwitchTest {
 
     @SuppressWarnings("UnusedAssignment")
     @Async
-    private Promise<Integer> testNoBreak1(int i) {
+    private JPromise<Integer> testNoBreak1(int i) {
         int res;
         switch (i) {
             case 1:
@@ -65,7 +65,7 @@ public class SwitchTest {
 
     @SuppressWarnings("UnusedAssignment")
     @Async
-    private Promise<Integer> testNoBreak2(int i) {
+    private JPromise<Integer> testNoBreak2(int i) {
         int res;
         switch (i) {
             default:
@@ -83,7 +83,7 @@ public class SwitchTest {
 
     @SuppressWarnings("UnusedAssignment")
     @Async
-    private Promise<Integer> testNoBreak3(int i) {
+    private JPromise<Integer> testNoBreak3(int i) {
         int res = -3;
         switch (i) {
             default:

@@ -1,9 +1,8 @@
 package io.github.vipcxj.jasync.core.javac;
 
 import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JPromise;
 import io.github.vipcxj.jasync.spec.annotations.Async;
-import io.github.vipcxj.jasync.spec.switchexpr.StringCase;
 
 public class Constants {
     public static final String ASYNC = Async.class.getCanonicalName();
@@ -14,7 +13,7 @@ public class Constants {
     public static final String ASYNC_EXPERIMENT = "experiment";
     public static final String ASYNC_DEBUG = "debug";
     public static final String ASYNC_METHOD = "method";
-    public static final String PROMISE = Promise.class.getCanonicalName();
+    public static final String PROMISE = JPromise.class.getCanonicalName();
     public static final String JUST = "just";
     public static final String THEN = "then";
     public static final String THEN_VOID = "thenVoid";

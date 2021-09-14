@@ -17,31 +17,31 @@ public class JAsync {
         return provider;
     }
 
-    public static <T> Promise<T> just() {
+    public static <T> JPromise<T> just() {
         return assertProvider().just(null);
     }
 
-    public static <T> Promise<T> just(T value) {
+    public static <T> JPromise<T> just(T value) {
         return assertProvider().just(value);
     }
 
-    public static <T> Promise<T> defer(PromiseSupplier<T> block) {
+    public static <T> JPromise<T> defer(PromiseSupplier<T> block) {
         return assertProvider().defer(block);
     }
 
-    public static Promise<Void> deferVoid(VoidPromiseSupplier block) {
+    public static JPromise<Void> deferVoid(VoidPromiseSupplier block) {
         return defer(block);
     }
 
-    public static Promise<Void> deferVoid(VoidPromiseSupplier block, String label) {
+    public static JPromise<Void> deferVoid(VoidPromiseSupplier block, String label) {
         return defer(block).doCatch(BreakException.class, e -> e.matchLabel(label, true) ? null : JAsync.error(e));
     }
 
-    public static <T> Promise<T> error(Throwable t) {
+    public static <T> JPromise<T> error(Throwable t) {
         return assertProvider().error(t);
     }
 
-    public static Promise<Void> doIf(boolean test, VoidPromiseSupplier thenDo, VoidPromiseSupplier elseDo) {
+    public static JPromise<Void> doIf(boolean test, VoidPromiseSupplier thenDo, VoidPromiseSupplier elseDo) {
         try {
             if (test) {
                 return Utils.safeGetVoid(thenDo);
@@ -61,7 +61,7 @@ public class JAsync {
         throw new BreakException(label);
     }
 
-    public static <T, O> Promise<T> doReturn(Promise<O> promise) {
+    public static <T, O> JPromise<T> doReturn(JPromise<O> promise) {
         if (promise != null) {
             return promise.then(v -> error(new ReturnException(v)));
         } else {
@@ -69,47 +69,47 @@ public class JAsync {
         }
     }
 
-    public static <C> Promise<Void> doSwitch(C value, List<? extends ICase<C>> cases, String label) {
+    public static <C> JPromise<Void> doSwitch(C value, List<? extends ICase<C>> cases, String label) {
         return just().doSwitch(value, cases, label);
     }
 
-    public static <C> Promise<Void> doSwitch(C value, List<? extends ICase<C>> cases) {
+    public static <C> JPromise<Void> doSwitch(C value, List<? extends ICase<C>> cases) {
         return just().doSwitch(value, cases);
     }
 
-    public static Promise<Void> doWhile(BooleanSupplier predicate, VoidPromiseSupplier block, String label) {
+    public static JPromise<Void> doWhile(BooleanSupplier predicate, VoidPromiseSupplier block, String label) {
         return just().doWhileVoid(predicate, block, label);
     }
 
-    public static Promise<Void> doWhile(BooleanSupplier predicate, VoidPromiseSupplier block) {
+    public static JPromise<Void> doWhile(BooleanSupplier predicate, VoidPromiseSupplier block) {
         return just().doWhileVoid(predicate, block);
     }
 
-    public static Promise<Void> doWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label) {
+    public static JPromise<Void> doWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label) {
         return just().doWhileVoid(predicate, block, label);
     }
 
-    public static Promise<Void> doWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block) {
+    public static JPromise<Void> doWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block) {
         return just().doWhileVoid(predicate, block);
     }
 
-    public static Promise<Void> doDoWhile(BooleanSupplier predicate, VoidPromiseSupplier block, String label) {
+    public static JPromise<Void> doDoWhile(BooleanSupplier predicate, VoidPromiseSupplier block, String label) {
         return just().doDoWhileVoid(predicate, block, label);
     }
 
-    public static Promise<Void> doDoWhile(BooleanSupplier predicate, VoidPromiseSupplier block) {
+    public static JPromise<Void> doDoWhile(BooleanSupplier predicate, VoidPromiseSupplier block) {
         return just().doDoWhileVoid(predicate, block);
     }
 
-    public static Promise<Void> doDoWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label) {
+    public static JPromise<Void> doDoWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block, String label) {
         return just().doDoWhileVoid(predicate, block, label);
     }
 
-    public static Promise<Void> doDoWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block) {
+    public static JPromise<Void> doDoWhile(PromiseSupplier<Boolean> predicate, VoidPromiseSupplier block) {
         return just().doDoWhileVoid(predicate, block);
     }
 
-    public static <E> Promise<Void> doForEachObject(Object iterableOrArray, VoidPromiseFunction<E> block, String label) {
+    public static <E> JPromise<Void> doForEachObject(Object iterableOrArray, VoidPromiseFunction<E> block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray.getClass().isArray() && !iterableOrArray.getClass().getComponentType().isPrimitive()) {
@@ -123,11 +123,11 @@ public class JAsync {
         }
     }
 
-    public static <E> Promise<Void> doForEachObject(Object iterableOrArray, VoidPromiseFunction<E> block) {
+    public static <E> JPromise<Void> doForEachObject(Object iterableOrArray, VoidPromiseFunction<E> block) {
         return doForEachObject(iterableOrArray, block, null);
     }
 
-    public static Promise<Void> doForEachByte(Object iterableOrArray, ByteVoidPromiseFunction block, String label) {
+    public static JPromise<Void> doForEachByte(Object iterableOrArray, ByteVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof byte[]) {
@@ -140,11 +140,11 @@ public class JAsync {
         }
     }
 
-    public static Promise<Void> doForEachByte(Object iterableOrArray, ByteVoidPromiseFunction block) {
+    public static JPromise<Void> doForEachByte(Object iterableOrArray, ByteVoidPromiseFunction block) {
         return doForEachByte(iterableOrArray, block, null);
     }
 
-    public static Promise<Void> doForEachChar(Object iterableOrArray, CharVoidPromiseFunction block, String label) {
+    public static JPromise<Void> doForEachChar(Object iterableOrArray, CharVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof char[]) {
@@ -157,11 +157,11 @@ public class JAsync {
         }
     }
 
-    public static Promise<Void> doForEachChar(Object iterableOrArray, CharVoidPromiseFunction block) {
+    public static JPromise<Void> doForEachChar(Object iterableOrArray, CharVoidPromiseFunction block) {
         return doForEachChar(iterableOrArray, block, null);
     }
 
-    public static Promise<Void> doForEachBoolean(Object iterableOrArray, BooleanVoidPromiseFunction block, String label) {
+    public static JPromise<Void> doForEachBoolean(Object iterableOrArray, BooleanVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof boolean[]) {
@@ -174,11 +174,11 @@ public class JAsync {
         }
     }
 
-    public static Promise<Void> doForEachBoolean(Object iterableOrArray, BooleanVoidPromiseFunction block) {
+    public static JPromise<Void> doForEachBoolean(Object iterableOrArray, BooleanVoidPromiseFunction block) {
         return doForEachBoolean(iterableOrArray, block, null);
     }
 
-    public static Promise<Void> doForEachShort(Object iterableOrArray, ShortVoidPromiseFunction block, String label) {
+    public static JPromise<Void> doForEachShort(Object iterableOrArray, ShortVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof short[]) {
@@ -191,11 +191,11 @@ public class JAsync {
         }
     }
 
-    public static Promise<Void> doForEachShort(Object iterableOrArray, ShortVoidPromiseFunction block) {
+    public static JPromise<Void> doForEachShort(Object iterableOrArray, ShortVoidPromiseFunction block) {
         return doForEachShort(iterableOrArray, block, null);
     }
 
-    public static Promise<Void> doForEachInt(Object iterableOrArray, IntVoidPromiseFunction block, String label) {
+    public static JPromise<Void> doForEachInt(Object iterableOrArray, IntVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof int[]) {
@@ -208,11 +208,11 @@ public class JAsync {
         }
     }
 
-    public static Promise<Void> doForEachInt(Object iterableOrArray, IntVoidPromiseFunction block) {
+    public static JPromise<Void> doForEachInt(Object iterableOrArray, IntVoidPromiseFunction block) {
         return doForEachInt(iterableOrArray, block, null);
     }
 
-    public static Promise<Void> doForEachLong(Object iterableOrArray, LongVoidPromiseFunction block, String label) {
+    public static JPromise<Void> doForEachLong(Object iterableOrArray, LongVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof long[]) {
@@ -225,11 +225,11 @@ public class JAsync {
         }
     }
 
-    public static Promise<Void> doForEachLong(Object iterableOrArray, LongVoidPromiseFunction block) {
+    public static JPromise<Void> doForEachLong(Object iterableOrArray, LongVoidPromiseFunction block) {
         return doForEachLong(iterableOrArray, block, null);
     }
 
-    public static Promise<Void> doForEachFloat(Object iterableOrArray, FloatVoidPromiseFunction block, String label) {
+    public static JPromise<Void> doForEachFloat(Object iterableOrArray, FloatVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof float[]) {
@@ -242,11 +242,11 @@ public class JAsync {
         }
     }
 
-    public static Promise<Void> doForEachFloat(Object iterableOrArray, FloatVoidPromiseFunction block) {
+    public static JPromise<Void> doForEachFloat(Object iterableOrArray, FloatVoidPromiseFunction block) {
         return doForEachFloat(iterableOrArray, block, null);
     }
 
-    public static Promise<Void> doForEachDouble(Object iterableOrArray, DoubleVoidPromiseFunction block, String label) {
+    public static JPromise<Void> doForEachDouble(Object iterableOrArray, DoubleVoidPromiseFunction block, String label) {
         if (iterableOrArray == null) {
             return just();
         } else if (iterableOrArray instanceof double[]) {
@@ -259,18 +259,18 @@ public class JAsync {
         }
     }
 
-    public static Promise<Void> doForEachDouble(Object iterableOrArray, DoubleVoidPromiseFunction block) {
+    public static JPromise<Void> doForEachDouble(Object iterableOrArray, DoubleVoidPromiseFunction block) {
         return doForEachDouble(iterableOrArray, block, null);
     }
 
-    private static Promise<Void> doForBody(VoidPromiseSupplier step, VoidPromiseSupplier body) throws Throwable {
+    private static JPromise<Void> doForBody(VoidPromiseSupplier step, VoidPromiseSupplier body) throws Throwable {
         return Utils.safeGetVoid(body).doFinally(() -> {
             Utils.safeGetVoid(step);
             return null;
         });
     }
 
-    public static Promise<Void> doFor(VoidPromiseSupplier init, BooleanSupplier cond, VoidPromiseSupplier step, VoidPromiseSupplier body, String label) {
+    public static JPromise<Void> doFor(VoidPromiseSupplier init, BooleanSupplier cond, VoidPromiseSupplier step, VoidPromiseSupplier body, String label) {
         if (cond == null) {
             cond = () -> true;
         }
@@ -281,7 +281,7 @@ public class JAsync {
         }
     }
 
-    public static Promise<Void> doFor(VoidPromiseSupplier init, PromiseSupplier<Boolean> cond, VoidPromiseSupplier step, VoidPromiseSupplier body, String label) {
+    public static JPromise<Void> doFor(VoidPromiseSupplier init, PromiseSupplier<Boolean> cond, VoidPromiseSupplier step, VoidPromiseSupplier body, String label) {
         if (cond == null) {
             cond = () -> JAsync.just(true);
         }

@@ -1,8 +1,8 @@
 package io.github.vipcxj.jasync.spec.functional;
 
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JPromise;
 
 public interface BooleanVoidPromiseFunction {
 
-    Promise<Void> apply(boolean t) throws Throwable;
+    JPromise<Void> apply(boolean t) throws Throwable;
 }

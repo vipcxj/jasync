@@ -1,7 +1,7 @@
 package io.github.vipcxj.jasync.test;
 
 import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JPromise;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -11,7 +11,7 @@ import java.io.IOException;
 public class TryTest {
 
     @Async
-    private Promise<String> tryWithCatch1(Promise<String> what) {
+    private JPromise<String> tryWithCatch1(JPromise<String> what) {
         String message = "hello";
         try {
             if (what.await() != null) {
@@ -32,7 +32,7 @@ public class TryTest {
     }
 
     @Async
-    private Promise<String> tryWithCatch2(String what) {
+    private JPromise<String> tryWithCatch2(String what) {
         String message = "hello";
         try {
             if (what != null) {
@@ -53,7 +53,7 @@ public class TryTest {
     }
 
     @Async
-    private Promise<String> tryWithMultiCatch1(String what, int flag) {
+    private JPromise<String> tryWithMultiCatch1(String what, int flag) {
         String message = "hello";
         try {
             if (what == null) {
@@ -94,7 +94,7 @@ public class TryTest {
     }
 
     @Async
-    private Promise<String> tryWithMultiCatch2() {
+    private JPromise<String> tryWithMultiCatch2() {
         String message = "";
         try {
             try {
@@ -132,7 +132,7 @@ public class TryTest {
     }
 
     @Async
-    private Promise<Integer> tryFinallyCatchContinue() {
+    private JPromise<Integer> tryFinallyCatchContinue() {
         int a = 0;
         for (int i = 0; i < 10; ++i) {
             try {
@@ -168,7 +168,7 @@ public class TryTest {
     }
 
     @Async
-    private Promise<Integer> tryFinallyCatchBreak() {
+    private JPromise<Integer> tryFinallyCatchBreak() {
         int a = 0;
         for (int i = 0; i < 10; ++i) {
             try {
@@ -204,7 +204,7 @@ public class TryTest {
     }
 
     @Async
-    private Promise<Integer> tryFinallyCatchReturn() {
+    private JPromise<Integer> tryFinallyCatchReturn() {
         int a = 0;
         for (int i = 0; i < 10; ++i) {
             try {
@@ -235,7 +235,7 @@ public class TryTest {
     }
 
     @Async
-    private Promise<String> tryFinallyCatchException() {
+    private JPromise<String> tryFinallyCatchException() {
         String message = "hello";
         try {
             message += JAsync.just(" world").await();
@@ -276,7 +276,7 @@ public class TryTest {
     }
 
     @Async
-    private Promise<Integer> tryCatchAndFinally(int flag) {
+    private JPromise<Integer> tryCatchAndFinally(int flag) {
         int a = 0;
         try {
             try {

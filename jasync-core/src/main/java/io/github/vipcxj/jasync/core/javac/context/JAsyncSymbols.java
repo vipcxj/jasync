@@ -14,7 +14,7 @@ import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.core.javac.utils.SymbolHelpers;
 import io.github.vipcxj.jasync.runtime.helpers.*;
 import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JPromise;
 import io.github.vipcxj.jasync.spec.catcher.Catcher;
 import io.github.vipcxj.jasync.spec.catcher.Catchers;
 import io.github.vipcxj.jasync.spec.functional.*;
@@ -93,7 +93,7 @@ public class JAsyncSymbols {
         types = Types.instance(context);
         JavacElements elements = JavacElements.instance(context);
         names = Names.instance(context);
-        Symbol.ClassSymbol symPromise = elements.getTypeElement(Promise.class.getCanonicalName());
+        Symbol.ClassSymbol symPromise = elements.getTypeElement(JPromise.class.getCanonicalName());
         symPromiseThenSupplierArg = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symPromise,
                 names.fromString(Constants.THEN),
@@ -266,7 +266,7 @@ public class JAsyncSymbols {
                 types, symJAsync,
                 names.fromString(Constants.DO_RETURN),
                 true,
-                Promise.class
+                JPromise.class
         );
         symDefaultCase = elements.getTypeElement(DefaultCase.class.getCanonicalName());
         symDefaultCaseOf = SymbolHelpers.INSTANCE.getMethodMember(

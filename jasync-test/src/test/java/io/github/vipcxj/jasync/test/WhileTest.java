@@ -1,7 +1,7 @@
 package io.github.vipcxj.jasync.test;
 
 import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JPromise;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 public class WhileTest {
 
     @Async
-    public Promise<Integer> sum1(int to) {
+    public JPromise<Integer> sum1(int to) {
         int sum = 0;
         while (sum < to) {
             sum += JAsync.just(1).await();
@@ -18,7 +18,7 @@ public class WhileTest {
     }
 
     @Async
-    public Promise<Integer> sum2(int to) {
+    public JPromise<Integer> sum2(int to) {
         int sum = 0;
         while (sum < JAsync.just(to).await()) {
             sum += JAsync.just(1).await();
@@ -27,7 +27,7 @@ public class WhileTest {
     }
 
     @Async
-    public Promise<Integer> multi1(int a, int b) {
+    public JPromise<Integer> multi1(int a, int b) {
         int res = 0;
         int i = 0, j = 0;
         while (i++ < a) {
@@ -40,7 +40,7 @@ public class WhileTest {
     }
 
     @Async(debug = true)
-    public Promise<Integer> multi2(int a, int b) {
+    public JPromise<Integer> multi2(int a, int b) {
         int res = 0;
         int i = 0, j = 0;
         while (i++ < JAsync.just(a).await()) {

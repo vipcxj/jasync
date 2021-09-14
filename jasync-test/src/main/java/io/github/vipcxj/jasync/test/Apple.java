@@ -2,7 +2,7 @@ package io.github.vipcxj.jasync.test;
 
 import io.github.vipcxj.jasync.reactive.Promises;
 import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.Promise;
+import io.github.vipcxj.jasync.spec.JPromise;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import reactor.core.publisher.Mono;
 
@@ -11,11 +11,11 @@ import java.time.Duration;
 
 public class Apple {
 
-    private Promise<String> say(String message) {
+    private JPromise<String> say(String message) {
         return JAsync.just(message);
     }
 
-    public Promise<Boolean> test1() {
+    public JPromise<Boolean> test1() {
         Integer a = Promises.from(Mono.just(6).delayElement(Duration.ofSeconds(1))).await();
         if (a > 3) {
             try {
@@ -39,7 +39,7 @@ public class Apple {
         return ste.getFileName() + ": Line " + ste.getLineNumber();
     }
 
-    public Promise<Integer> test2(int a) {
+    public JPromise<Integer> test2(int a) {
         int i = 0, j, o;
         Double k;
         j = 1;
@@ -57,7 +57,7 @@ public class Apple {
     private static final String ABC = "abc";
 
 
-    public Promise<Void> testMultiLevelScopeVar() {
+    public JPromise<Void> testMultiLevelScopeVar() {
         String a = "!";
         {
             System.out.println(say(a).await());
@@ -70,7 +70,7 @@ public class Apple {
     }
 
     @Async
-    public Promise<Void> testSwitch() {
+    public JPromise<Void> testSwitch() {
         String s = "a";
 /*        try {
             say(s).await();
@@ -109,11 +109,11 @@ public class Apple {
         return null;
     }
 
-    private Promise<StringWriter> getWriter() {
+    private JPromise<StringWriter> getWriter() {
         return JAsync.just(new StringWriter());
     }
 
-    public Promise<Void> testTryWith() {
+    public JPromise<Void> testTryWith() {
         try (
                 StringWriter writer1 = getWriter().await();
                 StringWriter writer2 = new StringWriter();
