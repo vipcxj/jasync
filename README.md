@@ -165,7 +165,7 @@ For example, with debug mode off:
 
 With debug mode on:
 
-![alt debug mode off](/debug-on.png)
+![alt debug mode on](/debug-on.png)
 
 It can be seen that when the debug mode is turned on, all the defined variables can be found in the monitoring window.
 
