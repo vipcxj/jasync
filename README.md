@@ -92,7 +92,7 @@ First, select a implementation library to the Maven dependency. Currently, only 
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-reactive</artifactId>
-    <version>0.0.2</version>
+    <version>0.1.0</version>
 </dependency>
 ```
 This implementation uses the famous library **Reactor**. The `JPromise` object is a wrapper of `Mono` object.
@@ -104,7 +104,7 @@ Then add the core library to the Maven dependency.
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core</artifactId>
-    <version>0.0.2</version>
+    <version>0.1.0</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -120,7 +120,7 @@ However, if something went wrong, jdk can not find the annotation processor, try
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core</artifactId>
-          <version>0.0.2</version>
+          <version>0.1.0</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
@@ -132,7 +132,7 @@ If you are using a jdk >= 9, you should use this instead:
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core-java9</artifactId>
-    <version>0.0.2</version>
+    <version>0.1.0</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -146,13 +146,28 @@ or
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core-java9</artifactId>
-          <version>0.0.2</version>
+          <version>0.1.0</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
   </plugin>
 </plugins>
 ```
+
+Debug mode
+===
+**JAsync** support a debug mode. With debug mode on, **JAsync** will inject all useful variable to the current context, even they are not captured.
+As a result, When debugging, the developer can see all the variables in the monitor window just like debugging normal code.
+
+For example, with debug mode off:
+
+![alt debug mode off](/debug-off.png)
+
+With debug mode on:
+
+![alt debug mode off](/debug-on.png)
+
+It can be seen that when the debug mode is turned on, all the defined variables can be found in the monitoring window.
 
 [maven-shield]: https://img.shields.io/maven-central/v/io.github.vipcxj/jasync-parent.png
 [maven-link]: https://search.maven.org/artifact/io.github.vipcxj/jasync-parent

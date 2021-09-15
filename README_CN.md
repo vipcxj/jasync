@@ -32,11 +32,11 @@ public class MyRestController {
         // 一个 Reactor 的 Mono 对象可以被转换为标准 JPromise 对象。 所以我们先获取一个 Mono 对象。
         Mono<List<Employee>> empsMono = employeeRepository.findEmployeeByDepartment(department);
         // 将Mono对象转换为标准 JPromise 对象.
-        JPromise<List<Employee>> empsPromise = JAsync.from(empsMono);
+        JPromise<List<Employee>> empsPromise = Promises.from(empsMono);
         // 像es和c#里那样使用 await 来在不阻塞当前线程的前提下获取 JPromise 的结果。
         for (Employee employee : empsPromise.await()) {
             // 方法 findSalaryByEmployee 同样返回一个 Mono 对象。我们将其转换为标准 JPromise 对象，并像上面提到的那样使用 await 获取其结果。
-            Salary salary = JAsync.from(salaryRepository.findSalaryByEmployee(employee.id)).await();
+            Salary salary = Promises.from(salaryRepository.findSalaryByEmployee(employee.id)).await();
             money += salary.total;
         }
         // JAsync 异步方法必须返回一个 JPromise 对象，所以我们使用 just 方法封装返回值。
@@ -69,9 +69,9 @@ public class MyRestController {
         double money = 0.0;
         DoubleReference moneyRef = new DoubleReference(money);
         Mono<List<Employee>> empsMono = employeeRepository.findEmployeeByDepartment(department);
-        JPromise<List<Employee>> empsPromise = JAsync.from(empsMono);
+        JPromise<List<Employee>> empsPromise = Promises.from(empsMono);
         return empsPromise.thenVoid(v0 -> JAsync.doForEachObject(v0, employee -> 
-                JAsync.from(salaryRepository.findSalaryByEmployee(employee.id)).thenVoid(v1 -> {
+                Promises.from(salaryRepository.findSalaryByEmployee(employee.id)).thenVoid(v1 -> {
                     moneyRef.addAndGet(v1.total);
                 })
             ).thenVoid(() -> JAsync.doReturn(JAsync.just(moneyRef.getValue())))).catchReturn();
@@ -93,7 +93,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-reactive</artifactId>
-    <version>0.0.2</version>
+    <version>0.1.0</version>
 </dependency>
 ```
 这个实现库是基于著名的响应式框架 **Reactor** 的。在这个实现中，`JPromise` 对象是 `Mono` 对象的封装。
@@ -105,7 +105,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core</artifactId>
-    <version>0.0.2</version>
+    <version>0.1.0</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -120,7 +120,7 @@ public class MyRestController {
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core</artifactId>
-          <version>0.0.2</version>
+          <version>0.1.0</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
@@ -132,7 +132,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core-java9</artifactId>
-    <version>0.0.2</version>
+    <version>0.1.0</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -146,13 +146,28 @@ or
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core-java9</artifactId>
-          <version>0.0.2</version>
+          <version>0.1.0</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
   </plugin>
 </plugins>
 ```
+
+Debug mode
+===
+**JAsync** 支持 debug 模式。在 debug 模式下，**JAsync** 会将所有对调试有用的变量注入到当前上下文，即使是那些没有被捕获的变量。
+于是断点调试时，开发者可以再监视窗里看到所有可用的变量，就像调试普通代码那样。
+
+举个例子, 当 debug 模式关闭时：
+
+![alt debug mode off](/debug-off.png)
+
+当 debug 模式开启时：
+
+![alt debug mode off](/debug-on.png)
+
+可以看到当 debug 模式开启时， 所有已经定义的变量都能在监视窗中被找到，IDE在代码内的辅助显示也自动生效了。
 
 [maven-shield]: https://img.shields.io/maven-central/v/io.github.vipcxj/jasync-parent.png
 [maven-link]: https://search.maven.org/artifact/io.github.vipcxj/jasync-parent
