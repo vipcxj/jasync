@@ -38,6 +38,8 @@ public class TransIdentContext extends AbstractTransExpressionContext<JCTree.JCI
         }
         if (parent.getTree() instanceof JCTree.JCAssign) {
             return context.getTree() != ((JCTree.JCAssign) parent.getTree()).getVariable();
+        } else if (parent.getTree() instanceof JCTree.JCUnary) {
+            return !parent.getTree().getTag().isIncOrDecUnaryOp();
         } else {
             return notInAssignmentLeftArg(parent);
         }

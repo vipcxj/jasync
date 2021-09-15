@@ -12,6 +12,7 @@ public class TransReturnContext extends AbstractTransStatementContext<JCTree.JCR
 
     public TransReturnContext(AnalyzerContext analyzerContext, JCTree.JCReturn tree) {
         super(analyzerContext, tree);
+        awaitContainer = tree;
     }
 
     @Override

@@ -12,12 +12,6 @@ public class Promises implements PromiseProvider {
         return new ReactorPromise<>(mono);
     }
 
-    @Override
-    public <T> JPromise<T> from(Object from) {
-        //noinspection unchecked
-        return Promises.from((Mono<T>) from);
-    }
-
     public <T> JPromise<T> just(T value) {
         return new ReactorPromise<>(Mono.justOrEmpty(value));
     }

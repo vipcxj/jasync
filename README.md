@@ -31,11 +31,11 @@ public class MyRestController {
         // A Mono object can be transformed to the JPromise object. So we get a Mono object first.
         Mono<List<Employee>> empsMono = employeeRepository.findEmployeeByDepartment(department);
         // Transformed the Mono object to the JPromise object.
-        JPromise<List<Employee>> empsPromise = JAsync.from(empsMono);
+        JPromise<List<Employee>> empsPromise = Promises.from(empsMono);
         // Use await just like es and c# to get the value of the JPromise without blocking the current thread.
         for (Employee employee : empsPromise.await()) {
             // The method findSalaryByEmployee also return a Mono object. We transform it to the JPromise just like above. And then await to get the result.
-            Salary salary = JAsync.from(salaryRepository.findSalaryByEmployee(employee.id)).await();
+            Salary salary = Promises.from(salaryRepository.findSalaryByEmployee(employee.id)).await();
             money += salary.total;
         }
         // The async method must return a JPromise object, so we use just method to wrap the result to a JPromise.
@@ -68,9 +68,9 @@ public class MyRestController {
         double money = 0.0;
         DoubleReference moneyRef = new DoubleReference(money);
         Mono<List<Employee>> empsMono = employeeRepository.findEmployeeByDepartment(department);
-        JPromise<List<Employee>> empsPromise = JAsync.from(empsMono);
-        return empsPromise.thenVoid(v0 -> JAsync.doForEachObject(v0, employee -> 
-                JAsync.from(salaryRepository.findSalaryByEmployee(employee.id)).thenVoid(v1 -> {
+        JPromise<List<Employee>> empsPromise = Promises.from(empsMono);
+        return empsPromise.thenVoid(v0 -> JAsync.doForEachObject(v0, employee ->
+                Promises.from(salaryRepository.findSalaryByEmployee(employee.id)).thenVoid(v1 -> {
                     moneyRef.addAndGet(v1.total);
                 })
             ).thenVoid(() -> JAsync.doReturn(JAsync.just(moneyRef.getValue())))).catchReturn();
