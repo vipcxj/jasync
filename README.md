@@ -104,7 +104,7 @@ Then add the core library to the Maven dependency.
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -120,7 +120,7 @@ However, if something went wrong, jdk can not find the annotation processor, try
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core</artifactId>
-          <version>0.1.0</version>
+          <version>0.1.1</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
@@ -132,7 +132,7 @@ If you are using a jdk >= 9, you should use this instead:
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core-java9</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -146,7 +146,7 @@ or
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core-java9</artifactId>
-          <version>0.1.0</version>
+          <version>0.1.1</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
