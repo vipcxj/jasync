@@ -23,6 +23,7 @@ import java.util.*;
 public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.JCMethodDecl> {
 
     private final JCTree.JCClassDecl enclosingClassTree;
+    private final boolean enclosingClassTopLevel;
     private final String enclosingClassName;
     private final static Map<String, String> indyHelperMap = new HashMap<>();
     private final static Map<String, String> indyHelpersMap = new HashMap<>();
@@ -38,7 +39,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         EnclosingClassFinder finder = new EnclosingClassFinder(tree);
         cu.accept(finder);
         enclosingClassTree = finder.getEnclosingClassTree();
-
+        enclosingClassTopLevel = finder.isTopLevel();
         String packageName = cu.packge.fullname.toString();
         if (packageName.isEmpty()) {
             enclosingClassName = finder.getTargetName();
@@ -130,6 +131,10 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         return jasyncContext.getNames().fromString(nextMethod);
     }
 
+    private boolean isEnclosingClassStatic() {
+        return enclosingClassTopLevel || (enclosingClassTree.getModifiers().flags & Flags.STATIC) != 0;
+    }
+
     public Symbol.VarSymbol getIndyHelpers() {
         if (indyHelpersVarSymbol == null) {
             IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
@@ -151,8 +156,12 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
                 int prePos = maker.pos;
                 try {
                     Symbol.ClassSymbol indyHelpersSymbol = (Symbol.ClassSymbol) elements.getTypeElement("io.github.vipcxj.jasync.runtime.java8.helpers.IndyHelpers");
+                    long flags = Flags.FINAL | Flags.PRIVATE;
+                    if (isEnclosingClassStatic()) {
+                        flags |= Flags.STATIC;
+                    }
                     indyHelpersVarSymbol = new Symbol.VarSymbol(
-                            Flags.FINAL | Flags.PRIVATE | Flags.STATIC,
+                            flags,
                             indyHelpersName,
                             indyHelpersSymbol.type,
                             enclosingClassTree.sym
@@ -526,15 +535,17 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
 
     static class EnclosingClassFinder extends TreeScanner {
         private final JCTree.JCMethodDecl methodDecl;
-        private JCTree.JCClassDecl currentClassDecl;
         private JCTree.JCClassDecl targetClassDecl;
+        private boolean topLevel;
         private String targetName;
-        private final Deque<PathData> path;
+        private final Stack<JCTree.JCClassDecl> classDeclStack;
+        private final Stack<PathData> path;
         private int index;
 
         EnclosingClassFinder(JCTree.JCMethodDecl methodDecl) {
             this.methodDecl = methodDecl;
-            this.path = new ArrayDeque<>();
+            this.classDeclStack = new Stack<>();
+            this.path = new Stack<>();
             this.index = 0;
         }
 
@@ -544,6 +555,10 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
 
         public String getTargetName() {
             return targetName;
+        }
+
+        public boolean isTopLevel() {
+            return topLevel;
         }
 
         @Override
@@ -570,27 +585,32 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
 
         @Override
         public void visitClassDef(JCTree.JCClassDecl tree) {
-            currentClassDecl = tree;
-            iterIndex();
-            PathData pathData = new PathData();
-            pathData.name = tree.name == null || tree.name.isEmpty() ? ("class$$" + currentIndex()) : (tree.name.toString());
-            pathData.index = 0;
-            path.push(pathData);
+            classDeclStack.push(tree);
             try {
-                super.visitClassDef(tree);
+                iterIndex();
+                PathData pathData = new PathData();
+                pathData.name = tree.name == null || tree.name.isEmpty() ? ("class$$" + currentIndex()) : (tree.name.toString());
+                pathData.index = 0;
+                path.push(pathData);
+                try {
+                    super.visitClassDef(tree);
+                } finally {
+                    path.pop();
+                }
             } finally {
-                path.pop();
+                classDeclStack.pop();
             }
         }
 
         @Override
         public void visitMethodDef(JCTree.JCMethodDecl tree) {
             if (methodDecl == tree) {
-                targetClassDecl = currentClassDecl;
+                targetClassDecl = classDeclStack.peek();
+                topLevel = classDeclStack.size() == 1;
                 StringBuilder sb = new StringBuilder();
-                Iterator<PathData> iterator = path.descendingIterator();
-                while (iterator.hasNext()) {
-                    PathData pd = iterator.next();
+                ListIterator<PathData> iterator = path.listIterator(path.size());
+                while (iterator.hasPrevious()) {
+                    PathData pd = iterator.previous();
                     if (sb.length() == 0) {
                         sb.append(pd.name);
                     } else {
