@@ -13,6 +13,10 @@ QQ群： 696195080
 另一方面本框架通过一套接口分离了上层语法树转换和底层异步工作流的实现。本项目专注于前者，而后者则可以通过封装现有的异步库来实现，比如Reactor，RxJava等。
 这样的好处是本项目可以和社区中各种已经被广泛使用的异步库无缝结合，产生1+1>2的效果。
 
+需求
+===
+jdk >= 8
+
 Examples
 =======
 #### 使用 JAsync
@@ -93,7 +97,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-reactive</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
 </dependency>
 ```
 这个实现库是基于著名的响应式框架 **Reactor** 的。在这个实现中，`JPromise` 对象是 `Mono` 对象的封装。
@@ -105,7 +109,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -120,7 +124,7 @@ public class MyRestController {
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core</artifactId>
-          <version>0.1.1</version>
+          <version>0.1.2</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
@@ -132,7 +136,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core-java9</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -146,7 +150,33 @@ public class MyRestController {
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core-java9</artifactId>
-          <version>0.1.1</version>
+          <version>0.1.2</version>
+        </path>
+      </annotationProcessorPaths>
+    </configuration>
+  </plugin>
+</plugins>
+```
+如果你试用的JDK版本大于等于17，你应该用这个库代替：
+```xml
+<dependency>
+    <groupId>io.github.vipcxj</groupId>
+    <artifactId>jasync-core-java17</artifactId>
+    <version>0.1.2</version>
+    <scope>provided</scope>
+</dependency>
+```
+或写成这样
+```xml
+<plugins>
+  <plugin>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <configuration>
+      <annotationProcessorPaths>
+        <path>
+          <groupId>io.github.vipcxj</groupId>
+          <artifactId>jasync-core-java17</artifactId>
+          <version>0.1.2</version>
         </path>
       </annotationProcessorPaths>
     </configuration>

@@ -12,6 +12,10 @@ It makes the developer's asynchronous programming experience as close as possibl
 On the other hand, this framework separates the realization of the upper-level syntax tree conversion and the lower-level asynchronous workflow through a set of interfaces. This project focuses on the former, while the latter can be achieved by encapsulating existing asynchronous libraries, such as Reactor, RxJava, etc.
 The advantage of this is that this project can be seamlessly integrated with various asynchronous libraries that have been widely used in the community to produce an effect of 1+1>2.
 
+Requirement
+===
+jdk >= 8
+
 Examples
 =======
 #### With JAsync
@@ -92,7 +96,7 @@ First, select a implementation library to the Maven dependency. Currently, only 
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-reactive</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
 </dependency>
 ```
 This implementation uses the famous library **Reactor**. The `JPromise` object is a wrapper of `Mono` object.
@@ -104,7 +108,7 @@ Then add the core library to the Maven dependency.
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -120,7 +124,7 @@ However, if something went wrong, jdk can not find the annotation processor, try
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core</artifactId>
-          <version>0.1.1</version>
+          <version>0.1.2</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
@@ -132,7 +136,7 @@ If you are using a jdk >= 9, you should use this instead:
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core-java9</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -146,7 +150,34 @@ or
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core-java9</artifactId>
-          <version>0.1.1</version>
+          <version>0.1.2</version>
+        </path>
+      </annotationProcessorPaths>
+    </configuration>
+  </plugin>
+</plugins>
+```
+
+If you are using a jdk >= 17, you should use this instead:
+```xml
+<dependency>
+    <groupId>io.github.vipcxj</groupId>
+    <artifactId>jasync-core-java17</artifactId>
+    <version>0.1.2</version>
+    <scope>provided</scope>
+</dependency>
+```
+or
+```xml
+<plugins>
+  <plugin>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <configuration>
+      <annotationProcessorPaths>
+        <path>
+          <groupId>io.github.vipcxj</groupId>
+          <artifactId>jasync-core-java17</artifactId>
+          <version>0.1.2</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
