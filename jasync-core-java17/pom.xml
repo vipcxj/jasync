@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>jasync-parent</artifactId>
         <groupId>io.github.vipcxj</groupId>
         <version>0.1.2-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>jasync-core-java9</artifactId>
 
-    <name>JAsync Core9</name>
+    <artifactId>jasync-core-java17</artifactId>
     <url>https://github.com/vipcxj/jasync</url>
     <description>
         JAsync implements Async-Await fashion for Java just like es and c#.
-        This is the extra core library for java 9.
+        This is the extra core library for java 17.
     </description>
     <licenses>
         <license>
@@ -39,8 +40,8 @@
     </developers>
 
     <properties>
-        <maven.compiler.source>9</maven.compiler.source>
-        <maven.compiler.target>9</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
     </properties>
 
     <dependencies>
@@ -73,7 +74,7 @@
                 <configuration>
                     <toolchains>
                         <jdk>
-                            <version>11</version>
+                            <version>17</version>
                         </jdk>
                     </toolchains>
                 </configuration>

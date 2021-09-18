@@ -1,6 +1,7 @@
 package io.github.vipcxj.jasync.core;
 
 import com.google.auto.service.AutoService;
+import io.github.vipcxj.jasync.core.hack.Utils;
 import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.core.javac.IJAsyncContext;
 import io.github.vipcxj.jasync.core.javac.JAsyncContext;
@@ -22,6 +23,15 @@ public class AsyncProcessor extends AbstractProcessor {
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         System.out.println("AsyncProcessor init.");
+        Utils.addOpensForLombok(AsyncProcessor.class, new String[] {
+                "com.sun.tools.javac.api",
+                "com.sun.tools.javac.code",
+                "com.sun.tools.javac.comp",
+                "com.sun.tools.javac.model",
+                "com.sun.tools.javac.processing",
+                "com.sun.tools.javac.tree",
+                "com.sun.tools.javac.util"
+        });
         ProcessingEnvironment unwrappedProcessingEnv = JetbrainUtils.jbUnwrap(ProcessingEnvironment.class, this.processingEnv);
         this.context = new JAsyncContext(unwrappedProcessingEnv);
         System.out.println("Source version: " + unwrappedProcessingEnv.getSourceVersion());

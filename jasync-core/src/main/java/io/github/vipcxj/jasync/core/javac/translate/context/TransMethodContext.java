@@ -19,6 +19,7 @@ import io.github.vipcxj.jasync.spec.JPromise;
 
 import javax.lang.model.util.Elements;
 import java.util.*;
+import java.util.function.Predicate;
 
 public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.JCMethodDecl> {
 
@@ -415,7 +416,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         try {
             List<JCTree.JCExpression> args = JavacUtils.mapList(methodDecl.params, param -> safeMaker().ClassLiteral(types.erasure(param.type)));
             Symbol.TypeSymbol methodTypeSymbol = symbols.methodTypeType.tsym;
-            Filter<Symbol> filter;
+            Predicate<Symbol> filter;
             if (args.isEmpty()) {
                 filter = symbol -> {
                     if (symbol instanceof Symbol.MethodSymbol) {

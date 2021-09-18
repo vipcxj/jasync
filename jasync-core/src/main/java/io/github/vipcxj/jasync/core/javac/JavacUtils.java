@@ -990,12 +990,12 @@ public class JavacUtils {
 
     // 0: default, 1: int, 2: String, 3: Enum
     public static int getCaseType(IJAsyncInstanceContext context, JCTree.JCCase jcCase) {
-        if (jcCase.pat == null) {
+        if (jcCase.getExpression() == null) {
             return 0;
         }
-        Type type = getType(context, jcCase.pat);
+        Type type = getType(context, jcCase.getExpression());
         if (type == null) {
-            throw new IllegalArgumentException("Unable to get the type of case: " + jcCase.pat);
+            throw new IllegalArgumentException("Unable to get the type of case: " + jcCase.getExpression());
         }
         TypeTag tag = type.getTag();
         if (tag == TypeTag.INT || tag == TypeTag.SHORT || tag == TypeTag.BYTE || tag == TypeTag.CHAR) {
@@ -1010,7 +1010,7 @@ public class JavacUtils {
                 return 3;
             }
         }
-        throw new IllegalArgumentException("Unable to get the type of case: " + jcCase.pat);
+        throw new IllegalArgumentException("Unable to get the type of case: " + jcCase.getExpression());
     }
 
     public static JCTree.JCExpression makeCaseWithBlock(IJAsyncInstanceContext context, int caseType, JCTree.JCExpression pat, JCTree.JCBlock block) {
@@ -1172,18 +1172,17 @@ public class JavacUtils {
     }
 
     public static void atCaseBlockStart(IJAsyncInstanceContext context, JCTree.JCCase jcCase) {
-        TreeMaker maker = context.getTreeMaker();
         int casePosition = jcCase.getStartPosition();
         if (casePosition < 0) {
             return;
         }
         atPosIfGreater(context, casePosition + 1);
-        if (jcCase.pat == null) {
+        if (jcCase.getExpression() == null) {
             atPosIfGreater(context, casePosition + 8);
         } else {
-            atPosIfGreater(context, getEndPos(context, jcCase.pat));
+            atPosIfGreater(context, getEndPos(context, jcCase.getExpression()));
         }
-        atPosIfGreater(context, getStartPos(jcCase.stats));
+        atPosIfGreater(context, getStartPos(jcCase.getStatements()));
     }
 
     public static Symbol.VarSymbol createCatchThrowableParam(IJAsyncContext context, Name name, Symbol owner) {

@@ -172,18 +172,18 @@ public class PromiseTranslator extends TreeTranslator {
     public void visitSwitch(JCTree.JCSwitch jcSwitch) {
         jcSwitch.selector = translate(jcSwitch.selector);
         if (!complete) {
-            if (jcSwitch.cases == null || jcSwitch.cases.isEmpty()) {
+            if (jcSwitch.getCases() == null || jcSwitch.getCases().isEmpty()) {
                 result = jcSwitch;
                 return;
             }
             // only default block
-            if (jcSwitch.cases.size() == 1 && jcSwitch.cases.head.pat == null) {
-                List<JCTree.JCStatement> statements = jcSwitch.cases.head.stats;
-                jcSwitch.cases.head.stats = copyReshaped().reshapeStatements(statements, caseStatementsReplacer(jcSwitch.cases.head));
-                if (statements != jcSwitch.cases.head.stats) {
+            if (jcSwitch.getCases().size() == 1 && jcSwitch.getCases().head.getExpression() == null) {
+                List<JCTree.JCStatement> statements = jcSwitch.getCases().head.getStatements();
+                jcSwitch.getCases().head.stats = copyReshaped().reshapeStatements(statements, caseStatementsReplacer(jcSwitch.cases.head));
+                if (statements != jcSwitch.getCases().head.stats) {
                     complete = true;
                     action = ACTION.RESHAPE_STATEMENT;
-                    result = JavacUtils.makeBlock(context, jcSwitch.cases.head.stats);
+                    result = JavacUtils.makeBlock(context, jcSwitch.getCases().head.stats);
                 } else {
                     result = jcSwitch;
                 }
@@ -235,7 +235,7 @@ public class PromiseTranslator extends TreeTranslator {
                     JCTree.JCBlock block = iterator.next();
                     treeMaker.at(block);
                     int caseType = JavacUtils.getCaseType(context, aCase);
-                    args.append(JavacUtils.makeCaseWithBlock(context, caseType, aCase.pat, block));
+                    args.append(JavacUtils.makeCaseWithBlock(context, caseType, aCase.getExpression(), block));
                 }
                 treeMaker.at(jcSwitch);
                 result = JavacUtils.makeExprStat(context, JavacUtils.makeApply(

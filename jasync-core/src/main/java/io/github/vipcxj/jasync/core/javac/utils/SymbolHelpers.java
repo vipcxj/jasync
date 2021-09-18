@@ -4,7 +4,6 @@ import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.code.Types;
-import com.sun.tools.javac.util.Filter;
 import com.sun.tools.javac.util.Name;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.utils.spi.SymbolHelper;
@@ -13,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.function.Predicate;
 
 public enum SymbolHelpers {
     INSTANCE;
@@ -36,7 +36,7 @@ public enum SymbolHelpers {
         }
     }
 
-    public Symbol getSymbol(Symbol.TypeSymbol typeSymbol, Name name, Filter<Symbol> filter) {
+    public Symbol getSymbol(Symbol.TypeSymbol typeSymbol, Name name, Predicate<Symbol> filter) {
         return helper.getSymbol(typeSymbol, name, filter);
     }
 

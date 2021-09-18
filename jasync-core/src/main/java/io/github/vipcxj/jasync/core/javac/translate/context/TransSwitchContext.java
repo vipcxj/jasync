@@ -81,10 +81,10 @@ public class TransSwitchContext
     }
 
     private void checkCases() {
-        for (JCTree.JCCase jcCase : tree.cases) {
-            if (jcCase.stats != null) {
-                if (jcCase.stats.size() != 1 || !(jcCase.stats.head instanceof JCTree.JCBlock)) {
-                    throw new IllegalStateException("The case is not normalized: case " + jcCase.pat + ".");
+        for (JCTree.JCCase jcCase : tree.getCases()) {
+            if (jcCase.getStatements() != null) {
+                if (jcCase.getStatements().size() != 1 || !(jcCase.getStatements().head instanceof JCTree.JCBlock)) {
+                    throw new IllegalStateException("The case is not normalized: case " + jcCase.getExpression() + ".");
                 }
             }
         }

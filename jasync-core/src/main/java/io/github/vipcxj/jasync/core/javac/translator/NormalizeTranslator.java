@@ -151,19 +151,19 @@ public class NormalizeTranslator extends TreeTranslator {
 
     @Override
     public void visitSwitch(JCTree.JCSwitch tree) {
-        if (tree.cases.size() == 1 && tree.cases.head.pat == null) {
-            JCTree.JCCase jcCase = tree.cases.head;
-            if (jcCase.stats == null) {
+        if (tree.getCases().size() == 1 && tree.getCases().head.getExpression() == null) {
+            JCTree.JCCase jcCase = tree.getCases().head;
+            if (jcCase.getStatements() == null) {
                 result = JavacUtils.wrapPos(
                         context,
                         context.getTreeMaker().Skip(),
                         tree,
                         true
                 );
-            } else if (jcCase.stats.size() == 1) {
-                result = JavacUtils.makeBlock(context, jcCase.stats.head);
+            } else if (jcCase.getStatements().size() == 1) {
+                result = JavacUtils.makeBlock(context, jcCase.getStatements().head);
             } else {
-                result = JavacUtils.makeBlock(context, jcCase.stats);
+                result = JavacUtils.makeBlock(context, jcCase.getStatements());
             }
             result = translate(result);
             return;
