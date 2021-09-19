@@ -14,7 +14,7 @@ import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
 import io.github.vipcxj.jasync.core.javac.model.Frame;
 import io.github.vipcxj.jasync.core.javac.translate.TransFrameHolderContext;
 import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
-import io.github.vipcxj.jasync.core.javac.utils.SymbolHelpers;
+import io.github.vipcxj.jasync.core.javac.patch.SymbolHelpers;
 import io.github.vipcxj.jasync.spec.JPromise;
 
 import javax.lang.model.util.Elements;

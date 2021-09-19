@@ -14,7 +14,7 @@ import io.github.vipcxj.jasync.core.javac.model.VarKey;
 import io.github.vipcxj.jasync.core.javac.model.VarUseState;
 import io.github.vipcxj.jasync.core.javac.translate.context.TransMethodContext;
 import io.github.vipcxj.jasync.core.javac.translator.NormalizeTranslator;
-import io.github.vipcxj.jasync.core.javac.utils.SymbolHelpers;
+import io.github.vipcxj.jasync.core.javac.patch.SymbolHelpers;
 import io.github.vipcxj.jasync.core.javac.visitor.JAsyncAnalyzer;
 import io.github.vipcxj.jasync.core.javac.visitor.PosVisitor;
 import io.github.vipcxj.jasync.core.javac.visitor.ReturnScanner;

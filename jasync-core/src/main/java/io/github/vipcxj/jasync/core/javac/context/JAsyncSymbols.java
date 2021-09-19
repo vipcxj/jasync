@@ -11,7 +11,7 @@ import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Names;
 import io.github.vipcxj.jasync.core.javac.Constants;
-import io.github.vipcxj.jasync.core.javac.utils.SymbolHelpers;
+import io.github.vipcxj.jasync.core.javac.patch.SymbolHelpers;
 import io.github.vipcxj.jasync.runtime.helpers.*;
 import io.github.vipcxj.jasync.spec.JAsync;
 import io.github.vipcxj.jasync.spec.JPromise;
