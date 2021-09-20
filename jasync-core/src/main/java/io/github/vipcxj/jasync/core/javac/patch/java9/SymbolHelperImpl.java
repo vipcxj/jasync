@@ -11,15 +11,13 @@ import java.util.function.Predicate;
 @AutoService(SymbolHelper.class)
 public class SymbolHelperImpl implements SymbolHelper {
 
-    private final IPatch patch;
-
-    public SymbolHelperImpl() {
-        patch = Patches.INSTANCE.getPatch();
+    private IPatch getPatch() {
+        return Patches.INSTANCE.getPatch();
     }
 
     @Override
     public Symbol getSymbol(Symbol.TypeSymbol classSymbol, Name name, Predicate<Symbol> filter) {
-        return patch.getSymbol(classSymbol, name, filter);
+        return getPatch().getSymbol(classSymbol, name, filter);
     }
 
     @Override

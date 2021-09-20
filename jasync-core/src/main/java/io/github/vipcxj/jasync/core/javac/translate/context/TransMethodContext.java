@@ -283,7 +283,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         frame.bind(methodSymbol);
         methodSymbol.params = getParamSymbols(frame);
         methodSymbol.type = new Type.MethodType(
-                JavacUtils.mapList(methodSymbol.params, param -> param.type),
+                JavacUtils.mapList(methodSymbol.params(), param -> param.type),
                 resType,
                 List.of(symbols.throwableType),
                 enclosingClassTree.sym
@@ -421,8 +421,8 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
                 filter = symbol -> {
                     if (symbol instanceof Symbol.MethodSymbol) {
                         Symbol.MethodSymbol methodSymbol = (Symbol.MethodSymbol) symbol;
-                        if (methodSymbol.params.size() == 1) {
-                            Symbol.VarSymbol varSymbol = methodSymbol.params.get(0);
+                        if (methodSymbol.params().size() == 1) {
+                            Symbol.VarSymbol varSymbol = methodSymbol.params().get(0);
                             return varSymbol.type.tsym == symbols.classType.tsym;
                         }
                     }
@@ -432,8 +432,8 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
                 filter = symbol -> {
                     if (symbol instanceof Symbol.MethodSymbol) {
                         Symbol.MethodSymbol methodSymbol = (Symbol.MethodSymbol) symbol;
-                        if (methodSymbol.params.size() == 2) {
-                            for (Symbol.VarSymbol param : methodSymbol.params) {
+                        if (methodSymbol.params().size() == 2) {
+                            for (Symbol.VarSymbol param : methodSymbol.params()) {
                                 if (param.type.tsym != symbols.classType.tsym) {
                                     return false;
                                 }
@@ -447,10 +447,10 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
                 filter = symbol -> {
                     if (symbol instanceof Symbol.MethodSymbol) {
                         Symbol.MethodSymbol methodSymbol = (Symbol.MethodSymbol) symbol;
-                        if (methodSymbol.params.size() == 3) {
-                            Symbol.VarSymbol arg0Symbol = methodSymbol.params.get(0);
-                            Symbol.VarSymbol arg1Symbol = methodSymbol.params.get(1);
-                            Symbol.VarSymbol arg2Symbol = methodSymbol.params.get(2);
+                        if (methodSymbol.params().size() == 3) {
+                            Symbol.VarSymbol arg0Symbol = methodSymbol.params().get(0);
+                            Symbol.VarSymbol arg1Symbol = methodSymbol.params().get(1);
+                            Symbol.VarSymbol arg2Symbol = methodSymbol.params().get(2);
                             return methodSymbol.isVarArgs()
                                     && arg0Symbol.type.tsym == symbols.classType.tsym
                                     && arg1Symbol.type.tsym == symbols.classType.tsym

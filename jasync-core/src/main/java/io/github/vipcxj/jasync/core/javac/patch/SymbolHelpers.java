@@ -7,6 +7,8 @@ import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.util.Name;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.patch.spi.SymbolHelper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -16,6 +18,7 @@ import java.util.function.Predicate;
 
 public enum SymbolHelpers {
     INSTANCE;
+    private final Logger logger = LogManager.getLogger();
     private SymbolHelper helper;
     SymbolHelpers() {
         int mainVersion = JavacUtils.getJavaMainVersion();
@@ -86,11 +89,11 @@ public enum SymbolHelpers {
                 if (!isStatic && methodSymbol.isStatic()) {
                     return false;
                 }
-                if (args.length != methodSymbol.params.size()) {
+                if (args.length != methodSymbol.params().size()) {
                     return false;
                 }
                 int i = 0;
-                for (Symbol.VarSymbol param : methodSymbol.params) {
+                for (Symbol.VarSymbol param : methodSymbol.params()) {
                     Class<?> argType = args[i++];
                     if (!equalType(types, param.type, argType)) {
                         return false;

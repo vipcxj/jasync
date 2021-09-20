@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.SOURCE)
-@Target({ElementType.METHOD, ElementType.LOCAL_VARIABLE})
+@Target({ElementType.METHOD})
 public @interface Async {
     String debugId() default "";
     boolean disabled() default false;

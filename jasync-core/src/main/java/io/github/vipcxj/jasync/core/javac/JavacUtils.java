@@ -7,14 +7,15 @@ import com.sun.tools.javac.code.*;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeCopier;
 import com.sun.tools.javac.tree.TreeMaker;
+import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.*;
 import io.github.vipcxj.jasync.core.javac.model.TreeFactory;
 import io.github.vipcxj.jasync.core.javac.model.VarInfo;
 import io.github.vipcxj.jasync.core.javac.model.VarKey;
 import io.github.vipcxj.jasync.core.javac.model.VarUseState;
+import io.github.vipcxj.jasync.core.javac.patch.SymbolHelpers;
 import io.github.vipcxj.jasync.core.javac.translate.context.TransMethodContext;
 import io.github.vipcxj.jasync.core.javac.translator.NormalizeTranslator;
-import io.github.vipcxj.jasync.core.javac.patch.SymbolHelpers;
 import io.github.vipcxj.jasync.core.javac.visitor.JAsyncAnalyzer;
 import io.github.vipcxj.jasync.core.javac.visitor.PosVisitor;
 import io.github.vipcxj.jasync.core.javac.visitor.ReturnScanner;
@@ -23,10 +24,7 @@ import io.github.vipcxj.jasync.runtime.helpers.*;
 import io.github.vipcxj.jasync.spec.JPromise;
 import io.github.vipcxj.jasync.spec.functional.*;
 
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.*;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -1126,6 +1124,18 @@ public class JavacUtils {
         }
     }
 
+    public static void attrMethod(IJAsyncInstanceContext context, JCTree.JCMethodDecl jcMethodDecl) {
+        Log.DiagnosticHandler discardHandler = new Log.DiscardDiagnosticHandler(context.getLog());
+        try {
+            JavacScope scope = context.getScope(jcMethodDecl);
+            if (scope != null) {
+                context.getAttr().attrib(scope.getEnv());
+            }
+        } finally {
+            context.getLog().popDiagnosticHandler(discardHandler);
+        }
+    }
+
     public static void attrExpr(IJAsyncInstanceContext context, JCTree.JCExpression jcTree) {
         Log.DiagnosticHandler discardHandler = new Log.DiscardDiagnosticHandler(context.getLog());
         try {
@@ -1314,6 +1324,7 @@ public class JavacUtils {
         }
         if (instanceContext.getInfo().isEnabled()) {
             JCTree.JCMethodDecl tree = (JCTree.JCMethodDecl) instanceContext.getTrees().getTree(element);
+            JavacUtils.attrMethod(instanceContext, tree);
             new NormalizeTranslator(instanceContext).translate(tree);
             TransMethodContext transContext = JAsyncAnalyzer.scan(instanceContext, tree);
             transContext.complete();
@@ -1332,5 +1343,27 @@ public class JavacUtils {
                 System.out.println(tree);
             }
         }
+    }
+
+    public static String printMethod(ExecutableElement element) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(element.getReturnType())
+                .append(" ")
+                .append(element.getSimpleName())
+                .append("(");
+        for (VariableElement parameter : element.getParameters()) {
+            sb.append(parameter.asType()).append(" ").append(parameter.getSimpleName());
+        }
+        sb.append(")");
+        Element enclosingElement = element.getEnclosingElement();
+        if (enclosingElement != null) {
+            sb.append(" in ");
+            if (enclosingElement instanceof TypeElement) {
+                sb.append(((TypeElement) enclosingElement).getQualifiedName());
+            } else {
+                sb.append(enclosingElement.getSimpleName());
+            }
+        }
+        return sb.toString();
     }
 }

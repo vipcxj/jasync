@@ -1,34 +1,58 @@
 package io.github.vipcxj.jasync.core;
 
 import com.google.auto.service.AutoService;
-import io.github.vipcxj.jasync.utils.hack.Utils;
 import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.core.javac.IJAsyncContext;
 import io.github.vipcxj.jasync.core.javac.JAsyncContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
-import io.github.vipcxj.jasync.core.log.LogManager;
+import io.github.vipcxj.jasync.utils.hack.Utils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 @SupportedAnnotationTypes("io.github.vipcxj.jasync.spec.annotations.Async")
 @AutoService(Processor.class)
 public class AsyncProcessor extends AbstractProcessor {
 
-    private static final Logger logger = LogManager.INSTANCE.createLogger(AsyncProcessor.class);
+    private static final Logger logger = LogManager.getLogger();
 
     private IJAsyncContext context;
     private boolean valid = false;
 
+/*    private void createFile(String name) {
+        try {
+            String fileName = name + ".check";
+            File file = new File(fileName);
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+    }*/
+
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
+/*        if (logger.isTraceEnabled()) {
+            createFile("log-enabled");
+        } else {
+            createFile("log-not-enabled");
+        }
+        InputStream io = getClass().getResourceAsStream("/log4j2.xml");
+        if (io != null) {
+            createFile("log4j2-exits");
+        } else {
+            createFile("log4j2-not-exits");
+        }*/
         try {
+            logger.traceEntry("init");
             System.out.println("AsyncProcessor init.");
             Utils.addOpensForLombok(AsyncProcessor.class, new String[] {
                     "com.sun.tools.javac.api",
@@ -44,35 +68,42 @@ public class AsyncProcessor extends AbstractProcessor {
             this.context = new JAsyncContext(unwrappedProcessingEnv);
             this.valid = true;
         } catch (Throwable t) {
-            logger.log(Level.SEVERE, t, t::getLocalizedMessage);
+            logger.catching(t);
+        } finally {
+            logger.traceExit();
         }
     }
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+        logger.traceEntry("process");
         if (!valid) {
-            return false;
+            return logger.traceExit(false);
         }
         if (context.getLog().nerrors > 0) {
-            return false;
+            return logger.traceExit(false);
         }
         for (TypeElement annotation : annotations) {
             if (annotation.getQualifiedName().toString().equals(Constants.ASYNC)) {
                 for (Element element : roundEnv.getElementsAnnotatedWith(annotation)) {
-                    try {
-                        JavacUtils.processAsyncMethod(context, element);
-                    } catch (Throwable t) {
-                        logger.throwing(this.getClass().getCanonicalName(), "process", t);
-                        return false;
+                    if (element instanceof ExecutableElement) {
+                        try {
+                            logger.info(() -> JavacUtils.printMethod((ExecutableElement) element));
+                            JavacUtils.processAsyncMethod(context, element);
+                        } catch (Throwable t) {
+                            logger.catching(t);
+                            return logger.traceExit(false);
+                        }
                     }
                 }
             }
         }
-        return true;
+        return logger.traceExit(true);
     }
 
     @Override
     public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
+        logger.traceEntry("getSupportedSourceVersion");
+        return logger.traceExit(SourceVersion.latest());
     }
 }
