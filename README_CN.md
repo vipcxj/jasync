@@ -97,7 +97,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-reactive</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
 </dependency>
 ```
 这个实现库是基于著名的响应式框架 **Reactor** 的。在这个实现中，`JPromise` 对象是 `Mono` 对象的封装。
@@ -109,7 +109,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -124,65 +124,14 @@ public class MyRestController {
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core</artifactId>
-          <version>0.1.2</version>
+          <version>0.1.3</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
   </plugin>
 </plugins>
 ```
-如果你试用的JDK版本大于等于9，你应该用这个库代替：
-```xml
-<dependency>
-    <groupId>io.github.vipcxj</groupId>
-    <artifactId>jasync-core-java9</artifactId>
-    <version>0.1.2</version>
-    <scope>provided</scope>
-</dependency>
-```
-或
-```xml
-<plugins>
-  <plugin>
-    <artifactId>maven-compiler-plugin</artifactId>
-    <configuration>
-      <annotationProcessorPaths>
-        <path>
-          <groupId>io.github.vipcxj</groupId>
-          <artifactId>jasync-core-java9</artifactId>
-          <version>0.1.2</version>
-        </path>
-      </annotationProcessorPaths>
-    </configuration>
-  </plugin>
-</plugins>
-```
-如果你试用的JDK版本大于等于17，你应该用这个库代替：
-```xml
-<dependency>
-    <groupId>io.github.vipcxj</groupId>
-    <artifactId>jasync-core-java17</artifactId>
-    <version>0.1.2</version>
-    <scope>provided</scope>
-</dependency>
-```
-或写成这样
-```xml
-<plugins>
-  <plugin>
-    <artifactId>maven-compiler-plugin</artifactId>
-    <configuration>
-      <annotationProcessorPaths>
-        <path>
-          <groupId>io.github.vipcxj</groupId>
-          <artifactId>jasync-core-java17</artifactId>
-          <version>0.1.2</version>
-        </path>
-      </annotationProcessorPaths>
-    </configuration>
-  </plugin>
-</plugins>
-```
+**注意:** 如果已经配置了 `annotationProcessorPaths`，依赖方式的配置将失效。
 
 Debug mode
 ===
@@ -198,6 +147,12 @@ Debug mode
 ![alt debug mode off](/debug-on.png)
 
 可以看到当 debug 模式开启时， 所有已经定义的变量都能在监视窗中被找到，IDE在代码内的辅助显示也自动生效了。
+
+Known Issues
+===
+1. 不支持 java17 新引入的新`switch` 语法。这个近期会得到支持。
+2. 不支持 ejc (eclipse java compiler)。我将尽我最大的努力来完善 ejc 的支持。
+   目前一个不完美的解决方法是先用 maven 或 gradle 来编译，然后再用 ejc 调试。
 
 [maven-shield]: https://img.shields.io/maven-central/v/io.github.vipcxj/jasync-parent.png
 [maven-link]: https://search.maven.org/artifact/io.github.vipcxj/jasync-parent

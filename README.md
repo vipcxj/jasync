@@ -96,7 +96,7 @@ First, select a implementation library to the Maven dependency. Currently, only 
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-reactive</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
 </dependency>
 ```
 This implementation uses the famous library **Reactor**. The `JPromise` object is a wrapper of `Mono` object.
@@ -108,7 +108,7 @@ Then add the core library to the Maven dependency.
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -124,66 +124,14 @@ However, if something went wrong, jdk can not find the annotation processor, try
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core</artifactId>
-          <version>0.1.2</version>
+          <version>0.1.3</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
   </plugin>
 </plugins>
 ```
-If you are using a jdk >= 9, you should use this instead:
-```xml
-<dependency>
-    <groupId>io.github.vipcxj</groupId>
-    <artifactId>jasync-core-java9</artifactId>
-    <version>0.1.2</version>
-    <scope>provided</scope>
-</dependency>
-```
-or
-```xml
-<plugins>
-  <plugin>
-    <artifactId>maven-compiler-plugin</artifactId>
-    <configuration>
-      <annotationProcessorPaths>
-        <path>
-          <groupId>io.github.vipcxj</groupId>
-          <artifactId>jasync-core-java9</artifactId>
-          <version>0.1.2</version>
-        </path>
-      </annotationProcessorPaths>
-    </configuration>
-  </plugin>
-</plugins>
-```
-
-If you are using a jdk >= 17, you should use this instead:
-```xml
-<dependency>
-    <groupId>io.github.vipcxj</groupId>
-    <artifactId>jasync-core-java17</artifactId>
-    <version>0.1.2</version>
-    <scope>provided</scope>
-</dependency>
-```
-or
-```xml
-<plugins>
-  <plugin>
-    <artifactId>maven-compiler-plugin</artifactId>
-    <configuration>
-      <annotationProcessorPaths>
-        <path>
-          <groupId>io.github.vipcxj</groupId>
-          <artifactId>jasync-core-java17</artifactId>
-          <version>0.1.2</version>
-        </path>
-      </annotationProcessorPaths>
-    </configuration>
-  </plugin>
-</plugins>
-```
+**Note:** If there exists `annotationProcessorPaths` configure, the dependency configure will not work. 
 
 Debug mode
 ===
@@ -199,6 +147,12 @@ With debug mode on:
 ![alt debug mode on](/debug-on.png)
 
 It can be seen that when the debug mode is turned on, all the defined variables can be found in the monitoring window.
+
+Known Issues
+===
+1. Not support new `switch` syntax introduced in java 17. It will be supported in the near future.
+2. Not support ejc (eclipse java compiler). I will try my best to support it. 
+   Currently, you can compile the project using maven or gradle, then debug using ejc.
 
 [maven-shield]: https://img.shields.io/maven-central/v/io.github.vipcxj/jasync-parent.png
 [maven-link]: https://search.maven.org/artifact/io.github.vipcxj/jasync-parent
