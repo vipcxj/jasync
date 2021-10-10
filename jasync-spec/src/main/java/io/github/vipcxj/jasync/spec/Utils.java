@@ -1,6 +1,7 @@
 package io.github.vipcxj.jasync.spec;
 
 import io.github.vipcxj.jasync.spec.functional.*;
+import io.github.vipcxj.jasync.spec.spi.PrioritySupport;
 import io.github.vipcxj.jasync.spec.spi.PromiseProvider;
 
 import java.util.Iterator;
@@ -16,6 +17,22 @@ public class Utils {
         } else {
             return null;
         }
+    }
+
+    public static <T extends PrioritySupport> T getProvider(Class<T> type) {
+        ServiceLoader<T> loader = ServiceLoader.load(type);
+        int p = PrioritySupport.PRIORITY_MIN;
+        T result = null;
+        for (T next : loader) {
+            if (next.priority() > p) {
+                result = next;
+                p = next.priority();
+            }
+        }
+        if (result == null) {
+            throw new IllegalStateException("Unable to find a provider of type " + type.getCanonicalName() + ".");
+        }
+        return result;
     }
 
     public static <T, O> JPromise<O> safeApply(PromiseFunction<T, O> fuc, T v) throws Throwable {

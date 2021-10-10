@@ -1,9 +1,12 @@
 package io.github.vipcxj.jasync.reactive;
 
 import io.github.vipcxj.jasync.runtime.helpers.IntReference;
+import io.github.vipcxj.jasync.runtime.helpers.ObjectReference;
 import io.github.vipcxj.jasync.spec.JAsync;
+import io.github.vipcxj.jasync.spec.JPromise2;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -60,5 +63,21 @@ public class ReactorPromiseTest {
                         )
                 )
         ).catchReturn().block();
+    }
+
+    @Test
+    public void test2() {
+        int a = 0;
+        try {
+            a = 1;
+        } catch (IllegalAccessError e1) {
+            e1.printStackTrace();
+        } catch (UnknownError e2) {
+            e2.printStackTrace();
+        } catch (Exception e3) {
+            e3.printStackTrace();
+        } finally {
+            a += 1;
+        }
     }
 }
