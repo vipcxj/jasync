@@ -51,12 +51,12 @@ public class PromiseTest {
                 JAsync2.updateContext("index", 0, j -> j + 1)
                         .thenMap(ctx -> ctx.<Integer>get("index"))
                         .onSuccess(v -> {
-                            if (v % 10000 == 0) {
+                            if (v % 100000 == 0) {
                                 System.out.println(Thread.currentThread().getName() + ": " + v);
                             }
                         })
                         .then(v -> {
-                            if (v > 200000) {
+                            if (v > 2000000) {
                                 return JPromise2.just(v);
                             } else {
                                 return portal.jump();

@@ -16,13 +16,9 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-public class BasePromise<T> implements JPromise2<T>, JThunk<T> {
+public class BasePromise<T> extends AbstractPromise<T> {
     private T value;
     private Throwable error;
-    private boolean started;
-    private boolean resolved;
-    private boolean rejected;
-    private boolean disposed;
     protected final Task<T> task;
     private final JPromise2<?> parent;
     private List<BasePromise<?>> children;
@@ -37,11 +33,12 @@ public class BasePromise<T> implements JPromise2<T>, JThunk<T> {
 
     public BasePromise(Task<T> task, JPromise2<?> parent) {
         this.parent = parent;
-        this.started = false;
-        this.resolved = false;
-        this.rejected = false;
-        this.disposed = false;
         this.task = task;
+    }
+
+    @Override
+    public Task<T> getTask() {
+        return task;
     }
 
     public static <T> BasePromise<T> generate(BiConsumer<JThunk<T>, JContext> handler, JPromise2<?> parent) {
@@ -88,7 +85,7 @@ public class BasePromise<T> implements JPromise2<T>, JThunk<T> {
     }
 
     private <R> void thenCreator(JThunk<R> thunk, JContext context, JAsyncPromiseFunction1<T, R> mapper) {
-        if (resolved) {
+        if (isResolved()) {
             try {
                 JPromise2<R> next = mapper.apply(value, context);
                 next = next != null ? next : JPromise2.empty();
@@ -97,7 +94,7 @@ public class BasePromise<T> implements JPromise2<T>, JThunk<T> {
             } catch (Throwable throwable) {
                 thunk.reject(throwable, context);
             }
-        } else if (rejected){
+        } else if (isRejected()){
             thunk.reject(error, context);
         }
     }
@@ -115,9 +112,9 @@ public class BasePromise<T> implements JPromise2<T>, JThunk<T> {
     }
 
     private void catchCreator(JThunk<T> thunk, JContext context, JAsyncCatchFunction1<Throwable, T> catcher) {
-        if (resolved) {
+        if (isResolved()) {
             thunk.resolve(value, context);
-        } else if (rejected) {
+        } else if (isRejected()) {
             try {
                 JPromise2<T> next = catcher.apply(error, context);
                 next = next != null ? next : JPromise2.empty();
@@ -144,7 +141,7 @@ public class BasePromise<T> implements JPromise2<T>, JThunk<T> {
         try {
             JPromise2<R> next = supplier.get(context);
             next = next != null ? next : JPromise2.empty();
-            if (resolved) {
+            if (isResolved()) {
                 next.onSuccess((ignored, ctx) -> resolve(value, ctx)).onError(thunk::reject).async(context);
             } else {
                 next.onSuccess((ignored, ctx) -> reject(error, ctx)).onError(thunk::reject).async(context);
@@ -189,14 +186,6 @@ public class BasePromise<T> implements JPromise2<T>, JThunk<T> {
     public JPromise2<T> onDispose(Runnable runnable) {
         getTerminalHandlers().add(runnable);
         return this;
-    }
-
-    @Override
-    public void schedule(JContext context) {
-        if (!started && !disposed) {
-            this.started = true;
-            task.schedule(this, context);
-        }
     }
 
     @Override
@@ -267,20 +256,9 @@ public class BasePromise<T> implements JPromise2<T>, JThunk<T> {
         }
     }
 
-    private synchronized void markResolved() {
-        this.resolved = true;
-        this.rejected = false;
-        notifyAll();
-    }
-
-    private synchronized void markRejected() {
-        this.resolved = false;
-        this.rejected = true;
-        notifyAll();
-    }
-
-    protected void resolve(T result, JContext context, boolean next) {
-        if (disposed) {
+    @Override
+    public void resolve(T result, JContext context) {
+        if (isDisposed()) {
             return;
         }
         this.value = result;
@@ -292,24 +270,13 @@ public class BasePromise<T> implements JPromise2<T>, JThunk<T> {
                 triggerCompleteHandlers(context);
             }
         } finally {
-            if (next) {
-                scheduleNext(context);
-            }
+            scheduleNext(context);
         }
     }
 
     @Override
-    public void resolve(T result, JContext context) {
-        resolve(result, context, true);
-    }
-
-    @Override
-    public boolean isResolved() {
-        return resolved;
-    }
-
-    protected void reject(Throwable error, JContext context, boolean next) {
-        if (disposed) {
+    public void reject(Throwable error, JContext context) {
+        if (isDisposed()) {
             return;
         }
         this.error = error;
@@ -321,34 +288,13 @@ public class BasePromise<T> implements JPromise2<T>, JThunk<T> {
                 triggerCompleteHandlers(context);
             }
         } finally {
-            if (next) {
-                scheduleNext(context);
-            }
+            scheduleNext(context);
         }
-    }
-
-    @Override
-    public void reject(Throwable error, JContext context) {
-        reject(error, context, true);
-    }
-
-    @Override
-    public boolean isRejected() {
-        return rejected;
-    }
-
-    @Override
-    public boolean isDisposed() {
-        return disposed;
     }
 
     @Override
     public void dispose() {
-        if (disposed) {
-            return;
-        }
-        disposed = true;
-        task.cancel();
+        super.dispose();
         try {
             triggerTerminalHandlers();
         } finally {

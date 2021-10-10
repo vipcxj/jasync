@@ -6,6 +6,9 @@ import io.github.vipcxj.jasync.spec.JPortal;
 import io.github.vipcxj.jasync.spec.JPromise2;
 import io.github.vipcxj.jasync.spec.functional.JAsyncPortalTask;
 
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+
 public class PortalPromise<T> extends BasePromise<T> implements JPortal<T> {
 
     private final JAsyncPortalTask<T> jumperTask;
@@ -32,18 +35,38 @@ public class PortalPromise<T> extends BasePromise<T> implements JPortal<T> {
         }
 
         @Override
-        protected void resolve(T result, JContext context, boolean next) {
-            source.resolve(result, context, next);
-        }
-
-        @Override
-        protected void reject(Throwable error, JContext context, boolean next) {
-            source.reject(error, context, next);
-        }
-
-        @Override
         public JPromise2<T> jump() {
             return new Portal<>(source, source.jumperTask);
+        }
+
+        @Override
+        public void resolve(T result, JContext context) {
+            source.resolve(result, context);
+        }
+
+        @Override
+        public void reject(Throwable error, JContext context) {
+            source.reject(error, context);
+        }
+
+        @Override
+        public JPromise2<T> onSuccess(BiConsumer<T, JContext> resolver) {
+            return this;
+        }
+
+        @Override
+        public JPromise2<T> onError(BiConsumer<Throwable, JContext> reject) {
+            return this;
+        }
+
+        @Override
+        public JPromise2<T> onFinally(Consumer<JContext> consumer) {
+            return this;
+        }
+
+        @Override
+        public JPromise2<T> onDispose(Runnable runnable) {
+            return this;
         }
     }
 }
