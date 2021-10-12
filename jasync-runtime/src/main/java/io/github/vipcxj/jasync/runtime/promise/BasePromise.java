@@ -13,6 +13,7 @@ import io.github.vipcxj.jasync.spec.functional.JAsyncPromiseSupplier1;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -43,6 +44,10 @@ public class BasePromise<T> extends AbstractPromise<T> {
 
     public static <T> BasePromise<T> generate(BiConsumer<JThunk<T>, JContext> handler, JPromise2<?> parent) {
         return new BasePromise<>(new ImmediateTask<>(handler), parent);
+    }
+
+    public static <T> BasePromise<T> create(BiConsumer<JThunk<T>, JContext> handler, long delay, TimeUnit timeUnit, JPromise2<?> parent) {
+        return new BasePromise<>(new LazyTask<>(handler, delay, timeUnit), parent);
     }
 
     public static <T> BasePromise<T> create(BiConsumer<JThunk<T>, JContext> handler, JPromise2<?> parent) {
@@ -99,16 +104,25 @@ public class BasePromise<T> extends AbstractPromise<T> {
         }
     }
 
-    @Override
-    public <R> JPromise2<R> thenWithContext(JAsyncPromiseFunction1<T, R> mapper, boolean immediate) {
+    public <R> JPromise2<R> doThen(JAsyncPromiseFunction1<T, R> mapper, boolean immediate, long delay, TimeUnit timeUnit) {
         if (mapper == null) {
             throw new NullPointerException();
         }
         BasePromise<R> nextPromise = immediate
                 ? generate((jThunk, context) -> thenCreator(jThunk, context, mapper), this)
-                : create((jThunk, context) -> thenCreator(jThunk, context, mapper), this);
+                : create((jThunk, context) -> thenCreator(jThunk, context, mapper), delay, timeUnit, this);
         getChildren().add(nextPromise);
         return nextPromise;
+    }
+
+    @Override
+    public <R> JPromise2<R> thenWithContext(JAsyncPromiseFunction1<T, R> mapper, boolean immediate) {
+        return doThen(mapper, immediate, 0, TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public JPromise2<T> delay(long timeout, TimeUnit unit) {
+        return doThen((v, ctx) -> JPromise2.just(v), false, timeout, unit);
     }
 
     private void catchCreator(JThunk<T> thunk, JContext context, JAsyncCatchFunction1<Throwable, T> catcher) {

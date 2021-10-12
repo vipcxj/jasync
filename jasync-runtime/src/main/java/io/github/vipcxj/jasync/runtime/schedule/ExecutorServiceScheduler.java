@@ -27,14 +27,7 @@ public class ExecutorServiceScheduler implements JScheduler {
             ScheduledFuture<?> future = scheduledService.schedule(task, delay, unit);
             return new FutureDisposable<>(future);
         } else {
-            return new Future2Disposable(new FutureTask<>(() -> {
-                try {
-                    unit.sleep(delay);
-                    return service.submit(task);
-                } catch (InterruptedException ignored) {
-                    return null;
-                }
-            }));
+            throw new JAsyncExecutionException("Scheduler is not capable of time-based scheduling");
         }
     }
 
@@ -47,5 +40,10 @@ public class ExecutorServiceScheduler implements JScheduler {
         } else {
             throw new JAsyncExecutionException("Scheduler is not capable of periodically-time-based scheduling");
         }
+    }
+
+    @Override
+    public boolean supportDelay() {
+        return service instanceof ScheduledExecutorService;
     }
 }

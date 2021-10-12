@@ -10,7 +10,7 @@ import java.util.function.Predicate;
 public class Patch implements IPatch {
 
     static {
-        Utils.addOpensForLombok(Patch.class, new String[] {
+        Utils.addOpensFromJdkCompilerModule(Patch.class, new String[] {
                 "com.sun.tools.javac.code",
                 "com.sun.tools.javac.util"
         });

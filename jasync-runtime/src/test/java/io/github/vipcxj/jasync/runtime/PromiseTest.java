@@ -1,11 +1,13 @@
 package io.github.vipcxj.jasync.runtime;
 
 import io.github.vipcxj.jasync.spec.JAsync2;
-import io.github.vipcxj.jasync.spec.JHandle;
 import io.github.vipcxj.jasync.spec.JPortal;
 import io.github.vipcxj.jasync.spec.JPromise2;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class PromiseTest {
@@ -69,5 +71,48 @@ public class PromiseTest {
                 .onSuccess(v -> System.out.println("ok"))
                 .block();
         System.out.println(value);
+    }
+
+    @Test
+    public void test2() throws InterruptedException {
+        ScheduledExecutorService service = Executors.newScheduledThreadPool(4);
+        for (int i = 0; i < 8; ++i) {
+            service.submit(() -> {
+                try {
+                    System.out.println(Thread.currentThread().getName() + ": task start");
+                    Thread.sleep(3000);
+                    System.out.println(Thread.currentThread().getName() + ": task end");
+                    long current = System.currentTimeMillis();
+                    service.schedule(() -> {
+                        System.out.println(Thread.currentThread().getName() + ": run scheduled task here after " + (System.currentTimeMillis() - current));
+                    }, 1, TimeUnit.SECONDS);
+                } catch (InterruptedException ignored) {}
+            });
+        }
+        Thread.sleep(10000);
+    }
+
+    @Test
+    public void test3() throws InterruptedException {
+        ExecutorService service = Executors.newWorkStealingPool(4);
+        for (int i = 0; i < 8; ++i) {
+            service.submit(() -> {
+                try {
+                    System.out.println(Thread.currentThread().getName() + ": task start");
+                    Thread.sleep(3000);
+                    System.out.println(Thread.currentThread().getName() + ": task end");
+                    long current = System.currentTimeMillis();
+                    new Thread(() -> {
+                        try {
+                            Thread.sleep(1000);
+                            service.submit(() -> {
+                                System.out.println(Thread.currentThread().getName() + ": run scheduled task here after " + (System.currentTimeMillis() - current));
+                            });
+                        } catch (InterruptedException ignored) {}
+                    }).start();
+                } catch (InterruptedException ignored) {}
+            });
+        }
+        Thread.sleep(10000);
     }
 }

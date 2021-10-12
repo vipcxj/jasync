@@ -1,15 +1,31 @@
 package io.github.vipcxj.jasync.spec;
 
 import io.github.vipcxj.jasync.spec.spi.JContextProvider;
+import io.github.vipcxj.jasync.spec.spi.JPromiseSupport;
 
+import java.util.List;
 import java.util.function.Function;
 
 public class JAsync2 {
 
-    static JContextProvider provider = Utils.getProvider(JContextProvider.class);
+    static JPromiseSupport promiseProvider = Utils.getProvider(JPromiseSupport.class);
+    static JContextProvider contextProvider = Utils.getProvider(JContextProvider.class);
+
+    static  <T> JPromise2<T> any(JPromise2<? extends T>... promises) {
+        return promiseProvider.any(promises);
+    }
+    static  <T> JPromise2<T> any(List<JPromise2<? extends T>> promises) {
+        return promiseProvider.any(promises);
+    }
+    static <T> JPromise2<List<T>> all(List<JPromise2<? extends T>> promises) {
+        return promiseProvider.all(promises);
+    }
+    static  <T> JPromise2<List<T>> all(JPromise2<? extends T>... promises) {
+        return promiseProvider.all(promises);
+    }
 
     public static JPromise2<JContext> context() {
-        return provider.current();
+        return contextProvider.current();
     }
 
     public static <T> JPromise2<T> getContextValue(Object key) {

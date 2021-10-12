@@ -54,7 +54,7 @@ public class AsyncProcessor extends AbstractProcessor {
         try {
             logger.traceEntry("init");
             System.out.println("AsyncProcessor init.");
-            Utils.addOpensForLombok(AsyncProcessor.class, new String[] {
+            Utils.addOpensFromJdkCompilerModule(AsyncProcessor.class, new String[] {
                     "com.sun.tools.javac.api",
                     "com.sun.tools.javac.code",
                     "com.sun.tools.javac.comp",

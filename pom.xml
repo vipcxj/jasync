@@ -44,6 +44,7 @@
         <module>jasync-core-java9</module>
         <module>jasync-core-java17</module>
         <module>jasync-utils</module>
+        <module>jasync-asm</module>
     </modules>
 
     <properties>

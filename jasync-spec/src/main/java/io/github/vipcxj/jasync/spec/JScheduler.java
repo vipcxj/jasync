@@ -12,4 +12,7 @@ public interface JScheduler {
     default JDisposable schedulePeriodically(Runnable task, long initialDelay, long delay, TimeUnit unit) {
         throw new JAsyncExecutionException("Scheduler is not capable of time-based scheduling");
     }
+    default boolean supportDelay() {
+        return false;
+    }
 }

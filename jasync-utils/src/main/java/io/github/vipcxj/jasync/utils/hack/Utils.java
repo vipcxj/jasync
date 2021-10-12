@@ -34,7 +34,7 @@ import java.lang.reflect.Proxy;
  */
 public class Utils {
 
-    private static Object getOwnModule(Class<?> selfType) {
+    public static Object getOwnModule(Class<?> selfType) {
         try {
             Method m = Permit.getMethod(Class.class, "getModule");
             return m.invoke(selfType);
@@ -43,7 +43,7 @@ public class Utils {
         }
     }
 
-    private static Object getJdkCompilerModule() {
+    public static Object getModule(String module) {
 		/* call public api: ModuleLayer.boot().findModule("jdk.compiler").get();
 		   but use reflection because we don't want this code to crash on jdk1.7 and below.
 		   In that case, none of this stuff was needed in the first place, so we just exit via
@@ -56,15 +56,19 @@ public class Utils {
             Object bootLayer = mBoot.invoke(null);
             Class<?> cOptional = Class.forName("java.util.Optional");
             Method mFindModule = cModuleLayer.getDeclaredMethod("findModule", String.class);
-            Object oCompilerO = mFindModule.invoke(bootLayer, "jdk.compiler");
+            Object oCompilerO = mFindModule.invoke(bootLayer, module);
             return cOptional.getDeclaredMethod("get").invoke(oCompilerO);
         } catch (Exception e) {
             return null;
         }
     }
 
+    public static void addOpensFromJdkCompilerModule(Class<?> type, String[] packages) {
+        addOpens(getOwnModule(type), getModule("jdk.compiler"), packages);
+    }
+
     /** Useful from jdk9 and up; required from jdk16 and up. This code is supposed to gracefully do nothing on jdk8 and below, as this operation isn't needed there. */
-    public static void addOpensForLombok(Class<?> type, String[] packages) {
+    public static void addOpens(Object ownModule, Object targetModule, String[] packages) {
         Class<?> cModule;
         try {
             cModule = Class.forName("java.lang.Module");
@@ -72,22 +76,21 @@ public class Utils {
             return; //jdk8-; this is not needed.
         }
         Unsafe unsafe = getUnsafe();
-        Object jdkCompilerModule = getJdkCompilerModule();
-        Object ownModule = getOwnModule(type);
         if (unsafe == null) {
             throw new IllegalStateException("Unable to get the unsafe object.");
         }
-        if (jdkCompilerModule == null) {
-            throw new IllegalStateException("Unable to get the jdk compiler module object.");
+        if (targetModule == null) {
+            throw new IllegalStateException("Target module should not be null.");
         }
         if (ownModule == null) {
-            throw new IllegalStateException("Unable to get the own module object.");
+            throw new IllegalStateException("Own module should not be null.");
         }
         try {
             Method m = cModule.getDeclaredMethod("implAddOpens", String.class, cModule);
             long firstFieldOffset = getFirstFieldOffset(unsafe);
             unsafe.putBooleanVolatile(m, firstFieldOffset, true);
-            for (String p : packages) m.invoke(jdkCompilerModule, p, ownModule);
+            for (String p : packages) //noinspection JavaReflectionInvocation
+                m.invoke(targetModule, p, ownModule);
         } catch (Exception ignore) {}
     }
 
