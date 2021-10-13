@@ -5,9 +5,7 @@ import io.github.vipcxj.jasync.utils.hack.Utils;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.ByteBuddyAgent;
 import net.bytebuddy.asm.Advice;
-import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.ClassFileLocator;
-import net.bytebuddy.dynamic.loading.ClassInjector;
 import net.bytebuddy.dynamic.loading.ClassReloadingStrategy;
 import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.pool.TypePool;
@@ -17,7 +15,6 @@ import javax.lang.model.element.TypeElement;
 import javax.tools.JavaFileObject;
 import java.io.*;
 import java.lang.reflect.Method;
-import java.util.Collections;
 import java.util.Set;
 import java.util.jar.JarFile;
 
@@ -33,22 +30,22 @@ public class JAsyncProcessor extends AbstractProcessor {
     private static void installAgent() {
         try {
             Utils.addOpensFromJdkCompilerModule(AsyncProcessor.class, new String[] {
-                    "com.sun.tools.javac.jvm"
-            });
-            Utils.addOpens(Utils.getModule("jdk.compiler"), Utils.getOwnModule(JAsyncProcessor.class), new String[] {
-                    "io.github.vipcxj.jasync.core"
+                    "com.sun.tools.javac.jvm",
+                    "com.sun.tools.javac.main"
             });
             ByteBuddyAgent.install();
             ClassLoader classLoader = ClassLoader.getSystemClassLoader();
             TypePool typePool = TypePool.Default.of(classLoader);
             new ByteBuddy()
                     .redefine(typePool.describe("com.sun.tools.javac.jvm.ClassWriter").resolve(), ClassFileLocator.ForClassLoader.of(classLoader))
-                    .visit(Advice.to(MyAdvice.class).on(ElementMatchers.named("writeClass").and(ElementMatchers.returns(JavaFileObject.class))))
+                    .visit(Advice.to(ClassWriterAdvice.class).on(ElementMatchers.named("writeClass").and(ElementMatchers.returns(JavaFileObject.class))))
                     .make().load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
-            new ClassInjector.UsingReflection(ClassLoader.getSystemClassLoader()).inject(Collections.singletonMap(
-                    TypeDescription.ForLoadedType.of(MyAdvice.class),
-                    ClassFileLocator.ForClassLoader.read(MyAdvice.class)
-            ));
+            System.out.println("modify ClassWriter");
+            new ByteBuddy()
+                    .redefine(typePool.describe("com.sun.tools.javac.main.JavaCompiler").resolve(), ClassFileLocator.ForClassLoader.of(classLoader))
+                    .visit(Advice.to(JavacCompilerGenerateAdvice.class).on(ElementMatchers.named("generate")))
+                    .make().load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
+            System.out.println("modify JavaCompiler");
             attachAsmJar();
 
 /*            classLoader = JAsyncProcessor.class.getClassLoader();
@@ -99,18 +96,15 @@ public class JAsyncProcessor extends AbstractProcessor {
         return false;
     }
 
-    static class MyAdvice {
+    static class ClassWriterAdvice {
 
         @Advice.OnMethodExit
         public static void exit(@Advice.Return Object fileObject) {
             if (fileObject != null) {
                 try {
-                    Class<?> utilsClass = Class.forName("io.github.vipcxj.jasync.asm.Utils");
-                    Method getJavaFileObjectClass = utilsClass.getMethod("getJavaFileObjectClass", Class.class);
-                    Class<?> javaFileObjectClass = (Class<?>) getJavaFileObjectClass.invoke(null, fileObject.getClass());
                     Class<?> transformerClass = Class.forName("io.github.vipcxj.jasync.asm.Transformer");
-                    Method transform = transformerClass.getMethod("transform", Class.class, Object.class);
-                    transform.invoke(null, javaFileObjectClass, fileObject);
+                    Method transform = transformerClass.getMethod("transform", Object.class);
+                    transform.invoke(null, fileObject);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
@@ -118,9 +112,32 @@ public class JAsyncProcessor extends AbstractProcessor {
         }
     }
 
-/*    static class TestClass {
-        public String helloWorld() {
-            return "hello world";
+    static class JavacCompilerGenerateAdvice {
+
+        @Advice.OnMethodEnter
+        public static void enter(@Advice.FieldValue("procEnvImpl") Object procEnvImpl) {
+            if (procEnvImpl != null) {
+                System.out.println("find nonnull field procEnvImpl");
+                try {
+                    Class<?> transformerClass = Class.forName("io.github.vipcxj.jasync.asm.Utils");
+                    Method transform = transformerClass.getMethod("enterCompile", Object.class);
+                    transform.invoke(null, procEnvImpl);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
         }
-    }*/
+
+        @Advice.OnMethodExit
+        public static void exit() {
+            try {
+                Class<?> transformerClass = Class.forName("io.github.vipcxj.jasync.asm.Utils");
+                Method transform = transformerClass.getMethod("exitCompile");
+                transform.invoke(null);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 }

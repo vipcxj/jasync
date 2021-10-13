@@ -18,7 +18,8 @@ public class Transformer {
         }
     }
 
-    public static void transform(Class<?> javaFileObjectClass, Object fileObject) {
+    public static void transform(Object fileObject) {
+        Class<?> javaFileObjectClass = Utils.getJavaFileObjectClass(fileObject.getClass());
         try (InputStream is = openInputStream(javaFileObjectClass, fileObject)) {
             ClassReader classReader = new ClassReader(is);
             classReader.accept(new ClassChecker(null), 0);

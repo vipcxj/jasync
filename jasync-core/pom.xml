@@ -147,7 +147,7 @@
                 <executions>
                     <execution>
                         <id>copy-asm</id>
-                        <phase>validate</phase>
+                        <phase>compile</phase>
                         <goals>
                             <goal>copy</goal>
                         </goals>
