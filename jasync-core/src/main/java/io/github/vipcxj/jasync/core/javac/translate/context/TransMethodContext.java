@@ -6,19 +6,24 @@ import com.sun.tools.javac.tree.TreeCopier;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.TreeScanner;
 import com.sun.tools.javac.util.List;
-import com.sun.tools.javac.util.*;
+import com.sun.tools.javac.util.ListBuffer;
+import com.sun.tools.javac.util.Name;
+import com.sun.tools.javac.util.Names;
 import io.github.vipcxj.jasync.core.javac.Constants;
 import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
 import io.github.vipcxj.jasync.core.javac.model.Frame;
+import io.github.vipcxj.jasync.core.javac.patch.SymbolHelpers;
 import io.github.vipcxj.jasync.core.javac.translate.TransFrameHolderContext;
 import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
-import io.github.vipcxj.jasync.core.javac.patch.SymbolHelpers;
 import io.github.vipcxj.jasync.spec.JPromise;
 
 import javax.lang.model.util.Elements;
-import java.util.*;
+import java.util.HashMap;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Stack;
 import java.util.function.Predicate;
 
 public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.JCMethodDecl> {
@@ -33,6 +38,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
     private final List<TransVarDeclContext> paramsContext;
     private TransBlockContext bodyContext;
     private final boolean staticMethod;
+    private ListBuffer<JCTree.JCMethodDecl> lambdas;
 
     public TransMethodContext(AnalyzerContext analyzerContext, JCTree.JCMethodDecl tree) {
         super(analyzerContext, tree);
@@ -49,11 +55,16 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         }
         paramsContext = List.nil();
         staticMethod = (tree.getModifiers().flags & Flags.STATIC) != 0;
+        this.lambdas = new ListBuffer<>();
     }
 
     @Override
     public TransMethodContext getEnclosingMethodContext() {
         return this;
+    }
+
+    public ListBuffer<JCTree.JCMethodDecl> getLambdas() {
+        return lambdas;
     }
 
     @Override
@@ -292,7 +303,9 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         boolean isVoid = resType.getTag() == TypeTag.VOID;
         try {
             JCTree.JCMethodDecl methodDecl = safeMaker().MethodDef(methodSymbol, isVoid ? body : JavacUtils.forceBlockReturn(jasyncContext, body));
+            methodDecl.typarams = new TreeCopier<>(safeMaker()).copy(getTree().typarams);
             enclosingClassTree.defs = enclosingClassTree.defs.append(methodDecl);
+            lambdas = lambdas.append(methodDecl);
             return methodDecl;
         } finally {
             maker.pos = prePos;

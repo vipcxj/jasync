@@ -7,3 +7,4 @@ target/
 .factorypath
 .project
 *.log
+dependency-reduced-pom.xml

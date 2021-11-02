@@ -97,7 +97,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-reactive</artifactId>
-    <version>0.1.3</version>
+    <version>0.1.4</version>
 </dependency>
 ```
 这个实现库是基于著名的响应式框架 **Reactor** 的。在这个实现中，`JPromise` 对象是 `Mono` 对象的封装。
@@ -109,7 +109,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core</artifactId>
-    <version>0.1.3</version>
+    <version>0.1.4</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -124,7 +124,7 @@ public class MyRestController {
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core</artifactId>
-          <version>0.1.3</version>
+          <version>0.1.4</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
