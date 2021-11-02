@@ -292,6 +292,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         boolean isVoid = resType.getTag() == TypeTag.VOID;
         try {
             JCTree.JCMethodDecl methodDecl = safeMaker().MethodDef(methodSymbol, isVoid ? body : JavacUtils.forceBlockReturn(jasyncContext, body));
+            methodDecl.typarams = new TreeCopier<>(safeMaker()).copy(getTree().typarams);
             enclosingClassTree.defs = enclosingClassTree.defs.append(methodDecl);
             return methodDecl;
         } finally {
