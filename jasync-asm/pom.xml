@@ -52,6 +52,33 @@
             <artifactId>asm</artifactId>
             <version>9.2</version>
         </dependency>
+        <dependency>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm-tree</artifactId>
+            <version>9.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm-analysis</artifactId>
+            <version>9.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm-util</artifactId>
+            <version>9.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.7.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jgrapht</groupId>
+            <artifactId>jgrapht-core</artifactId>
+            <version>1.5.1</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -72,14 +99,17 @@
                     <artifactSet>
                         <includes>
                             <include>org.ow2.asm:asm</include>
+                            <include>org.ow2.asm:asm-tree</include>
+                            <include>org.ow2.asm:asm-analysis</include>
+                            <include>org.ow2.asm:asm-util</include>
                         </includes>
                     </artifactSet>
-                    <relocations>
+<!--                    <relocations>
                         <relocation>
                             <pattern>org.objectweb.</pattern>
                             <shadedPattern>io.github.vipcxj.jasync.shaded.org.objectweb.</shadedPattern>
                         </relocation>
-                    </relocations>
+                    </relocations>-->
                 </configuration>
             </plugin>
             <plugin>
