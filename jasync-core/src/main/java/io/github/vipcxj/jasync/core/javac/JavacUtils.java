@@ -1334,13 +1334,22 @@ public class JavacUtils {
 //                        tree.body.accept(new ReturnTranslator(instanceContext));
 //                        new PromiseTranslator(instanceContext, false).reshape(tree);
 //                        tree.body.accept(new SimplifiedTranslator());
-            StringWriter writer = new StringWriter();
             if (instanceContext.getInfo().isLogResultPosTree()) {
+                StringWriter writer = new StringWriter();
                 tree.accept(new PosVisitor(writer, false));
                 System.out.println(writer);
+                for (JCTree.JCMethodDecl lambda : transContext.getLambdas()) {
+                    writer = new StringWriter();
+                    lambda.accept(new PosVisitor(writer, false));
+                    System.out.println(writer);
+                }
             }
             if (instanceContext.getInfo().isLogResultTree()) {
                 System.out.println(tree);
+                for (JCTree.JCMethodDecl lambda : transContext.getLambdas()) {
+                    System.out.println(lambda);
+                }
+
             }
         }
     }
