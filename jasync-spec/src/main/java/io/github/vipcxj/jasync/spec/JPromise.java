@@ -11,7 +11,9 @@ import java.util.List;
 public interface JPromise<T> {
 
     default T await() {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("The method \"JPromise#await\" should be invoked in an async method. " +
+                "An async method is a method annotated with @JAsync and returning the JPromise object. " +
+                "The method should not be a lambda method or in an anonymous class");
     }
 
     <O> JPromise<O> then(PromiseFunction<T, O> resolver);
