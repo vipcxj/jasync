@@ -5,7 +5,7 @@
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-parent</artifactId>
     <packaging>pom</packaging>
-    <version>0.1.4-SNAPSHOT</version>
+    <version>0.1.4</version>
     <name>JAsync Parent</name>
     <url>https://github.com/vipcxj/jasync</url>
     <description>
@@ -21,7 +21,7 @@
         <url>https://github.com/vipcxj/jasync</url>
         <connection>scm:git:git://github.com/vipcxj/jasync.git</connection>
         <developerConnection>scm:git:https://github.com/vipcxj/jasync.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>v0.1.4</tag>
     </scm>
     <developers>
         <developer>
