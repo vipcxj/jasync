@@ -38,11 +38,13 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
     private final List<TransVarDeclContext> paramsContext;
     private TransBlockContext bodyContext;
     private final boolean staticMethod;
+    private final boolean supportAsync;
     private ListBuffer<JCTree.JCMethodDecl> lambdas;
 
     public TransMethodContext(AnalyzerContext analyzerContext, JCTree.JCMethodDecl tree) {
         super(analyzerContext, tree);
-        JCTree.JCCompilationUnit cu = JavacUtils.getJCCompilationUnitTree(analyzerContext.getJasyncContext());
+        IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
+        JCTree.JCCompilationUnit cu = JavacUtils.getJCCompilationUnitTree(jasyncContext);
         EnclosingClassFinder finder = new EnclosingClassFinder(tree);
         cu.accept(finder);
         enclosingClassTree = finder.getEnclosingClassTree();
@@ -56,11 +58,18 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         paramsContext = List.nil();
         staticMethod = (tree.getModifiers().flags & Flags.STATIC) != 0;
         this.lambdas = new ListBuffer<>();
+        JCTree returnType = tree.getReturnType();
+        javax.lang.model.util.Types types = jasyncContext.getEnvironment().getTypeUtils();
+        supportAsync = returnType != null && types.isSubtype(returnType.type.asElement().asType(), jasyncContext.getJAsyncSymbols().getSymPromise().type);
     }
 
     @Override
     public TransMethodContext getEnclosingMethodContext() {
         return this;
+    }
+
+    public boolean isSupportAsync() {
+        return supportAsync;
     }
 
     public ListBuffer<JCTree.JCMethodDecl> getLambdas() {
