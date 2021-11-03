@@ -125,8 +125,8 @@ public class JAsyncAnalyzer extends TreeScanner {
 
     @Override
     public void visitLambda(JCTree.JCLambda tree) {
-        super.scan(tree.params);
-        super.scan(tree.body);
+        scan(tree.params);
+        scan(tree.body);
     }
 
     @Override

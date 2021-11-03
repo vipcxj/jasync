@@ -22,16 +22,17 @@ public class Issues {
     }
 
     @Async
-    public JPromise<Integer> test2(int input) {
+    public JPromise<Integer> test2(int input1, int input2) {
         int one = JAsync.just(1).await();
-        Supplier<Integer> sum = () -> one + input;
+        Supplier<Integer> arg = () -> input1;
+        Supplier<Integer> sum = () -> one + arg.get() + input2;
         return JAsync.just(sum.get());
     }
 
     @Test
     public void issue5() {
-        Assertions.assertEquals(2, test2(1).block());
-        Assertions.assertEquals(3, test2(2).block());
-        Assertions.assertEquals(4, test2(3).block());
+        Assertions.assertEquals(4, test2(1, 2).block());
+        Assertions.assertEquals(3, test2(0, 2).block());
+        Assertions.assertEquals(7, test2(3, 3).block());
     }
 }
