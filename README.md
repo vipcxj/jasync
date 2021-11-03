@@ -96,7 +96,7 @@ First, select a implementation library to the Maven dependency. Currently, only 
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-reactive</artifactId>
-    <version>0.1.5</version>
+    <version>0.1.6</version>
 </dependency>
 ```
 This implementation uses the famous library **Reactor**. The `JPromise` object is a wrapper of `Mono` object.
@@ -108,7 +108,7 @@ Then add the core library to the Maven dependency.
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core</artifactId>
-    <version>0.1.5</version>
+    <version>0.1.6</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -124,7 +124,7 @@ However, if something went wrong, jdk can not find the annotation processor, try
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core</artifactId>
-          <version>0.1.5</version>
+          <version>0.1.6</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
@@ -147,6 +147,31 @@ With debug mode on:
 ![alt debug mode on](/debug-on.png)
 
 It can be seen that when the debug mode is turned on, all the defined variables can be found in the monitoring window.
+
+About Lombok
+===
+If you are using **Lombok**, you should place the **JAsync** after the **Lombok**, just like this:
+```xml
+<plugins>
+  <plugin>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <configuration>
+      <annotationProcessorPaths>
+         <path>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.22</version>
+         </path>
+        <path>
+          <groupId>io.github.vipcxj</groupId>
+          <artifactId>jasync-core</artifactId>
+          <version>0.1.6</version>
+        </path>
+      </annotationProcessorPaths>
+    </configuration>
+  </plugin>
+</plugins>
+```
 
 Known Issues
 ===
