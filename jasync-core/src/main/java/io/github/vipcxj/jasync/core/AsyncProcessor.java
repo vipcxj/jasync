@@ -91,6 +91,7 @@ public class AsyncProcessor extends AbstractProcessor {
                             logger.info(() -> JavacUtils.printMethod((ExecutableElement) element));
                             JavacUtils.processAsyncMethod(context, element);
                         } catch (Throwable t) {
+                            logger.error("Error! When processing the method " + JavacUtils.printMethod((ExecutableElement) element));
                             logger.catching(t);
                             return logger.traceExit(false);
                         }
