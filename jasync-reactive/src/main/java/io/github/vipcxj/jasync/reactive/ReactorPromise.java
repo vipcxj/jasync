@@ -433,7 +433,9 @@ public class ReactorPromise<T> implements JPromise<T> {
                 return value;
             }
         }
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("The method \"JPromise#await\" should be invoked in an async method. " +
+                "An async method is a method annotated with @JAsync and returning the JPromise object. " +
+                "The method should not be a lambda method or in an anonymous class");
     }
 
     @Override
