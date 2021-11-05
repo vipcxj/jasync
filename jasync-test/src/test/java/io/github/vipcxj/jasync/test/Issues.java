@@ -6,6 +6,8 @@ import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 public class Issues {
@@ -34,5 +36,30 @@ public class Issues {
         Assertions.assertEquals(4, test2(1, 2).block());
         Assertions.assertEquals(3, test2(0, 2).block());
         Assertions.assertEquals(7, test2(3, 3).block());
+    }
+
+    @Async
+    public JPromise<Long> test3() {
+        List<Long> list = new ArrayList<>();
+        list.add(1L);
+        list.add(2L);
+        list.add(3L);
+        list.add(4L);
+
+        long sum = 0;
+        for (Long l : list) {
+            if (sum == 3) {
+                sum++;
+                continue;
+            };   // throw io.github.vipcxj.jasync.spec.ContinueException
+            sum += JAsync.just(l).await();
+        }
+
+        return JAsync.just(sum);
+    }
+
+    @Test
+    public void issue6() {
+        Assertions.assertEquals(8, test3().block());
     }
 }

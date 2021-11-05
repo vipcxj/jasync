@@ -121,24 +121,38 @@ public class ReactorPromise<T> implements JPromise<T> {
     }
 
     private Mono<? extends AtomicReference<T>> doWhileBody(PromiseFunction<T, T> body, String label, AtomicReference<T> ref) throws Throwable {
-        return Utils.safeApply(body, ref.get()).then(a -> {
-            ref.set(a);
-            return null;
-        }).doCatch(ContinueException.class, e -> {
-            if (e.matchLabel(label)) {
+        try {
+            return Utils.safeApply(body, ref.get()).then(a -> {
+                ref.set(a);
                 return null;
+            }).doCatch(ContinueException.class, e -> {
+                if (e.matchLabel(label)) {
+                    return null;
+                }
+                return JAsync.error(e);
+            }).unwrap(Mono.class);
+        } catch (ContinueException e) {
+            if (e.matchLabel(label)) {
+                return Mono.empty();
             }
-            return JAsync.error(e);
-        }).unwrap(Mono.class);
+            return Mono.error(e);
+        }
     }
 
     private Mono<? extends Integer> doWhileBody(VoidPromiseSupplier body, String label) throws Throwable {
-        return Utils.safeGetVoid(body).then(a -> null).doCatch(ContinueException.class, e -> {
+        try {
+            return Utils.safeGetVoid(body).then(a -> null).doCatch(ContinueException.class, e -> {
+                if (e.matchLabel(label)) {
+                    return null;
+                }
+                return JAsync.error(e);
+            }).unwrap(Mono.class);
+        } catch (ContinueException e) {
             if (e.matchLabel(label)) {
-                return null;
+                return Mono.empty();
             }
-            return JAsync.error(e);
-        }).unwrap(Mono.class);
+            return Mono.error(e);
+        }
     }
 
     @Override
