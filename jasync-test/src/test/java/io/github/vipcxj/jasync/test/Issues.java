@@ -52,7 +52,8 @@ public class Issues {
             if (sum == 3) {
                 sum++;
                 continue;
-            };   // throw io.github.vipcxj.jasync.spec.ContinueException
+            }
+            // throw io.github.vipcxj.jasync.spec.ContinueException
             sum += JAsync.just(l).await();
         }
 
