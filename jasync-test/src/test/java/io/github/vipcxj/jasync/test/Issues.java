@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -61,5 +62,28 @@ public class Issues {
     @Test
     public void issue6() {
         Assertions.assertEquals(8, test3().block());
+    }
+
+    private List<String> getA(String a) {
+        return Collections.singletonList(a);
+    }
+
+    @SuppressWarnings("unused")
+    @Async
+    private JPromise<String> testIssue7() {
+        String a = "定义a";
+        try {
+            a = "修改a";
+        } catch (Exception e) {
+            for (String l : getA(a)) {
+                JAsync.just().await();
+            }
+        }
+        return JAsync.just(a);
+    }
+
+    @Test
+    public void issue7() {
+        Assertions.assertEquals("修改a", testIssue7().block());
     }
 }

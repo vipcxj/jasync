@@ -9,6 +9,7 @@ import io.github.vipcxj.jasync.core.javac.IJAsyncInstanceContext;
 import io.github.vipcxj.jasync.core.javac.JavacUtils;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
 import io.github.vipcxj.jasync.core.javac.context.JAsyncSymbols;
+import io.github.vipcxj.jasync.core.javac.model.Frame;
 import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
 
 public class TransForeachContext extends AbstractTransFrameHolderStatementContext<JCTree.JCEnhancedForLoop> {
@@ -26,6 +27,20 @@ public class TransForeachContext extends AbstractTransFrameHolderStatementContex
     public TransForeachContext enter() {
         super.enter();
         return this;
+    }
+
+    @Override
+    public Frame getFrame() {
+        if (proxyFrame) {
+            return super.getFrame();
+        } else {
+            // The exprContext may request frame, but is null because exprContext is out of this frame.
+            if (frame != null) {
+                return frame;
+            } else {
+                return getParent() != null ? getParent().getFrame() : null;
+            }
+        }
     }
 
     @Override
@@ -116,6 +131,38 @@ public class TransForeachContext extends AbstractTransFrameHolderStatementContex
             tree.expr = (JCTree.JCExpression) exprContext.buildTree(false);
             tree.body = (JCTree.JCStatement) bodyContext.buildTree(false);
             return tree;
+        }
+    }
+
+    @Override
+    public void complete() {
+        if (!proxyFrame) {
+            // exprContext should be out of the frame.
+            if (exprContext != null) {
+                exprContext.complete();
+            }
+            Frame preFrame = analyzerContext.enter(this);
+            frame = analyzerContext.currentFrame();
+            frame.markOrder();
+            try {
+                if (getParent().getThen() == this && getParent() instanceof TransAwaitContext) {
+                    TransAwaitContext awaitContext = (TransAwaitContext) getParent();
+                    analyzerContext.addPlaceHolder(awaitContext.getTree(), true);
+                }
+                if (varContext != null) {
+                    varContext.complete();
+                }
+                if (bodyContext != null) {
+                    bodyContext.complete();
+                }
+            } finally {
+                analyzerContext.exitTo(preFrame);
+            }
+            if (thenContext != null) {
+                thenContext.complete();
+            }
+        } else {
+            super.complete();
         }
     }
 }
