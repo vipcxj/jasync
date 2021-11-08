@@ -9,7 +9,7 @@ public class AbstractTransFrameHolderStatementContext<T extends JCTree.JCStateme
         extends AbstractTransStatementContext<T>
         implements TransFrameHolderContext<T> {
     protected Frame frame;
-    private boolean proxyFrame;
+    protected boolean proxyFrame;
     private boolean awaitScope;
 
     public AbstractTransFrameHolderStatementContext(AnalyzerContext analyzerContext, T tree) {

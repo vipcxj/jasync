@@ -113,7 +113,20 @@ public abstract class AbstractTranslateContext<T extends JCTree> implements Tran
         return tree;
     }
 
-    protected void processAwait() {
+    protected void processAwait(TranslateContext<?> currentParent) {
+        TranslateContext<?> current = currentParent;
+        while (current != null) {
+            if (current instanceof TransMethodContext) {
+                TransMethodContext methodContext = (TransMethodContext) current;
+                if (!methodContext.isSupportAsync()) {
+                    return;
+                }
+                break;
+            } else if (current instanceof TransLambdaContext) {
+                return;
+            }
+            current = current.getParent();
+        }
         JCTree container = awaitContainer();
         if (container != null) {
             IJAsyncInstanceContext jasyncContext = analyzerContext.getJasyncContext();
@@ -158,7 +171,7 @@ public abstract class AbstractTranslateContext<T extends JCTree> implements Tran
                 analyzerContext.currentTranslateContext.onChildEnter(this);
             }
         }
-        processAwait();
+        processAwait(analyzerContext.currentTranslateContext);
         this.entered = true;
         this.parent = analyzerContext.currentTranslateContext;
         analyzerContext.currentTranslateContext = this;

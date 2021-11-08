@@ -97,7 +97,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-reactive</artifactId>
-    <version>0.1.4</version>
+    <version>0.1.8</version>
 </dependency>
 ```
 这个实现库是基于著名的响应式框架 **Reactor** 的。在这个实现中，`JPromise` 对象是 `Mono` 对象的封装。
@@ -109,7 +109,7 @@ public class MyRestController {
 <dependency>
     <groupId>io.github.vipcxj</groupId>
     <artifactId>jasync-core</artifactId>
-    <version>0.1.4</version>
+    <version>0.1.8</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -124,7 +124,7 @@ public class MyRestController {
         <path>
           <groupId>io.github.vipcxj</groupId>
           <artifactId>jasync-core</artifactId>
-          <version>0.1.4</version>
+          <version>0.1.8</version>
         </path>
       </annotationProcessorPaths>
     </configuration>
@@ -147,6 +147,31 @@ Debug mode
 ![alt debug mode off](/debug-on.png)
 
 可以看到当 debug 模式开启时， 所有已经定义的变量都能在监视窗中被找到，IDE在代码内的辅助显示也自动生效了。
+
+关于 Lombok
+===
+如果你正在使用 **Lombok**，你必须将 **JAsync** 置于 **Lombok** 之后, 就像这样：
+```xml
+<plugins>
+  <plugin>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <configuration>
+      <annotationProcessorPaths>
+         <path>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.22</version>
+         </path>
+        <path>
+          <groupId>io.github.vipcxj</groupId>
+          <artifactId>jasync-core</artifactId>
+          <version>0.1.8</version>
+        </path>
+      </annotationProcessorPaths>
+    </configuration>
+  </plugin>
+</plugins>
+```
 
 Known Issues
 ===

@@ -3,13 +3,12 @@ package io.github.vipcxj.jasync.core.javac.translate.context;
 import com.sun.tools.javac.tree.JCTree;
 import io.github.vipcxj.jasync.core.javac.context.AnalyzerContext;
 import io.github.vipcxj.jasync.core.javac.model.Frame;
-import io.github.vipcxj.jasync.core.javac.translate.TransExpressionContext;
 import io.github.vipcxj.jasync.core.javac.translate.TranslateContext;
 
 public class TransVarDeclContext extends AbstractTransStatementContext<JCTree.JCVariableDecl> {
 
     private Frame.DeclInfo declInfo;
-    private TransExpressionContext<?> initContext;
+    private TranslateContext<?> initContext;
     private boolean asyncParam;
 
     public TransVarDeclContext(AnalyzerContext analyzerContext, JCTree.JCVariableDecl tree) {
@@ -38,8 +37,7 @@ public class TransVarDeclContext extends AbstractTransStatementContext<JCTree.JC
     protected void addNormalChildContext(TranslateContext<?> child) {
         if (tree.init == child.getTree()) {
             if (tree.init != null) {
-                childContextMustBeExpression(child);
-                initContext = (TransExpressionContext<?>) child;
+                initContext = child;
             } else {
                 initContext = null;
             }

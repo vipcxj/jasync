@@ -30,6 +30,7 @@ public class JAsyncSymbols {
     private final TreeMaker maker;
     private final Types types;
     private final Names names;
+    private final Symbol.ClassSymbol symPromise;
     private final Symbol.MethodSymbol symPromiseThenSupplierArg;
     private final Symbol.MethodSymbol symPromiseThenFuncArg;
     private final Symbol.MethodSymbol symPromiseThenVoidSupplierArg;
@@ -93,7 +94,7 @@ public class JAsyncSymbols {
         types = Types.instance(context);
         JavacElements elements = JavacElements.instance(context);
         names = Names.instance(context);
-        Symbol.ClassSymbol symPromise = elements.getTypeElement(JPromise.class.getCanonicalName());
+        symPromise = elements.getTypeElement(JPromise.class.getCanonicalName());
         symPromiseThenSupplierArg = SymbolHelpers.INSTANCE.getMethodMember(
                 types, symPromise,
                 names.fromString(Constants.THEN),
@@ -366,6 +367,10 @@ public class JAsyncSymbols {
         if (instance == null)
             instance = new JAsyncSymbols(context);
         return instance;
+    }
+
+    public Symbol.ClassSymbol getSymPromise() {
+        return symPromise;
     }
 
     public JCTree.JCExpression makeJust() {

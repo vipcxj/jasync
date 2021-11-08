@@ -84,4 +84,19 @@ public class IfTest {
         Assertions.assertEquals("5", ifTest4(6).block());
     }
 
+    @Async
+    private JPromise<Integer> ifTest5(int i) {
+        int result = 0;
+        if (i == 0) result = JAsync.just(i).await() + 1;
+        if (i == 1) result = JAsync.just(i).await() + 2;
+        return JAsync.just(result);
+    }
+
+    @Test
+    public void testIf5() {
+        Assertions.assertEquals(1, ifTest5(0).block());
+        Assertions.assertEquals(3, ifTest5(1).block());
+        Assertions.assertEquals(0, ifTest5(2).block());
+    }
+
 }

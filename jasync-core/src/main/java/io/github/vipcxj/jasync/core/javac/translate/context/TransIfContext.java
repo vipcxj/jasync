@@ -31,7 +31,9 @@ public class TransIfContext extends AbstractTransStatementContext<JCTree.JCIf> {
     public void exit(boolean triggerCallback) {
         if (hasAwait()) {
             thenContext.setHasAwait(true);
-            elseContext.setHasAwait(true);
+            if (elseContext != null) {
+                elseContext.setHasAwait(true);
+            }
         }
         super.exit(triggerCallback);
     }
@@ -85,7 +87,7 @@ public class TransIfContext extends AbstractTransStatementContext<JCTree.JCIf> {
                         List.of(
                                 (JCTree.JCExpression) condContext.buildTree(false),
                                 methodContext.makeVoidPromiseSupplier(thenContext),
-                                methodContext.makeVoidPromiseSupplier(elseContext)
+                                elseContext != null ? methodContext.makeVoidPromiseSupplier(elseContext) : JavacUtils.makeNull(jasyncContext)
                         )
                 ));
             } finally {
@@ -94,7 +96,7 @@ public class TransIfContext extends AbstractTransStatementContext<JCTree.JCIf> {
         } else {
             tree.cond = (JCTree.JCExpression) condContext.buildTree(false);
             tree.thenpart = (JCTree.JCStatement) thenContext.buildTree(false);
-            tree.elsepart = (JCTree.JCStatement) elseContext.buildTree(false);
+            tree.elsepart = elseContext != null ? (JCTree.JCStatement) elseContext.buildTree(false) : null;
             return tree;
         }
     }
