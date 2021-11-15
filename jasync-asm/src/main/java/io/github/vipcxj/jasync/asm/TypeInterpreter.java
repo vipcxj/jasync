@@ -46,12 +46,12 @@ public class TypeInterpreter extends BasicInterpreter {
         } else {
             merged = super.merge(value1, value2);
         }
-        System.out.println("merge "
+/*        System.out.println("merge "
                 + (value1 != null ? value1.getType() : "null")
                 + " and "
                 + (value2 != null ? value2.getType() : "null")
                 + " to "
-                + (merged != null ? merged.getType() : "null"));
+                + (merged != null ? merged.getType() : "null"));*/
         return merged;
     }
 }

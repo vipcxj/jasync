@@ -76,7 +76,7 @@ public class GraphTest {
             GabowStrongConnectivityInspector<Integer, DefaultEdge> cyclesFinder = new GabowStrongConnectivityInspector<>(graph);
             System.out.println("Graph " + ++i + ":");
             times.start();
-            Set<Set<Integer>> testCycles = new HashSet<>(CodePiece.tarjan(vertices, 0, vertices.length));
+            Set<Set<Integer>> testCycles = new HashSet<>(GraphUtils.tarjan(vertices));
             times.stop();
             System.out.println("Test cycles calculated. Used " + times.escaped(TimeUnit.MICROSECONDS) + " μs.");
             times.start();
@@ -88,7 +88,7 @@ public class GraphTest {
         i = 0;
         for (Vertex[] vertices : largeVertexesList) {
             times.start();
-            CodePiece.tarjan(vertices, 0, vertices.length);
+            GraphUtils.tarjan(vertices);
             times.stop();
             System.out.println("Large Graph " + ++i + ": used " + times.escaped(TimeUnit.MILLISECONDS) + " ms.");
         }

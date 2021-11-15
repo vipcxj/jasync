@@ -25,7 +25,7 @@ public class PortalTask<T> implements Task<T> {
         if (!disposed) {
             this.disposable = context.getScheduler().schedule(() -> {
                 try {
-                    JPromise2<T> next = jumperTask.invoke(portal);
+                    JPromise2<T> next = jumperTask.invoke(portal, context);
                     next = next != null ? next : JPromise2.empty();
                     next.onError(thunk::reject).onSuccess(thunk::resolve).async(context);
                 } catch (Throwable t) {

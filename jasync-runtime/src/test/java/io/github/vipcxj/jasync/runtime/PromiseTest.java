@@ -1,6 +1,7 @@
 package io.github.vipcxj.jasync.runtime;
 
 import io.github.vipcxj.jasync.spec.JAsync2;
+import io.github.vipcxj.jasync.spec.JContext;
 import io.github.vipcxj.jasync.spec.JPortal;
 import io.github.vipcxj.jasync.spec.JPromise2;
 import org.junit.jupiter.api.Test;
@@ -49,7 +50,7 @@ public class PromiseTest {
 
     @Test
     public void test1() {
-        Integer value = JPromise2.portal((JPortal<Integer> portal) ->
+        Integer value = JPromise2.portal((JPortal<Integer> portal, JContext ignored) ->
                 JAsync2.updateContext("index", 0, j -> j + 1)
                         .thenMap(ctx -> ctx.<Integer>get("index"))
                         .onSuccess(v -> {

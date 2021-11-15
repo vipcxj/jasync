@@ -41,7 +41,9 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
     @Override
     protected void newControlFlowEdge(int insnIndex, int successorIndex) {
         Node<BasicValue> frame = (Node<BasicValue>) getFrames()[insnIndex];
-        frame.successors.add((Node<BasicValue>) getFrames()[successorIndex]);
+        Node<BasicValue> successor = (Node<BasicValue>) getFrames()[successorIndex];
+        frame.successors.add(successor);
+        successor.precursor = frame;
     }
 
     public Node<BasicValue>[] getNodes() {
@@ -53,7 +55,9 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
         Node<BasicValue>[] nodes = new Node[frames.length];
         for (int i = 0; i < frames.length; ++i) {
             nodes[i] = (Node<BasicValue>) frames[i];
-            nodes[i].index = i;
+            if (nodes[i] != null) {
+                nodes[i].index = i;
+            }
         }
         return nodes;
     }
@@ -240,6 +244,7 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
 
     public static class Node<V extends Value> extends Frame<V> implements Vertex {
 
+        private Node<? extends V> precursor;
         private final Set< Node<? extends V> > successors = new HashSet<>();
         private int index;
         private int line = -1;
@@ -262,8 +267,16 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
         }
 
         @Override
-        public Successors createSuccessors() {
+        public SuccessorsImpl createSuccessors() {
             return new SuccessorsImpl(successors.iterator());
+        }
+
+        public Set<Node<? extends V>> getSuccessors() {
+            return successors;
+        }
+
+        public Node<? extends V> getPrecursor() {
+            return precursor;
         }
 
         @Override
@@ -298,7 +311,7 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
         public class SuccessorsImpl implements Successors {
 
             private final Iterator<Node<? extends V>> iterator;
-            private Node<?> current;
+            private Node<? extends V> current;
 
             SuccessorsImpl(Iterator<Node<? extends V>> iterator) {
                 this.iterator = iterator;
@@ -311,7 +324,7 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
             }
 
             @Override
-            public Vertex current() {
+            public Node<? extends V> current() {
                 return current;
             }
         }

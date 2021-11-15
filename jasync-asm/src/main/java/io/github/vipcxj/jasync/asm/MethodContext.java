@@ -5,44 +5,38 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.LabelNode;
-import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.analysis.AnalyzerException;
 import org.objectweb.asm.tree.analysis.BasicValue;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class MethodContext {
     private final ClassContext classContext;
     private final MethodNode mv;
     private final BranchAnalyzer.Node<BasicValue>[] frames;
     private final Map<LabelNode, LabelNode> cloneLabels;
-    private final Set<String> varNames;
-    private final List<Label> labels;
-    private int varIndex;
-    private int locals;
-    private int stacks;
+    private final List<Integer> localsToUpdate;
+    private final List<Integer> stacksToUpdate;
 
 
-    public MethodContext(ClassContext classContext, MethodNode mv, BranchAnalyzer.Node<BasicValue>[] frames) {
+
+    public MethodContext(ClassContext classContext, MethodNode mv) {
         this.classContext = classContext;
         this.mv = mv;
-        this.frames = frames;
-        this.varIndex = 0;
-        this.locals = mv.maxLocals;
-        this.stacks = mv.maxStack;
-        this.varNames = new HashSet<>();
-        collectVarNames();
-        this.labels = new ArrayList<>();
+        this.localsToUpdate = new ArrayList<>();
+        this.stacksToUpdate = new ArrayList<>();
         this.cloneLabels = new HashMap<>();
         collectLabels();
-    }
-
-    private void collectVarNames() {
-        List<LocalVariableNode> localVariables = mv.localVariables;
-        if (localVariables != null) {
-            for (LocalVariableNode localVariable : localVariables) {
-                varNames.add(localVariable.name);
-            }
+        BranchAnalyzer analyzer = new BranchAnalyzer();
+        try {
+            analyzer.analyze(classContext.getName(), mv);
+            this.frames = analyzer.getNodes();
+        } catch (AnalyzerException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -51,11 +45,14 @@ public class MethodContext {
             for (AbstractInsnNode instruction : mv.instructions) {
                 if (instruction instanceof LabelNode) {
                     LabelNode labelNode = (LabelNode) instruction;
-                    labels.add(labelNode.getLabel());
                     cloneLabels.put(labelNode, new LabelNode(new Label()));
                 }
             }
         }
+    }
+
+    public MethodContext createChild(MethodNode methodNode) {
+        return new MethodContext(classContext, methodNode);
     }
 
     public MethodNode getMv() {
@@ -83,25 +80,25 @@ public class MethodContext {
         return (T) node.clone(cloneLabels);
     }
 
-    public boolean labelBefore(Label a, Label b, boolean includeEquals) {
-        if (includeEquals && a.equals(b)) {
-            return true;
-        }
-        if (a == Constants.LABEL_START) {
-            return true;
-        }
-        if (b == Constants.LABEL_END) {
-            return false;
-        }
-        for (Label label : labels) {
-            if (label.equals(a)) {
-                return true;
-            }
-            if (label.equals(b)) {
-                return false;
-            }
-        }
-        throw new IllegalArgumentException("Invalid labels.");
+    public void replaceLabel(LabelNode from, LabelNode to) {
+        cloneLabels.put(from, to);
+    }
+
+    public void updateLocals(int locals) {
+        localsToUpdate.add(locals);
+    }
+
+    public void updateStacks(int stacks) {
+        stacksToUpdate.add(stacks);
+    }
+
+    public void updateMax() {
+        mv.maxLocals = Math.max(mv.maxLocals, localsToUpdate.stream().mapToInt(i -> i).max().orElse(0));
+        mv.maxStack = Math.max(mv.maxStack, stacksToUpdate.stream().mapToInt(i -> i).max().orElse(0));
+    }
+
+    public void addLambdaContext(MethodContext methodContext) {
+        this.classContext.addLambda(methodContext);
     }
 
 

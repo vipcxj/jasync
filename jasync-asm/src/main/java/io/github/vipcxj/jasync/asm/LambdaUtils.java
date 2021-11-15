@@ -94,4 +94,21 @@ public class LambdaUtils {
                 extraArgs
         );
     }
+
+    public static InvokeDynamicInsnNode invokeJAsyncPortalTask(
+            Type ownerClass,
+            String implMethodName,
+            boolean isStatic,
+            Type... extraArgs
+    ) {
+        return invokeLambda(
+                JPORTAL_TASK_INVOKE_NAME,
+                JPORTAL_TASK_DESC,
+                JPORTAL_TASK_INVOKE_DESC,
+                ownerClass,
+                implMethodName,
+                isStatic,
+                extraArgs
+        );
+    }
 }

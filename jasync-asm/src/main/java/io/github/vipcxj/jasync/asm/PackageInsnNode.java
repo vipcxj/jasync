@@ -4,23 +4,17 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.LabelNode;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
-public class CodePieceInsnNode extends AbstractInsnNode {
+public class PackageInsnNode extends AbstractInsnNode {
 
-    private final CodePiece codePiece;
+    private final List<AbstractInsnNode> insnNodes;
 
-    /**
-     * Constructs a new {@link AbstractInsnNode}.
-     * @param codePiece
-     */
-    protected CodePieceInsnNode(CodePiece codePiece) {
+    protected PackageInsnNode() {
         super(-1);
-        this.codePiece = codePiece;
-    }
-
-    public CodePiece getCodePiece() {
-        return codePiece;
+        this.insnNodes = new ArrayList<>();
     }
 
     @Override
@@ -36,5 +30,9 @@ public class CodePieceInsnNode extends AbstractInsnNode {
     @Override
     public AbstractInsnNode clone(Map<LabelNode, LabelNode> clonedLabels) {
         throw new UnsupportedOperationException();
+    }
+
+    public List<AbstractInsnNode> getInsnNodes() {
+        return insnNodes;
     }
 }
