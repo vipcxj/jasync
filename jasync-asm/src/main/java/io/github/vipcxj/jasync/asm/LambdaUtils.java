@@ -18,13 +18,15 @@ public class LambdaUtils {
             "Ljava/lang/invoke/MethodType;" +
             ")Ljava/lang/invoke/CallSite;";
 
-    private final static Handle META_FACTORY_HANDLE = new Handle(
-            Opcodes.H_INVOKESTATIC,
-            "java/lang/invoke/LambdaMetafactory",
-            "metafactory",
-            LAMBDA_META_FACTORY_META_FACTORY_DESC,
-            false
-    );
+    private static Handle createMetaFactoryHandle() {
+        return new Handle(
+                Opcodes.H_INVOKESTATIC,
+                "java/lang/invoke/LambdaMetafactory",
+                "metafactory",
+                LAMBDA_META_FACTORY_META_FACTORY_DESC,
+                false
+        );
+    }
 
     private static Type[] prependType(Type[] types, Type type) {
         Type[] newTypes = new Type[types.length + 1];
@@ -71,10 +73,10 @@ public class LambdaUtils {
         return new InvokeDynamicInsnNode(
                 itfMethodName,
                 itfCreatorDesc.getDescriptor(),
-                META_FACTORY_HANDLE,
-                itfMethodDesc.getDescriptor(),
+                createMetaFactoryHandle(),
+                itfMethodDesc,
                 handle,
-                itfMethodDesc.getDescriptor()
+                itfMethodDesc
         );
     }
 
@@ -88,6 +90,23 @@ public class LambdaUtils {
                 JASYNC_PROMISE_FUNCTION0_METHOD_NAME,
                 JASYNC_PROMISE_FUNCTION0_DESC,
                 JASYNC_PROMISE_FUNCTION0_METHOD_DESC,
+                ownerClass,
+                implMethodName,
+                isStatic,
+                extraArgs
+        );
+    }
+
+    public static InvokeDynamicInsnNode invokeJAsyncPromiseFunction1(
+            Type ownerClass,
+            String implMethodName,
+            boolean isStatic,
+            Type... extraArgs
+    ) {
+        return invokeLambda(
+                JASYNC_PROMISE_FUNCTION1_METHOD_NAME,
+                JASYNC_PROMISE_FUNCTION1_DESC,
+                JASYNC_PROMISE_FUNCTION1_METHOD_DESC,
                 ownerClass,
                 implMethodName,
                 isStatic,

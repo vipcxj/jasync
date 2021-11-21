@@ -22,7 +22,7 @@ public class Constants {
     public static final String JPORTAL_TASK_INVOKE_NAME = "invoke";
     public static final Type JPORTAL_TASK_INVOKE_DESC = Type.getMethodType(JPROMISE_DESC, JPORTAL_DESC, JCONTEXT_DESC);
     public static final String JPROMISE_PORTAL_NAME = "portal";
-    public static final Type JPROMISE_PORTAL_DESC = Type.getMethodType(JPROMISE_DESC, JPORTAL_TASK_INVOKE_DESC);
+    public static final Type JPROMISE_PORTAL_DESC = Type.getMethodType(JPROMISE_DESC, JPORTAL_TASK_DESC);
     public static final String JASYNC_PROMISE_FUNCTION0_NAME = "io/github/vipcxj/jasync/spec/functional/JAsyncPromiseFunction0";
     public static final Type JASYNC_PROMISE_FUNCTION0_DESC = Type.getObjectType(JASYNC_PROMISE_FUNCTION0_NAME);
     public static final String JASYNC_PROMISE_FUNCTION0_METHOD_NAME = "apply";

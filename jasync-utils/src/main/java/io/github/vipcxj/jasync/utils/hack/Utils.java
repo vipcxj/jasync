@@ -157,7 +157,7 @@ public class Utils {
     /**
      * IntelliJ IDEA >= 2020.3
      */
-    private static Object tryGetProxyDelegateToField(Class<?> delegateClass, Object instance) {
+    public static Object tryGetProxyDelegateToField(Class<?> delegateClass, Object instance) {
         try {
             InvocationHandler handler = Proxy.getInvocationHandler(instance);
             return Permit.getField(handler.getClass(), "val$delegateTo").get(handler);

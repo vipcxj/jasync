@@ -68,8 +68,9 @@ public class AsmHelper {
         return iLocal;
     }
 
-    public static void pushLocalToStack(int validLocals, Frame<? extends BasicValue> frame, List<AbstractInsnNode> results) {
-        for (int i = 0; i < validLocals;) {
+    public static void pushLocalToStack(int validLocals, boolean isStatic, Frame<? extends BasicValue> frame, List<AbstractInsnNode> results) {
+        int start = isStatic ? 0 : 1;
+        for (int i = start; i < validLocals;) {
             BasicValue value = frame.getLocal(i);
             if (value != null && value.getType() != null) {
                 Type type = value.getType();

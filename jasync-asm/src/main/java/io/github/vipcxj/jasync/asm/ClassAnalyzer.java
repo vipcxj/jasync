@@ -23,7 +23,7 @@ public class ClassAnalyzer extends ClassVisitor {
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
         MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
         if (checker.isAsyncMethod(name, descriptor)) {
-            return new ChainMethodNode(access, name, descriptor, signature, exceptions, mv, classContext);
+            return new ChainMethodNode(access, name, descriptor, signature, exceptions, mv, cv, classContext);
         } else {
             return mv;
         }

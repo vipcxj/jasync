@@ -104,12 +104,12 @@
                             <include>org.ow2.asm:asm-util</include>
                         </includes>
                     </artifactSet>
-<!--                    <relocations>
+                    <relocations>
                         <relocation>
                             <pattern>org.objectweb.</pattern>
-                            <shadedPattern>io.github.vipcxj.jasync.shaded.org.objectweb.</shadedPattern>
+                            <shadedPattern>io.github.vipcxj.jasync.asm.shaded.org.objectweb.</shadedPattern>
                         </relocation>
-                    </relocations>-->
+                    </relocations>
                 </configuration>
             </plugin>
             <plugin>
