@@ -87,4 +87,18 @@ public class Issues {
     public void issue7() {
         Assertions.assertEquals("修改a", testIssue7().block());
     }
+
+    @SuppressWarnings({"ParameterCanBeLocal", "SameParameterValue"})
+    @Async
+    private static JPromise<String> testIssue8(String command) {
+        //noinspection UnusedAssignment
+        command = "a";
+        command = JAsync.just("b").await();
+        return JAsync.just(command);
+    }
+
+    @Test
+    public void issue8() {
+        Assertions.assertEquals("b", testIssue8("abc").block());
+    }
 }
