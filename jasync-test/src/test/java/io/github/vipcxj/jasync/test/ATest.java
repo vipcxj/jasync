@@ -16,6 +16,7 @@ public class ATest {
         return JPromise2.just(2);
     }
 
+    @Async(verify = true, logByteCode = true)
     public JPromise2<Integer> a(int input) {
         Number a = 5;
         Integer one = one().await();

@@ -13,6 +13,7 @@ import java.util.function.BiFunction;
 public class MethodContext {
     private final ClassContext classContext;
     private final MethodNode mv;
+    private final JAsyncInfo info;
     private final BranchAnalyzer.Node<BasicValue>[] frames;
     private final Map<LabelNode, LabelNode> cloneLabels;
     private final List<Integer> localsToUpdate;
@@ -28,6 +29,7 @@ public class MethodContext {
     public MethodContext(ClassContext classContext, MethodNode mv, MethodContext parent) {
         this.classContext = classContext;
         this.mv = mv;
+        this.info = JAsyncInfo.of(mv);
         this.localsToUpdate = new ArrayList<>();
         this.stacksToUpdate = new ArrayList<>();
         this.cloneLabels = new HashMap<>();
@@ -61,6 +63,10 @@ public class MethodContext {
 
     public MethodNode getMv() {
         return mv;
+    }
+
+    public JAsyncInfo getInfo() {
+        return getRootMethodContext().info;
     }
 
     public BranchAnalyzer.Node<BasicValue>[] getFrames() {
