@@ -24,8 +24,6 @@ public class MethodContext {
     private final AbstractInsnNode[] insnNodes;
     private List<Set<Integer>> loops;
 
-
-
     public MethodContext(ClassContext classContext, MethodNode mv, MethodContext parent) {
         this.classContext = classContext;
         this.mv = mv;
@@ -113,7 +111,7 @@ public class MethodContext {
     }
 
     public void addLambdaContext(MethodContext methodContext) {
-        this.classContext.addLambda(methodContext);
+        this.classContext.addLambda(getRootMethodContext(), methodContext);
     }
 
 
@@ -132,23 +130,99 @@ public class MethodContext {
             Arrays.fill(insnNodes, null);
             process(nodes[0]);
             clearInsnList(getMv().instructions);
+            List<LocalVariableNode> localVariableNodes = new ArrayList<>();
+            LocalVariableNode[] localVariableArray = new LocalVariableNode[mv.maxLocals];
             InsnList newInsnList = new InsnList();
-            for (AbstractInsnNode insnNode : insnNodes) {
+            for (int i = 0; i < insnNodes.length; ++i) {
+                AbstractInsnNode insnNode = insnNodes[i];
                 if (insnNode != null) {
+                    BranchAnalyzer.Node<BasicValue> frame = frames[i];
                     if (insnNode instanceof PackageInsnNode) {
                         PackageInsnNode packageInsnNode = (PackageInsnNode) insnNode;
                         for (AbstractInsnNode node : packageInsnNode.getInsnNodes()) {
                             newInsnList.add(node);
                         }
+                        for (int j = 0; j < localVariableArray.length; ++j) {
+                            LocalVariableNode variableNode = localVariableArray[j];
+                            if (variableNode != null && variableNode.start != null) {
+                                variableNode.end = packageInsnNode.getEndNode();
+                            }
+                            pushLocalVariable(localVariableArray, j, localVariableNodes);
+                        }
                     } else {
                         newInsnList.add(insnNode);
+                        updateLocalVar(localVariableArray, localVariableNodes, insnNode, frame);
                     }
                 }
             }
             getMv().instructions = newInsnList;
+            getMv().localVariables = localVariableNodes;
             updateMax();
             for (MethodContext child : children) {
                 child.process();
+            }
+        }
+    }
+
+    private static boolean equals(String a, String b) {
+        if (a == null && b == null) {
+            return true;
+        }
+        if (a == null || b == null) {
+            return false;
+        }
+        return a.equals(b);
+    }
+
+    private static boolean equals(LocalVar localVar, LocalVariableNode localVariableNode) {
+        if (localVar == null && localVariableNode == null) {
+            return true;
+        }
+        if (localVar == null || localVariableNode == null) {
+            return false;
+        }
+        return equals(localVar.getName(), localVariableNode.name)
+                && equals(localVar.getDesc(), localVariableNode.desc)
+                && equals(localVar.getSignature(), localVariableNode.signature);
+    }
+
+    private void pushLocalVariable(LocalVariableNode[] localVariableArray, int i, List<LocalVariableNode> localVariableList) {
+        LocalVariableNode localVariableNode = localVariableArray[i];
+        if (localVariableNode != null && localVariableNode.start != null && localVariableNode.end != null) {
+            localVariableList.add(localVariableNode);
+        }
+        localVariableArray[i] = null;
+    }
+
+    private void updateLocalVar(LocalVariableNode[] localVariableArray, List<LocalVariableNode> localVariableList, AbstractInsnNode insnNode, BranchAnalyzer.Node<BasicValue> frame) {
+        LocalVar[] localVars = frame.getLocalVars();
+        int size = Math.min(localVariableArray.length, localVars.length);
+        for (int i = 0; i < size; ++i) {
+            LocalVar localVar = localVars[i];
+            LocalVariableNode localVariableNode = localVariableArray[i];
+            if (!equals(localVar, localVariableNode)) {
+                if (localVar == null) {
+                    pushLocalVariable(localVariableArray, i, localVariableList);
+                } else if (localVariableNode == null) {
+                    LocalVariableNode variableNode = new LocalVariableNode(localVar.getName(), localVar.getDesc(), localVar.getSignature(), null, null, i);
+                    if (insnNode instanceof LabelNode) {
+                        variableNode.start = (LabelNode) insnNode;
+                    }
+                    localVariableArray[i] = variableNode;
+                } else {
+                    pushLocalVariable(localVariableArray, i, localVariableList);
+                    LocalVariableNode variableNode = new LocalVariableNode(localVar.getName(), localVar.getDesc(), localVar.getSignature(), null, null, i);
+                    if (insnNode instanceof LabelNode) {
+                        variableNode.start = (LabelNode) insnNode;
+                    }
+                    localVariableArray[i] = variableNode;
+                }
+            } else if (localVariableNode != null && insnNode instanceof LabelNode) {
+                if (localVariableNode.start == null) {
+                    localVariableNode.start = (LabelNode) insnNode;
+                } else {
+                    localVariableNode.end = (LabelNode) insnNode;
+                }
             }
         }
     }
@@ -202,10 +276,10 @@ public class MethodContext {
             boolean visited = withFlag.isFlag();
             if (visited) {
                 if (label == 2) {
-                    AbstractInsnNode newInsnNode = processLoopNode(root);
+                    PackageInsnNode newInsnNode = processLoopNode(root);
                     insnNodes[index] = newInsnNode;
                 } else if (label == 1) {
-                    AbstractInsnNode newInsnNode = processAwaitNode(root);
+                    PackageInsnNode newInsnNode = processAwaitNode(root);
                     insnNodes[index] = newInsnNode;
                 } else {
                     insnNodes[index] = insnNode;
@@ -370,7 +444,7 @@ public class MethodContext {
         }
     }
 
-    private AbstractInsnNode processAwaitNode(BranchAnalyzer.Node<? extends BasicValue> node) {
+    private PackageInsnNode processAwaitNode(BranchAnalyzer.Node<? extends BasicValue> node) {
         PackageInsnNode packageInsnNode = new PackageInsnNode();
         List<AbstractInsnNode> insnNodes = packageInsnNode.getInsnNodes();
         int validLocals = AsmHelper.calcValidLocals(node);
@@ -423,12 +497,13 @@ public class MethodContext {
                 Constants.JPROMISE_THEN_WITH_CONTEXT_DESC.getDescriptor())
         );
         insnNodes.add(new InsnNode(Opcodes.ARETURN));
+        packageInsnNode.complete();
         List<AbstractInsnNode> successors = collectSuccessors(node, (in, n) -> cloneInsn(in));
         buildLambda(lambdaNode, arguments, successors, validLocals, stackSize, null);
         return packageInsnNode;
     }
 
-    private AbstractInsnNode processLoopNode(BranchAnalyzer.Node<? extends BasicValue> node) {
+    private PackageInsnNode processLoopNode(BranchAnalyzer.Node<? extends BasicValue> node) {
         AbstractInsnNode insnNode = getMv().instructions.get(node.getIndex());
         if (!(insnNode instanceof LabelNode)) {
             // 因为这个指令是至少2个指令的后继，只有 LabelNode 可以是多个指令的后继
@@ -486,6 +561,7 @@ public class MethodContext {
                 true
         ));
         insnNodes.add(new InsnNode(Opcodes.ARETURN));
+        packageInsnNode.complete();
         LabelNode portalLabel = new LabelNode();
         replaceLabel(labelNode, portalLabel);
         List<AbstractInsnNode> successors = collectSuccessors(node, (in, n) -> {

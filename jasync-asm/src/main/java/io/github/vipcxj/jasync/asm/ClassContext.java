@@ -1,14 +1,12 @@
 package io.github.vipcxj.jasync.asm;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class ClassContext {
     private final String name;
     private int index = 0;
     private final Set<String> methods;
-    private final List<MethodContext> lambdaContexts;
+    private final Map<MethodContext, List<MethodContext>> lambdaContexts;
 
     /**
      *
@@ -17,7 +15,7 @@ public class ClassContext {
     public ClassContext(String name, Set<String> methods) {
         this.name = name;
         this.methods = methods;
-        this.lambdaContexts = new ArrayList<>();
+        this.lambdaContexts = new HashMap<>();
     }
 
     public String nextLambdaName(String ownerMethod) {
@@ -36,11 +34,11 @@ public class ClassContext {
         return name;
     }
 
-    public void addLambda(MethodContext methodContext) {
-        this.lambdaContexts.add(methodContext);
+    public void addLambda(MethodContext methodContext, MethodContext lambdaContext) {
+        getLambdaContexts(methodContext).add(lambdaContext);
     }
 
-    public List<MethodContext> getLambdaContexts() {
-        return lambdaContexts;
+    public List<MethodContext> getLambdaContexts(MethodContext methodContext) {
+        return this.lambdaContexts.computeIfAbsent(methodContext, k -> new ArrayList<>());
     }
 }

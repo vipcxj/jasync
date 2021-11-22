@@ -19,7 +19,9 @@ public class ATest {
     @Async(verify = true, logByteCode = true)
     public JPromise2<Integer> a(int input) {
         Number a = 5;
+        @LocalAnn
         Integer one = one().await();
+        @LocalAnn(a = true)
         Integer two = two().await();
         int res = 0;
         label: for (int i = 0; i < 10; ++i) {

@@ -85,7 +85,7 @@ public class ChainMethodNode extends MethodVisitor {
         if (nextVisitor != null) {
             methodNode.accept(nextVisitor);
         }
-        for (MethodContext lambdaContext : classContext.getLambdaContexts()) {
+        for (MethodContext lambdaContext : classContext.getLambdaContexts(methodContext)) {
             if (info.isLogByteCode()) {
                 log(lambdaContext.getMv(), new Textifier());
             }

@@ -11,6 +11,7 @@ import java.util.Map;
 public class PackageInsnNode extends AbstractInsnNode {
 
     private final List<AbstractInsnNode> insnNodes;
+    private LabelNode endNode;
 
     protected PackageInsnNode() {
         super(-1);
@@ -34,5 +35,14 @@ public class PackageInsnNode extends AbstractInsnNode {
 
     public List<AbstractInsnNode> getInsnNodes() {
         return insnNodes;
+    }
+
+    public LabelNode getEndNode() {
+        return endNode;
+    }
+
+    public void complete() {
+        endNode = new LabelNode();
+        insnNodes.add(endNode);
     }
 }
