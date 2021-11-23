@@ -82,4 +82,8 @@ public class AsmHelper {
             }
         }
     }
+
+    public static void fixInsnTypes() {
+
+    }
 }

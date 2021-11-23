@@ -1,7 +1,11 @@
 package io.github.vipcxj.jasync.asm;
 
 
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.TypeInsnNode;
+import org.objectweb.asm.tree.analysis.AnalyzerException;
 import org.objectweb.asm.tree.analysis.BasicInterpreter;
 import org.objectweb.asm.tree.analysis.BasicValue;
 
@@ -17,6 +21,19 @@ public class TypeInterpreter extends BasicInterpreter {
             return new JAsyncValue(type);
         }
         return super.newValue(type);
+    }
+
+    @Override
+    public BasicValue newOperation(AbstractInsnNode insn) throws AnalyzerException {
+        if (insn.getOpcode() == Opcodes.NEW) {
+            TypeInsnNode typeInsnNode = (TypeInsnNode) insn;
+            JAsyncValue value = new JAsyncValue(Type.getObjectType(typeInsnNode.desc));
+            value.setUninitialized(true);
+            value.setInsnNode(insn);
+            return value;
+        } else {
+            return super.newOperation(insn);
+        }
     }
 
     @Override
@@ -36,22 +53,14 @@ public class TypeInterpreter extends BasicInterpreter {
                     && (t.getSort() == Type.OBJECT || t.getSort() == Type.ARRAY)
                     && (u.getSort() == Type.OBJECT || u.getSort() == Type.ARRAY))
             {
-                JAsyncValue jAsyncValue = new JAsyncValue(BasicValue.REFERENCE_VALUE.getType());
-                jAsyncValue.getFroms().add(t);
-                jAsyncValue.getFroms().add(u);
-                merged = jAsyncValue;
+                merged = new JAsyncValue(BasicValue.REFERENCE_VALUE.getType());
             } else {
                 merged = super.merge(value1, value2);
             }
         } else {
+            assert value1 != null;
             merged = super.merge(value1, value2);
         }
-/*        System.out.println("merge "
-                + (value1 != null ? value1.getType() : "null")
-                + " and "
-                + (value2 != null ? value2.getType() : "null")
-                + " to "
-                + (merged != null ? merged.getType() : "null"));*/
         return merged;
     }
 }
