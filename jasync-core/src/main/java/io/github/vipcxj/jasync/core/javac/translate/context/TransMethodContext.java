@@ -92,7 +92,10 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
         int index = paramsContext.size();
         if (tree.params != null && index < tree.params.size() && tree.params.get(index) == child.getTree()) {
             childContextMustBeVarDecl(child);
-            paramsContext.append((TransVarDeclContext) child);
+            TransVarDeclContext varDeclContext = (TransVarDeclContext) child;
+            // fix issue #8
+            varDeclContext.setAsyncParam(true);
+            paramsContext.append(varDeclContext);
         } else if (tree.body != null && tree.body == child.getTree()) {
             childContextMustBeBlock(child);
             bodyContext = (TransBlockContext) child;
