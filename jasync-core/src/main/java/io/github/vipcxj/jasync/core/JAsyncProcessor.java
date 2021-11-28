@@ -17,6 +17,7 @@ import org.objectweb.asm.ClassReader;
 
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementScanner8;
 import javax.tools.JavaFileManager;
@@ -30,6 +31,7 @@ import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.jar.JarFile;
 
@@ -43,6 +45,7 @@ public class JAsyncProcessor extends AbstractProcessor {
     }
 
     private static final String PROMISE_TYPES_FILE_PROPERTY = "jasync_promise_types_file";
+    private static final String FULL_TYPES_FILE_PROPERTY = "jasync_full_types_file";
 
     private static void installAgent() {
         try {
@@ -58,22 +61,7 @@ public class JAsyncProcessor extends AbstractProcessor {
                     .visit(Advice.to(ClassWriterAdvice.class).on(ElementMatchers.named("writeClass").and(ElementMatchers.returns(JavaFileObject.class))))
                     .make().load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
             System.out.println("modify ClassWriter");
-/*            new ByteBuddy()
-                    .redefine(typePool.describe("com.sun.tools.javac.main.JavaCompiler").resolve(), ClassFileLocator.ForClassLoader.of(classLoader))
-                    .visit(Advice.to(JavacCompilerGenerateAdvice.class).on(ElementMatchers.named("generate")))
-                    .make().load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
-            System.out.println("modify JavaCompiler");*/
             attachAsmJar();
-
-/*            classLoader = JAsyncProcessor.class.getClassLoader();
-            typePool = TypePool.Default.of(classLoader);
-            TestClass testClass = new TestClass();
-            System.out.println(testClass.helloWorld());
-            new ByteBuddy()
-                    .redefine(typePool.describe("io.github.vipcxj.jasync.core.JAsyncProcessor$TestClass").resolve(), ClassFileLocator.ForClassLoader.of(classLoader))
-                    .visit(Advice.to(MyAdvice.class).on(ElementMatchers.named("helloWorld")))
-                    .make().load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
-            System.out.println(testClass.helloWorld());*/
         } catch (Throwable t) {
             t.printStackTrace();
         }
@@ -103,24 +91,16 @@ public class JAsyncProcessor extends AbstractProcessor {
         }
     }
 
-    private final Set<String> promiseTypes = new HashSet<>();
+    private final Map<String, TypeInfo> typeInfoMap = new HashMap<>();
+    private final List<String> promiseTypes = new ArrayList<>();
+    private final List<String> fullTypes = new ArrayList<>();
+    private Path promiseTypesPath;
+    private Path fullTypesPath;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         collectTypes();
-    }
-
-    private void writePromiseTypes() {
-        try {
-            Path path = Files.createTempFile("promise-types", ".txt");
-            Files.write(path, promiseTypes, StandardCharsets.UTF_8);
-            File file = path.toFile();
-            file.deleteOnExit();
-            System.setProperty(PROMISE_TYPES_FILE_PROPERTY, file.getAbsolutePath());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     public static Object tryGetProxyDelegateToField(Object instance) {
@@ -175,11 +155,52 @@ public class JAsyncProcessor extends AbstractProcessor {
         }
     }
 
+    private void deleteOnExit(Path path) {
+        try {
+            path.toFile().deleteOnExit();
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+    }
+
+    private void writeFile(int promiseFrom, int promiseTo, int fullFrom, int fullTo) {
+        try {
+            if (promiseTo > promiseFrom) {
+                Files.write(
+                        promiseTypesPath,
+                        promiseTypes.subList(promiseFrom, promiseTo),
+                        StandardCharsets.UTF_8,
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.WRITE,
+                        StandardOpenOption.APPEND
+                );
+            }
+            if (fullTo > fullFrom) {
+                Files.write(
+                        fullTypesPath,
+                        fullTypes.subList(fullFrom, fullTo),
+                        StandardCharsets.UTF_8,
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.WRITE,
+                        StandardOpenOption.APPEND
+                );
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private void collectTypes() {
         try {
             JavaFileManager fileManager = getFileManager(processingEnv.getFiler());
             try {
-                Map<String, TypeInfo> typeInfoMap = new HashMap<>();
+                promiseTypesPath = Files.createTempFile("promise-types", ".txt");
+                System.setProperty(PROMISE_TYPES_FILE_PROPERTY, promiseTypesPath.toString());
+                deleteOnExit(promiseTypesPath);
+                fullTypesPath = Files.createTempFile("full-types", ".txt");
+                System.setProperty(FULL_TYPES_FILE_PROPERTY, fullTypesPath.toString());
+                deleteOnExit(fullTypesPath);
+                typeInfoMap.clear();
                 Iterable<JavaFileObject> fileObjects = fileManager.list(StandardLocation.CLASS_PATH, "", Collections.singleton(JavaFileObject.Kind.CLASS), true);
                 for (JavaFileObject fileObject : fileObjects) {
                     try (InputStream is = fileObject.openInputStream()) {
@@ -189,9 +210,15 @@ public class JAsyncProcessor extends AbstractProcessor {
                         typeInfoMap.put(typeScanner.getName(), new TypeInfo(typeScanner.getSuperName(), typeScanner.getInterfaces()));
                     }
                 }
-                typeInfoMap.keySet().stream()
-                        .filter(name -> isPromise(typeInfoMap, name))
-                        .forEach(promiseTypes::add);
+                for (Map.Entry<String, TypeInfo> entry : typeInfoMap.entrySet()) {
+                    String name = entry.getKey();
+                    TypeInfo typeInfo = entry.getValue();
+                    if (isPromise(typeInfoMap, name)) {
+                        promiseTypes.add(name);
+                    }
+                    fullTypes.add(typeInfo.print(name));
+                }
+                writeFile(0, promiseTypes.size(), 0, fullTypes.size());
             } catch (IOException e) {
                 throw new IllegalStateException("Unable to collect types.", e);
             }
@@ -222,27 +249,62 @@ public class JAsyncProcessor extends AbstractProcessor {
         return false;
     }
 
-    private boolean isPromise(TypeElement typeElement) {
-        if (typeElement.getQualifiedName().contentEquals(promiseTypeName)) {
-            return true;
+    private String getBinaryName(TypeElement typeElement) {
+        return processingEnv.getElementUtils().getBinaryName(typeElement).toString();
+    }
+
+    private TypeElement asElement(TypeMirror typeMirror) {
+        return (TypeElement) processingEnv.getTypeUtils().asElement(typeMirror);
+    }
+
+    private String getBinaryName(TypeMirror typeMirror) {
+        TypeElement typeElement = asElement(typeMirror);
+        return getBinaryName(typeElement);
+    }
+
+    private static final String objectName = "java.lang.Object";
+
+    private boolean collectTypes(TypeElement typeElement) {
+        String name = getBinaryName(typeElement);
+        if (typeInfoMap.containsKey(name)) {
+            return promiseTypes.contains(name);
+        }
+        if (typeElement.getQualifiedName().contentEquals(objectName)) {
+            TypeInfo objectTypeInfo = new TypeInfo("", new String[]{});
+            typeInfoMap.put(objectName, objectTypeInfo);
+            fullTypes.add(objectTypeInfo.print(objectName));
+            return false;
         }
         TypeMirror superClass = typeElement.getSuperclass();
-        if (superClass != null) {
-            Element element = processingEnv.getTypeUtils().asElement(superClass);
-            if (element instanceof TypeElement) {
-                TypeElement superTypeElement = (TypeElement) element;
-                if (isPromise(superTypeElement)) {
-                    return true;
-                }
+        String superName;
+        if (superClass != null && superClass.getKind() != TypeKind.NONE) {
+            superName = getBinaryName(superClass);
+        } else {
+            superName = objectName;
+        }
+        String[] interfaces = new String[typeElement.getInterfaces().size()];
+        int i = 0;
+        for (TypeMirror anInterface : typeElement.getInterfaces()) {
+            interfaces[i++] = getBinaryName(anInterface);
+        }
+        TypeInfo typeInfo = new TypeInfo(superName, interfaces);
+        typeInfoMap.put(name, typeInfo);
+        fullTypes.add(typeInfo.print(name));
+        if (name.contentEquals(promiseTypeName)) {
+            promiseTypes.add(name);
+            return true;
+        }
+        if (!superName.equals(objectName)) {
+            if(collectTypes(asElement(superClass))) {
+                promiseTypes.add(name);
+                return true;
             }
         }
         for (TypeMirror anInterface : typeElement.getInterfaces()) {
-            Element element = processingEnv.getTypeUtils().asElement(anInterface);
-            if (element instanceof TypeElement) {
-                TypeElement interfaceTypeElement = (TypeElement) element;
-                if (isPromise(interfaceTypeElement)) {
-                    return true;
-                }
+            boolean isPromise = collectTypes(asElement(anInterface));
+            if (isPromise) {
+                promiseTypes.add(name);
+                return true;
             }
         }
         return false;
@@ -259,25 +321,27 @@ public class JAsyncProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        ElementScanner8<Void, Void> elementScanner = new ElementScanner8<Void, Void>() {
-            @Override
-            public Void visitType(TypeElement e, Void unused) {
-                ElementKind kind = e.getKind();
-                if (kind == ElementKind.CLASS || kind == ElementKind.INTERFACE) {
-                    if (isPromise(e)) {
-                        Name binaryName = processingEnv.getElementUtils().getBinaryName(e);
-                        promiseTypes.add(binaryName.toString());
-                    }
+        try {
+            int curPromiseSize = promiseTypes.size();
+            int curFullSize = fullTypes.size();
+            ElementScanner8<Void, Void> elementScanner = new ElementScanner8<Void, Void>() {
+                @Override
+                public Void visitType(TypeElement e, Void unused) {
+                    collectTypes(e);
+                    return null;
                 }
-                return null;
+            };
+            for (Element rootElement : roundEnv.getRootElements()) {
+                if (rootElement instanceof TypeElement) {
+                    visitElement((TypeElement) rootElement, elementScanner);
+                }
             }
-        };
-        for (Element rootElement : roundEnv.getRootElements()) {
-            if (rootElement instanceof TypeElement) {
-                visitElement((TypeElement) rootElement, elementScanner);
-            }
+            int afterPromiseSize = promiseTypes.size();
+            int afterFullSize = fullTypes.size();
+            writeFile(curPromiseSize, afterPromiseSize, curFullSize, afterFullSize);
+        } catch (Throwable t) {
+            t.printStackTrace();
         }
-        writePromiseTypes();
         return true;
     }
 
@@ -296,33 +360,5 @@ public class JAsyncProcessor extends AbstractProcessor {
             }
         }
     }
-
-/*    static class JavacCompilerGenerateAdvice {
-
-        @Advice.OnMethodEnter
-        public static void enter(@Advice.FieldValue("procEnvImpl") Object procEnvImpl) {
-            if (procEnvImpl != null) {
-                System.out.println("find nonnull field procEnvImpl");
-                try {
-                    Class<?> transformerClass = Class.forName("io.github.vipcxj.jasync.asm.Utils");
-                    Method transform = transformerClass.getMethod("enterCompile", Object.class);
-                    transform.invoke(null, procEnvImpl);
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        @Advice.OnMethodExit
-        public static void exit() {
-            try {
-                Class<?> transformerClass = Class.forName("io.github.vipcxj.jasync.asm.Utils");
-                Method transform = transformerClass.getMethod("exitCompile");
-                transform.invoke(null);
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
-        }
-    }*/
 
 }

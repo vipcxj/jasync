@@ -23,8 +23,11 @@ public interface JPromise2<T> extends JHandle<T> {
     static JPromise2<Void> sleep(long timeout, TimeUnit unit) {
         return provider.sleep(timeout, unit);
     }
-    static <T> JPromise2<T> portal(JAsyncPortalTask<T> task) {
+    static <T> JPromise2<T> portal(JAsyncPortalTask1<T> task) {
         return provider.portal(task);
+    }
+    static <T> JPromise2<T> portal(JAsyncPortalTask0<T> task) {
+        return portal((factory, context) -> task.invoke(factory));
     }
 
     default T await() {

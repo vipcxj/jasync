@@ -1,17 +1,17 @@
 package io.github.vipcxj.jasync.runtime.schedule;
 
 import io.github.vipcxj.jasync.spec.*;
-import io.github.vipcxj.jasync.spec.functional.JAsyncPortalTask;
+import io.github.vipcxj.jasync.spec.functional.JAsyncPortalTask1;
 
 public class PortalTask<T> implements Task<T> {
 
-    private final JAsyncPortalTask<T> jumperTask;
+    private final JAsyncPortalTask1<T> jumperTask;
     private JPortal<T> portal;
     private JDisposable disposable;
     private boolean disposed;
 
 
-    public PortalTask(JAsyncPortalTask<T> jumperTask) {
+    public PortalTask(JAsyncPortalTask1<T> jumperTask) {
         this.jumperTask = jumperTask;
         this.disposed = false;
     }

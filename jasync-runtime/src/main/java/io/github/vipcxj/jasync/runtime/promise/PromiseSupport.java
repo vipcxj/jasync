@@ -7,7 +7,7 @@ import io.github.vipcxj.jasync.runtime.schedule.LazyTask;
 import io.github.vipcxj.jasync.spec.JContext;
 import io.github.vipcxj.jasync.spec.JPromise2;
 import io.github.vipcxj.jasync.spec.JThunk;
-import io.github.vipcxj.jasync.spec.functional.JAsyncPortalTask;
+import io.github.vipcxj.jasync.spec.functional.JAsyncPortalTask1;
 import io.github.vipcxj.jasync.spec.spi.JPromiseSupport;
 
 import java.util.List;
@@ -33,7 +33,7 @@ public class PromiseSupport implements JPromiseSupport {
     }
 
     @Override
-    public <T> JPromise2<T> portal(JAsyncPortalTask<T> task) {
+    public <T> JPromise2<T> portal(JAsyncPortalTask1<T> task) {
         return new PortalPromise<>(task);
     }
 

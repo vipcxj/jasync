@@ -1,9 +1,7 @@
 package io.github.vipcxj.jasync.runtime;
 
-import io.github.vipcxj.jasync.spec.JAsync2;
-import io.github.vipcxj.jasync.spec.JContext;
-import io.github.vipcxj.jasync.spec.JPortal;
-import io.github.vipcxj.jasync.spec.JPromise2;
+import io.github.vipcxj.jasync.spec.*;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.ExecutorService;
@@ -115,5 +113,43 @@ public class PromiseTest {
             });
         }
         Thread.sleep(10000);
+    }
+
+    private JPromise2<JContext> push(Object... args) {
+        JPushContext pusher = JContext.createStackPusher();
+        for (Object arg : args) {
+            pusher.push(arg);
+        }
+        return pusher.complete();
+    }
+
+    @Test
+    public void test4() {
+        int i = 0;
+        String msg = "a";
+        JPromise2<String> task = push(msg, i).thenImmediate(() -> JPromise2.portal(factory -> JContext.popStack(stack -> {
+            int i0 = (Integer) stack.pop();
+            String msg0 = (String) stack.pop();
+            long j = 0;
+            if (i0 < 3) {
+                return push(j, msg0, i0).thenImmediate(() -> JPromise2.<String>portal(factory1 -> JContext.popStack(stack1 -> {
+                    int i1 = (Integer) stack1.pop();
+                    String msg1 = (String) stack1.pop();
+                    long j0 = (Long) stack1.pop();
+                    if (j0 < 3) {
+                        msg1 += "a";
+                        ++j0;
+                        return push(j0, msg1, i1).thenImmediate(factory1::jump);
+                    } else {
+                        ++i1;
+                        return push(msg1, i1).thenImmediate(factory::jump);
+                    }
+                })));
+            } else {
+                return JPromise2.just(msg0);
+            }
+        })));
+        String result = task.block();
+        Assertions.assertEquals("aaaaaaaaaa", result);
     }
 }

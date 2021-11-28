@@ -4,16 +4,16 @@ import io.github.vipcxj.jasync.runtime.schedule.PortalTask;
 import io.github.vipcxj.jasync.spec.JContext;
 import io.github.vipcxj.jasync.spec.JPortal;
 import io.github.vipcxj.jasync.spec.JPromise2;
-import io.github.vipcxj.jasync.spec.functional.JAsyncPortalTask;
+import io.github.vipcxj.jasync.spec.functional.JAsyncPortalTask1;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class PortalPromise<T> extends BasePromise<T> implements JPortal<T> {
 
-    private final JAsyncPortalTask<T> jumperTask;
+    private final JAsyncPortalTask1<T> jumperTask;
 
-    public PortalPromise(JAsyncPortalTask<T> jumperTask) {
+    public PortalPromise(JAsyncPortalTask1<T> jumperTask) {
         super(new PortalTask<>(jumperTask));
         PortalTask<T> theTask = (PortalTask<T>) this.task;
         theTask.bindPortal(this);
@@ -29,7 +29,7 @@ public class PortalPromise<T> extends BasePromise<T> implements JPortal<T> {
 
         private final PortalPromise<T> source;
 
-        public Portal(PortalPromise<T> source, JAsyncPortalTask<T> jumperTask) {
+        public Portal(PortalPromise<T> source, JAsyncPortalTask1<T> jumperTask) {
             super(jumperTask);
             this.source = source;
         }

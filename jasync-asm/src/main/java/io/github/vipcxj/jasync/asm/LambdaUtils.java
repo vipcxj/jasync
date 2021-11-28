@@ -42,18 +42,11 @@ public class LambdaUtils {
         return newTypes;
     }
 
-    private static Type[] prependType(Type[] types, Type[] appends, Type append) {
-        Type[] newTypes = new Type[types.length + appends.length + 1];
-        System.arraycopy(types, 0, newTypes, appends.length + 1, types.length);
-        System.arraycopy(appends, 0, newTypes, 1, appends.length);
-        newTypes[0] = append;
-        return newTypes;
-    }
-
     public static InvokeDynamicInsnNode invokeLambda(
             String itfMethodName,
             Type itfDesc,
             Type itfMethodDesc,
+            Type itfRealMethodDesc,
             Type ownerClass,
             String implMethodName,
             boolean isStatic,
@@ -65,8 +58,8 @@ public class LambdaUtils {
                 ownerClass.getInternalName(),
                 implMethodName,
                 Type.getMethodDescriptor(
-                        itfMethodDesc.getReturnType(),
-                        isStatic ? prependType(itfMethodDesc.getArgumentTypes(), extraArgs, ownerClass) : prependType(itfMethodDesc.getArgumentTypes(), extraArgs)
+                        itfRealMethodDesc.getReturnType(),
+                        prependType(itfRealMethodDesc.getArgumentTypes(), extraArgs)
                 ),
                 false
         );
@@ -76,13 +69,14 @@ public class LambdaUtils {
                 createMetaFactoryHandle(),
                 itfMethodDesc,
                 handle,
-                itfMethodDesc
+                itfRealMethodDesc
         );
     }
 
     public static InvokeDynamicInsnNode invokeJAsyncPromiseFunction0(
             Type ownerClass,
             String implMethodName,
+            Type typeT,
             boolean isStatic,
             Type... extraArgs
     ) {
@@ -90,6 +84,7 @@ public class LambdaUtils {
                 JASYNC_PROMISE_FUNCTION0_METHOD_NAME,
                 JASYNC_PROMISE_FUNCTION0_DESC,
                 JASYNC_PROMISE_FUNCTION0_METHOD_DESC,
+                Type.getMethodType(JPROMISE_DESC, typeT),
                 ownerClass,
                 implMethodName,
                 isStatic,
@@ -97,16 +92,17 @@ public class LambdaUtils {
         );
     }
 
-    public static InvokeDynamicInsnNode invokeJAsyncPromiseFunction1(
+    public static InvokeDynamicInsnNode invokeJAsyncPromiseSupplier0(
             Type ownerClass,
             String implMethodName,
             boolean isStatic,
             Type... extraArgs
     ) {
         return invokeLambda(
-                JASYNC_PROMISE_FUNCTION1_METHOD_NAME,
-                JASYNC_PROMISE_FUNCTION1_DESC,
-                JASYNC_PROMISE_FUNCTION1_METHOD_DESC,
+                JASYNC_PROMISE_SUPPLIER0_METHOD_NAME,
+                JASYNC_PROMISE_SUPPLIER0_DESC,
+                JASYNC_PROMISE_SUPPLIER0_METHOD_DESC,
+                JASYNC_PROMISE_SUPPLIER0_METHOD_DESC,
                 ownerClass,
                 implMethodName,
                 isStatic,
@@ -121,13 +117,31 @@ public class LambdaUtils {
             Type... extraArgs
     ) {
         return invokeLambda(
-                JPORTAL_TASK_INVOKE_NAME,
-                JPORTAL_TASK_DESC,
-                JPORTAL_TASK_INVOKE_DESC,
+                JPORTAL_TASK0_INVOKE_NAME,
+                JPORTAL_TASK0_DESC,
+                JPORTAL_TASK0_INVOKE_DESC,
+                JPORTAL_TASK0_INVOKE_DESC,
                 ownerClass,
                 implMethodName,
                 isStatic,
                 extraArgs
+        );
+    }
+
+    public static InvokeDynamicInsnNode invokePortalJump() {
+        return new InvokeDynamicInsnNode(
+                JASYNC_PROMISE_SUPPLIER0_METHOD_NAME,
+                Type.getMethodDescriptor(JASYNC_PROMISE_SUPPLIER0_DESC, JPORTAL_DESC),
+                createMetaFactoryHandle(),
+                JASYNC_PROMISE_SUPPLIER0_METHOD_DESC,
+                new Handle(
+                        Opcodes.H_INVOKEINTERFACE,
+                        JPORTAL_NAME,
+                        JPORTAL_JUMP_NAME,
+                        JPORTAL_JUMP_DESC.getDescriptor(),
+                        true
+                ),
+                JASYNC_PROMISE_SUPPLIER0_METHOD_DESC
         );
     }
 }

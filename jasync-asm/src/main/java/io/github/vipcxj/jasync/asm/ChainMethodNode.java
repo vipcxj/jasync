@@ -42,35 +42,26 @@ public class ChainMethodNode extends MethodVisitor {
     }
 
     private void verifyMethod(MethodNode methodNode) {
-        BasicVerifier verifier = new BasicVerifier();
+        BasicVerifier verifier = new MyVerifier();
         Analyzer<BasicValue> analyzer = new Analyzer<>(verifier);
         try {
             analyzer.analyze(classContext.getName(), methodNode);
         } catch (AnalyzerException e) {
             e.printStackTrace();
+            AsmHelper.printFrameProblem(methodNode, analyzer, e, -5, 16);
             throw new RuntimeException(e);
         }
     }
 
     private void log(MethodNode methodNode, Printer printer) {
         PrintWriter printWriter = new PrintWriter(System.out);
-        TraceClassVisitor traceClassVisitor = new TraceClassVisitor(null, printer, printWriter);
-        MethodVisitor methodVisitor = traceClassVisitor.visitMethod(
-                methodNode.access,
-                methodNode.name,
-                methodNode.desc,
-                methodNode.signature,
-                methodNode.exceptions != null ? methodNode.exceptions.toArray(new String[0]) : null
-        );
-        methodNode.accept(methodVisitor);
-        printer.print(printWriter);
-        printWriter.flush();
+        AsmHelper.printMethod(methodNode, printer, printWriter, true);
     }
 
     @Override
     public void visitEnd() {
         super.visitEnd();
-        MethodContext methodContext = new MethodContext(classContext, methodNode, null);
+        MethodContext methodContext = new MethodContext(classContext, methodNode, false, null);
         methodContext.process();
         JAsyncInfo info = methodContext.getInfo();
         if (info.isLogByteCode()) {

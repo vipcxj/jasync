@@ -16,4 +16,14 @@ public class TypeInfo {
     public String[] getInterfaces() {
         return interfaces;
     }
+
+    public String print(String className) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(className).append(",");
+        sb.append((superName == null || "java.lang.Object".equals(superName)) ? "" : superName).append(",");
+        for (String itf : interfaces) {
+            sb.append(itf != null ? itf : "").append(",");
+        }
+        return sb.toString();
+    }
 }

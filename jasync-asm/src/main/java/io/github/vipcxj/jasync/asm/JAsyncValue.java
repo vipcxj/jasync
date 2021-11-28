@@ -1,15 +1,19 @@
 package io.github.vipcxj.jasync.asm;
 
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.TypeInsnNode;
+import org.objectweb.asm.tree.analysis.AnalyzerException;
 import org.objectweb.asm.tree.analysis.BasicValue;
 
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
 
 public class JAsyncValue extends BasicValue {
 
-    private final Set<Type> froms;
+    private boolean uninitialized;
+    private AbstractInsnNode insnNode;
+
 
     /**
      * Constructs a new {@link BasicValue} of the given type.
@@ -18,71 +22,94 @@ public class JAsyncValue extends BasicValue {
      */
     public JAsyncValue(Type type) {
         super(type);
-        this.froms = new HashSet<>();
+        this.uninitialized = false;
     }
 
-    public JAsyncValue merge(BasicValue other) {
-        if (other == null || this.equals(other)) {
+    public BasicValue merge(BasicValue other) {
+        if (other == null) {
+            return null;
+        }
+        if (this.equals(other)) {
             return this;
         }
-        JAsyncValue merged = new JAsyncValue(BasicValue.REFERENCE_VALUE.getType());
-        if (froms.isEmpty()) {
-            merged.froms.add(getType());
-        } else {
-            merged.froms.addAll(froms);
-        }
-        if (other instanceof JAsyncValue)  {
-            JAsyncValue asyncValue = (JAsyncValue) other;
-            if (asyncValue.froms.isEmpty()) {
-                merged.froms.add(asyncValue.getType());
-            } else {
-                merged.froms.addAll(asyncValue.froms);
+        if (other instanceof JAsyncValue) {
+            JAsyncValue asyncOther = (JAsyncValue) other;
+            if (asyncOther.isUninitialized() != this.isUninitialized()) {
+                return BasicValue.UNINITIALIZED_VALUE;
             }
-        } else {
-            merged.froms.add(other.getType());
+        } else if (isUninitialized()) {
+            return BasicValue.UNINITIALIZED_VALUE;
         }
-        return merged;
+        Type newType;
+        if (this.getType() == null || other.getType() == null) {
+            newType = null;
+        } else {
+            newType = AsmHelper.getNearestCommonAncestorType(this.getType(), other.getType());
+        }
+        if (newType == null) {
+            return null;
+        }
+        JAsyncValue newValue = new JAsyncValue(newType);
+        newValue.uninitialized = this.uninitialized;
+        return newValue;
     }
 
-    public Set<Type> getFroms() {
-        return froms;
+    public static BasicValue newValue(Type type) {
+        if (type != null && (type.getSort() == Type.OBJECT || type.getSort() == Type.ARRAY)) {
+            return new JAsyncValue(type);
+        }
+        return null;
+    }
+
+    public static BasicValue newOperation(AbstractInsnNode insn) throws AnalyzerException {
+        if (insn.getOpcode() == Opcodes.NEW) {
+            TypeInsnNode typeInsnNode = (TypeInsnNode) insn;
+            JAsyncValue value = new JAsyncValue(Type.getObjectType(typeInsnNode.desc));
+            value.setUninitialized(true);
+            value.setInsnNode(insn);
+            return value;
+        } else {
+            return null;
+        }
+    }
+
+    public boolean isUninitialized() {
+        return uninitialized;
+    }
+
+    public void setUninitialized(boolean uninitialized) {
+        this.uninitialized = uninitialized;
+    }
+
+    public AbstractInsnNode getInsnNode() {
+        return insnNode;
+    }
+
+    public void setInsnNode(AbstractInsnNode insnNode) {
+        this.insnNode = insnNode;
     }
 
     @Override
     public String toString() {
-        if (froms.isEmpty()) {
-            return getType().toString();
+        String s = super.toString();
+        if (isUninitialized()) {
+            return s + "(uninitialized)";
         } else {
-            StringBuilder sb = new StringBuilder();
-            int i = 0;
-            for (Type from : froms) {
-                if (i == 0) {
-                    sb.append("(").append(from);
-                } else if (i < froms.size() - 1) {
-                    sb.append(from).append(" | ");
-                } else {
-                    sb.append(from).append(")");
-                }
-                ++i;
-            }
-            return sb.toString();
+            return s;
         }
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!froms.isEmpty()) {
-            if (o instanceof JAsyncValue) {
-                JAsyncValue other = (JAsyncValue) o;
-                return super.equals(o) && froms.equals(other.froms);
-            }
-        }
-        return super.equals(o);
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        JAsyncValue that = (JAsyncValue) o;
+        return uninitialized == that.uninitialized;
     }
 
     @Override
     public int hashCode() {
-        return froms.isEmpty() ? super.hashCode() : Objects.hash(super.hashCode(), froms);
+        return Objects.hash(super.hashCode(), uninitialized);
     }
 }

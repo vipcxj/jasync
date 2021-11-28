@@ -4,7 +4,6 @@ import java.util.*;
 
 public class ClassContext {
     private final String name;
-    private int index = 0;
     private final Set<String> methods;
     private final Map<MethodContext, List<MethodContext>> lambdaContexts;
 
@@ -18,16 +17,8 @@ public class ClassContext {
         this.lambdaContexts = new HashMap<>();
     }
 
-    public String nextLambdaName(String ownerMethod) {
-        String name = createLambdaName(ownerMethod);
-        while (methods.contains(name)) {
-            name = createLambdaName(ownerMethod);
-        }
-        return name;
-    }
-
-    private String createLambdaName(String ownerMethod) {
-        return "lambda$" + ownerMethod + "$" + index++;
+    public boolean containMethod(String name) {
+        return methods.contains(name);
     }
 
     public String getName() {

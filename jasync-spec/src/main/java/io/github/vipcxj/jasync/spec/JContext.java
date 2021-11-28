@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.spec;
 
+import io.github.vipcxj.jasync.spec.functional.JAsyncPromiseFunction0;
 import io.github.vipcxj.jasync.spec.spi.JContextProvider;
 
 import java.util.Optional;
@@ -14,6 +15,12 @@ public interface JContext {
     }
     static JPromise2<JContext> current() {
         return provider.current();
+    }
+    static JPushContext createStackPusher() {
+        return provider.createPushContext();
+    }
+    static <T> JPromise2<T> popStack(JAsyncPromiseFunction0<JStack, T> function) {
+        return current().thenImmediate(context -> context.popStack()).thenImmediate(function);
     }
 
     <T> T get(Object key);
@@ -41,4 +48,6 @@ public interface JContext {
     JPromise2<JContext> remove(Object key);
     JScheduler getScheduler();
     JPromise2<JContext> setScheduler(JScheduler scheduler);
+    JPromise2<JContext> pushStack(JStack stack);
+    JPromise2<JStack> popStack();
 }

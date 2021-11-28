@@ -4,6 +4,6 @@ import io.github.vipcxj.jasync.spec.JContext;
 import io.github.vipcxj.jasync.spec.JPromise2;
 import io.github.vipcxj.jasync.spec.JPortal;
 
-public interface JAsyncPortalTask<T> {
-    JPromise2<T> invoke(JPortal<T> factory, JContext context);
+public interface JAsyncPortalTask1<T> {
+    JPromise2<T> invoke(JPortal<T> factory, JContext context) throws Throwable;
 }
