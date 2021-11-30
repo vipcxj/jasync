@@ -1,16 +1,15 @@
 package io.github.vipcxj.jasync.runtime.context;
 
-import io.github.vipcxj.jasync.spec.*;
-
-import java.util.ArrayDeque;
-import java.util.Deque;
+import io.github.vipcxj.jasync.spec.JContext;
+import io.github.vipcxj.jasync.spec.JPromise2;
+import io.github.vipcxj.jasync.spec.JPushContext;
 
 public class JPushContextImpl implements JPushContext {
 
-    private final Deque<Object> stack;
+    private final JStackImpl stack;
 
     public JPushContextImpl() {
-        this.stack = new ArrayDeque<>();
+        this.stack = new JStackImpl();
     }
 
     @Override
@@ -21,7 +20,6 @@ public class JPushContextImpl implements JPushContext {
 
     @Override
     public JPromise2<JContext> complete() {
-        JStack readOnlyStack = new JStackImpl(stack);
-        return JContext.current().thenImmediate(ctx -> ctx.pushStack(readOnlyStack));
+        return JContext.current().thenImmediate(ctx -> ctx.pushStack(stack));
     }
 }

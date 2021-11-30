@@ -1,7 +1,6 @@
 package io.github.vipcxj.jasync.test;
 
-import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.JPromise;
+import io.github.vipcxj.jasync.spec.JPromise2;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -9,11 +8,11 @@ import org.junit.jupiter.api.Test;
 public class IfTest {
 
     @Async
-    private JPromise<String> ifTest1(int toTest) {
-        if (JAsync.just(3).await().equals(toTest)) {
-            return JAsync.just("yes");
+    private JPromise2<String> ifTest1(int toTest) {
+        if (JPromise2.just(3).await().equals(toTest)) {
+            return JPromise2.just("yes");
         }
-        return JAsync.just("no");
+        return JPromise2.just("no");
     }
 
     @Test
@@ -23,12 +22,12 @@ public class IfTest {
     }
 
     @Async
-    private JPromise<String> ifTest2(int toTest) {
-        JPromise<Integer> three = JAsync.just(3);
+    private JPromise2<String> ifTest2(int toTest) {
+        JPromise2<Integer> three = JPromise2.just(3);
         if (three.await().equals(toTest)) {
-            return JAsync.just("yes");
+            return JPromise2.just("yes");
         } else {
-            return JAsync.just("no");
+            return JPromise2.just("no");
         }
     }
 
@@ -39,10 +38,10 @@ public class IfTest {
     }
 
     @Async
-    private JPromise<String> ifTest3(String message) {
+    private JPromise2<String> ifTest3(String message) {
         if (message != null) {
-            String hello = JAsync.just("hello ").await();
-            return JAsync.just(hello + message);
+            String hello = JPromise2.just("hello ").await();
+            return JPromise2.just(hello + message);
         }
         return null;
     }
@@ -55,19 +54,19 @@ public class IfTest {
     }
 
     @Async
-    private JPromise<String> ifTest4(int i) {
+    private JPromise2<String> ifTest4(int i) {
         if (i == 0) {
-            return JAsync.just("0");
-        } else if (i == JAsync.just(1).await()) {
-            return JAsync.just("1");
-        } else if (JAsync.just(i).await() == 2) {
-            return JAsync.just("2");
-        } else if (JAsync.just(i).await() == JAsync.just(3).await()) {
-            return JAsync.just("3");
+            return JPromise2.just("0");
+        } else if (i == JPromise2.just(1).await()) {
+            return JPromise2.just("1");
+        } else if (JPromise2.just(i).await() == 2) {
+            return JPromise2.just("2");
+        } else if (JPromise2.just(i).await().equals(JPromise2.just(3).await())) {
+            return JPromise2.just("3");
         } else if (i == 4) {
-            return JAsync.just("4");
+            return JPromise2.just("4");
         } else {
-            return JAsync.just("5");
+            return JPromise2.just("5");
         }
     }
 
@@ -84,12 +83,11 @@ public class IfTest {
         Assertions.assertEquals("5", ifTest4(6).block());
     }
 
-    @Async
-    private JPromise<Integer> ifTest5(int i) {
+    private JPromise2<Integer> ifTest5(int i) {
         int result = 0;
-        if (i == 0) result = JAsync.just(i).await() + 1;
-        if (i == 1) result = JAsync.just(i).await() + 2;
-        return JAsync.just(result);
+        if (i == 0) result = JPromise2.just(i).await() + 1;
+        if (i == 1) result = JPromise2.just(i).await() + 2;
+        return JPromise2.just(result);
     }
 
     @Test

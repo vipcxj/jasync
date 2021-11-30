@@ -17,13 +17,14 @@ public class LabelMap extends AbstractMap<LabelNode, LabelNode> {
 
     @Override
     public LabelNode get(Object key) {
-        if (key instanceof LabelNode) {
-            LabelNode labelNode = new LabelNode();
-            put((LabelNode) key, labelNode);
-            return labelNode;
-        } else {
-            return null;
+        LabelNode labelNode = innerMap.get(key);
+        if (labelNode == null) {
+            if (key instanceof LabelNode) {
+                labelNode = new LabelNode();
+                put((LabelNode) key, labelNode);
+            }
         }
+        return labelNode;
     }
 
     @Override

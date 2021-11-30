@@ -1,7 +1,6 @@
 package io.github.vipcxj.jasync.test;
 
-import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.JPromise;
+import io.github.vipcxj.jasync.spec.JPromise2;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -15,10 +14,10 @@ import java.util.Set;
 public class LabelTest {
 
     @Async
-    public JPromise<Integer> justBreak() {
+    public JPromise2<Integer> justBreak() {
         int a = 1;
         label: break label;
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -27,10 +26,10 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> singleStatementNoAwait() {
+    public JPromise2<Integer> singleStatementNoAwait() {
         int a = 1;
         label: ++a;
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -39,11 +38,11 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> singleStatementHasAwait() {
+    public JPromise2<Integer> singleStatementHasAwait() {
         int a = 1;
         int b;
-        label: b = JAsync.just(a).await() + 1;
-        return JAsync.just(b);
+        label: b = JPromise2.just(a).await() + 1;
+        return JPromise2.just(b);
     }
 
     @Test
@@ -52,7 +51,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> ifNoAwait(boolean input) {
+    public JPromise2<Integer> ifNoAwait(boolean input) {
         int a = 1;
         label:
         if (input) {
@@ -60,7 +59,7 @@ public class LabelTest {
         } else {
             ++a;
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -69,16 +68,26 @@ public class LabelTest {
         Assertions.assertEquals(2, ifNoAwait(false).block());
     }
 
+    private boolean aaa(boolean a) {
+        return !a;
+    }
+
+    private void bbb() {
+        boolean c = aaa(false);
+        c = aaa(c);
+        System.out.println(c);
+    }
+
     @Async
-    public JPromise<Integer> ifHasAwait1(boolean input) {
+    public JPromise2<Integer> ifHasAwait1(boolean input) {
         int a = 1;
         label:
-        if (JAsync.just(input).await()) {
+        if (JPromise2.just(input).await()) {
             break label;
         } else {
             ++a;
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -88,15 +97,15 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> ifHasAwait2(boolean input) {
+    public JPromise2<Integer> ifHasAwait2(boolean input) {
         int a = 1;
         label:
         if (input) {
             break label;
         } else {
-            a += JAsync.just(1).await();
+            a += JPromise2.just(1).await();
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -106,15 +115,15 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> ifHasAwait3(boolean input) {
+    public JPromise2<Integer> ifHasAwait3(boolean input) {
         int a = 1;
         label:
-        if (JAsync.just(input).await()) {
+        if (JPromise2.just(input).await()) {
             break label;
         } else {
-            a += JAsync.just(1).await();
+            a += JPromise2.just(1).await();
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -124,7 +133,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> whileNoAwait1() {
+    public JPromise2<Integer> whileNoAwait1() {
         int a = 1;
         label:
         while (a < 3) {
@@ -133,7 +142,7 @@ public class LabelTest {
             }
             ++a;
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -142,7 +151,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> whileNoAwait2() {
+    public JPromise2<Integer> whileNoAwait2() {
         int a = 0;
         int i = 0;
         label:
@@ -158,7 +167,7 @@ public class LabelTest {
                 ++a;
             }
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -167,7 +176,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> whileNoAwait3() {
+    public JPromise2<Integer> whileNoAwait3() {
         int a = 0;
         int i = 0;
         label:
@@ -183,7 +192,7 @@ public class LabelTest {
                 ++a;
             }
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -192,7 +201,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> whileNoAwait4() {
+    public JPromise2<Integer> whileNoAwait4() {
         int a = 0;
         int i = 0;
         label1:
@@ -225,7 +234,7 @@ public class LabelTest {
                 }
             }
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -234,16 +243,16 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> whileHasAwait1() {
+    public JPromise2<Integer> whileHasAwait1() {
         int a = 1;
         label:
-        while (a < JAsync.just(3).await()) {
-            if (a == JAsync.just(2).await()) {
+        while (a < JPromise2.just(3).await()) {
+            if (a == JPromise2.just(2).await()) {
                 break;
             }
             ++a;
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -252,23 +261,23 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> whileHasAwait2() {
+    public JPromise2<Integer> whileHasAwait2() {
         int a = 0;
         int i = 0;
         label:
         while (i++ < 10) {
-            if (i % JAsync.just(2).await() == 0) {
+            if (i % JPromise2.just(2).await() == 0) {
                 continue;
             }
             int j = 0;
-            while (j++ < JAsync.just(10).await()) {
-                if (JAsync.just(j).await() == i) {
+            while (j++ < JPromise2.just(10).await()) {
+                if (JPromise2.just(j).await() == i) {
                     break;
                 }
                 ++a;
             }
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -277,23 +286,23 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> whileHasAwait3() {
+    public JPromise2<Integer> whileHasAwait3() {
         int a = 0;
         int i = 0;
         label:
-        while (i++ < JAsync.just(10).await()) {
-            if (i % JAsync.just(2).await() == 0) {
+        while (i++ < JPromise2.just(10).await()) {
+            if (i % JPromise2.just(2).await() == 0) {
                 continue;
             }
             int j = 0;
-            while (j++ < JAsync.just(10).await()) {
-                if (JAsync.just(j).await().equals(JAsync.just(i).await())) {
+            while (j++ < JPromise2.just(10).await()) {
+                if (JPromise2.just(j).await().equals(JPromise2.just(i).await())) {
                     continue label;
                 }
                 ++a;
             }
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -302,41 +311,41 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> whileHasAwait4() {
+    public JPromise2<Integer> whileHasAwait4() {
         int a = 0;
         int i = 0;
         label1:
-        while (i++ < JAsync.just(10).await()) {
-            int j = JAsync.just(0).await();
+        while (i++ < JPromise2.just(10).await()) {
+            int j = JPromise2.just(0).await();
             label2:
             while (j++ < 10) {
-                if (j == JAsync.just(i).await()) {
+                if (j == JPromise2.just(i).await()) {
                     continue label1;
                 }
                 int k = 0;
-                int ten = JAsync.just(10).await();
+                int ten = JPromise2.just(10).await();
                 label3:
                 while (k++ < ten) {
-                    if (k == JAsync.just(j).await()) {
+                    if (k == JPromise2.just(j).await()) {
                         break label2;
                     }
                     ++a;
                 }
             }
-            j = JAsync.just(0).await();
+            j = JPromise2.just(0).await();
             label2:
-            while (j++ < JAsync.just(10).await()) {
+            while (j++ < JPromise2.just(10).await()) {
                 int k = 0;
                 label3:
                 while (k++ < 10) {
-                    if (JAsync.just(i).await().equals(JAsync.just(k).await())) {
+                    if (JPromise2.just(i).await().equals(JPromise2.just(k).await())) {
                         break label2;
                     }
                     ++a;
                 }
             }
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -345,7 +354,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> doWhileNoAwait1() {
+    public JPromise2<Integer> doWhileNoAwait1() {
         int a = 1;
         label:
         do {
@@ -355,7 +364,7 @@ public class LabelTest {
             ++a;
         }
         while (a < 3);
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -364,7 +373,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> doWhileNoAwait2() {
+    public JPromise2<Integer> doWhileNoAwait2() {
         int a = 0;
         int i = 0;
         label:
@@ -382,7 +391,7 @@ public class LabelTest {
             while (j++ < 10);
         }
         while (i++ < 10);
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -391,7 +400,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> doWhileNoAwait3() {
+    public JPromise2<Integer> doWhileNoAwait3() {
         int a = 0;
         int i = 0;
         label:
@@ -409,7 +418,7 @@ public class LabelTest {
             while (j++ < 10);
         }
         while (i++ < 10);
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -418,7 +427,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> doWhileNoAwait4() {
+    public JPromise2<Integer> doWhileNoAwait4() {
         int a = 0;
         int i = 0;
         label1:
@@ -459,7 +468,7 @@ public class LabelTest {
             while (j++ < 10);
         }
         while (i++ < 10);
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -468,17 +477,17 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> doWhileHasAwait1() {
+    public JPromise2<Integer> doWhileHasAwait1() {
         int a = 1;
         label:
         do {
-            if (a == JAsync.just(2).await()) {
+            if (a == JPromise2.just(2).await()) {
                 break;
             }
             ++a;
         }
-        while (a < JAsync.just(3).await());
-        return JAsync.just(a);
+        while (a < JPromise2.just(3).await());
+        return JPromise2.just(a);
     }
 
     @Test
@@ -487,25 +496,25 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> doWhileHasAwait2() {
+    public JPromise2<Integer> doWhileHasAwait2() {
         int a = 0;
         int i = 0;
         label:
         do {
-            if (i % JAsync.just(2).await() == 0) {
+            if (i % JPromise2.just(2).await() == 0) {
                 continue;
             }
             int j = 0;
             do {
-                if (JAsync.just(j).await() == i) {
+                if (JPromise2.just(j).await() == i) {
                     break;
                 }
                 ++a;
             }
-            while (j++ < JAsync.just(10).await());
+            while (j++ < JPromise2.just(10).await());
         }
         while (i++ < 10);
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -514,25 +523,25 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> doWhileHasAwait3() {
+    public JPromise2<Integer> doWhileHasAwait3() {
         int a = 0;
         int i = 0;
         label:
         do {
-            if (i % JAsync.just(2).await() == 0) {
+            if (i % JPromise2.just(2).await() == 0) {
                 continue;
             }
             int j = 0;
             do {
-                if (JAsync.just(j).await().equals(JAsync.just(i).await())) {
+                if (JPromise2.just(j).await().equals(JPromise2.just(i).await())) {
                     continue label;
                 }
                 ++a;
             }
-            while (j++ < JAsync.just(10).await());
+            while (j++ < JPromise2.just(10).await());
         }
-        while (i++ < JAsync.just(10).await());
-        return JAsync.just(a);
+        while (i++ < JPromise2.just(10).await());
+        return JPromise2.just(a);
     }
 
     @Test
@@ -541,24 +550,24 @@ public class LabelTest {
     }
 
     @Async(debug = true)
-    public JPromise<Integer> doWhileHasAwait4() {
+    public JPromise2<Integer> doWhileHasAwait4() {
         int a = 0;
         int i = 0;
         label1:
         do {
-            int j = JAsync.just(0).await();
+            int j = JPromise2.just(0).await();
             label2:
             do {
-                boolean test = JAsync.just(i).await().equals(JAsync.just(j).await());
+                boolean test = JPromise2.just(i).await().equals(JPromise2.just(j).await());
                 if (test) {
                     continue label1;
                 }
-                int k = JAsync.just(0).await();
+                int k = JPromise2.just(0).await();
                 label3:
                 do {
-                    if ((k + JAsync.just(j).await()) % 5 == 4) {
+                    if ((k + JPromise2.just(j).await()) % 5 == 4) {
                         break label2;
-                    } else if ((JAsync.just(k).await() + j) % 5 == 1) {
+                    } else if ((JPromise2.just(k).await() + j) % 5 == 1) {
                         continue label2;
                     }
                     ++a;
@@ -566,11 +575,11 @@ public class LabelTest {
                 }
                 while (true);
             }
-            while (j++ < JAsync.just(10).await());
+            while (j++ < JPromise2.just(10).await());
             j = 0;
             label2:
             do {
-                int k = JAsync.just(0).await();
+                int k = JPromise2.just(0).await();
                 label3:
                 do {
                     if (i == k) {
@@ -578,12 +587,12 @@ public class LabelTest {
                     }
                     ++a;
                 }
-                while (k++ < JAsync.just(10).await());
+                while (k++ < JPromise2.just(10).await());
             }
-            while (j++ < JAsync.just(10).await());
+            while (j++ < JPromise2.just(10).await());
         }
         while (i++ < 10);
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -592,7 +601,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> forNoAwait1(int num) {
+    public JPromise2<Integer> forNoAwait1(int num) {
         int a = 0;
         label:
         for (int i = 0; i < num; ++i) {
@@ -604,7 +613,7 @@ public class LabelTest {
             }
             ++a;
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -619,7 +628,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> forNoAwait2(int num) {
+    public JPromise2<Integer> forNoAwait2(int num) {
         int a = 0;
         label1:
         for (int i = 0; i < num; ++i) {
@@ -651,7 +660,7 @@ public class LabelTest {
                 ++a;
             }
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -676,19 +685,19 @@ public class LabelTest {
     }
 
     @Async(debug = true)
-    public JPromise<Integer> forHasAwait1(int num) {
+    public JPromise2<Integer> forHasAwait1(int num) {
         int a = 0;
         label:
-        for (int i = JAsync.just(0).await(); i < JAsync.just(num).await(); ++i) {
-            if (JAsync.just(i).await() % 2 == JAsync.just(0).await()) {
+        for (int i = JPromise2.just(0).await(); i < JPromise2.just(num).await(); ++i) {
+            if (JPromise2.just(i).await() % 2 == JPromise2.just(0).await()) {
                 continue;
             }
-            if (i == JAsync.just(5).await()) {
+            if (i == JPromise2.just(5).await()) {
                 break;
             }
             ++a;
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -703,14 +712,14 @@ public class LabelTest {
     }
 
     @Async(debug = true)
-    public JPromise<Integer> forHasAwait2(int num) {
+    public JPromise2<Integer> forHasAwait2(int num) {
         int a = 0;
         label1:
-        for (int i = 0; JAsync.just(i).await() < num; ++i) {
+        for (int i = 0; JPromise2.just(i).await() < num; ++i) {
             label2:
-            for (int j = JAsync.just(0).await(); j < JAsync.just(num).await(); ++j) {
-                if (i == JAsync.just(j).await()) {
-                    if (JAsync.just(i).await() < JAsync.just(5).await()) {
+            for (int j = JPromise2.just(0).await(); j < JPromise2.just(num).await(); ++j) {
+                if (i == JPromise2.just(j).await()) {
+                    if (JPromise2.just(i).await() < JPromise2.just(5).await()) {
                         continue label1;
                     } else {
                         continue;
@@ -721,12 +730,12 @@ public class LabelTest {
             label2:
             for (int j = 0; j < num; ++j) {
                 ++a;
-                if (i == JAsync.just(j).await()) {
+                if (i == JPromise2.just(j).await()) {
                     if (i < 5) {
                         continue label1;
-                    } else if (JAsync.just(i).await() < 7) {
+                    } else if (JPromise2.just(i).await() < 7) {
                         continue;
-                    } else if (i < JAsync.just(9).await()) {
+                    } else if (i < JPromise2.just(9).await()) {
                         break label1;
                     } else {
                         break;
@@ -735,7 +744,7 @@ public class LabelTest {
                 ++a;
             }
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -760,7 +769,7 @@ public class LabelTest {
     }
 
     @Async
-    private JPromise<Integer> foreachContinueNoAwait() {
+    private JPromise2<Integer> foreachContinueNoAwait() {
         int[] array = new int[] {1, 2, 3, 4};
         List<Integer> list = new ArrayList<>();
         list.add(1);
@@ -793,11 +802,11 @@ public class LabelTest {
             }
             a += i;
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Async
-    private JPromise<Integer> foreachContinueHasAwait() {
+    private JPromise2<Integer> foreachContinueHasAwait() {
         int[] array = new int[] {1, 2, 3, 4};
         List<Integer> list = new ArrayList<>();
         list.add(1);
@@ -813,43 +822,28 @@ public class LabelTest {
         int a = 4;
         label0:
         label1:
-        for (int i : JAsync.just(array).await()) {
+        for (int i : JPromise2.just(array).await()) {
             label2:
             for (int j : list) {
-                if (JAsync.just(j).await() == 3) {
+                if (JPromise2.just(j).await() == 3) {
                     continue label1;
                 }
                 label3:
-                for (int k : JAsync.just(set).await()) {
-                    if (JAsync.just(k).await().equals(JAsync.just(5).await())) {
+                for (int k : JPromise2.just(set).await()) {
+                    if (JPromise2.just(k).await().equals(JPromise2.just(5).await())) {
                         continue label2;
                     }
-                    a += JAsync.just(k).await();
+                    a += JPromise2.just(k).await();
                 }
-                a += JAsync.just(j).await();
+                a += JPromise2.just(j).await();
             }
             a += i;
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
     public void testForeach() {
         Assertions.assertEquals(foreachContinueNoAwait().block(), foreachContinueHasAwait().block());
-    }
-
-    @Test
-    public void ATest() {
-        for (int i = 0;;++i) {
-            try {
-                if (i < 10) {
-                    continue;
-                } else {
-                    break;
-                }
-            } finally {
-                System.out.println("break");
-            }
-        }
     }
 }

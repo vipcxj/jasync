@@ -22,6 +22,14 @@ public class TypeInterpreter extends BasicInterpreter {
     }
 
     @Override
+    public BasicValue copyOperation(AbstractInsnNode insn, BasicValue value) throws AnalyzerException {
+        if (value instanceof JAsyncValue) {
+            return ((JAsyncValue) value).copyOperation(insn);
+        }
+        return super.copyOperation(insn, value);
+    }
+
+    @Override
     public BasicValue newOperation(AbstractInsnNode insn) throws AnalyzerException {
         BasicValue value = JAsyncValue.newOperation(insn);
         return value != null ? value : super.newOperation(insn);
@@ -29,7 +37,7 @@ public class TypeInterpreter extends BasicInterpreter {
 
     @Override
     public BasicValue naryOperation(AbstractInsnNode insn, List<? extends BasicValue> values) throws AnalyzerException {
-        AsmHelper.processConstruct(insn, values);
+        // AsmHelper.processConstruct(insn, values);
         return super.naryOperation(insn, values);
     }
 

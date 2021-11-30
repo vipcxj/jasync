@@ -29,8 +29,16 @@ public class MyVerifier extends BasicVerifier {
     }
 
     @Override
+    public BasicValue copyOperation(AbstractInsnNode insn, BasicValue value) throws AnalyzerException {
+        if (value instanceof JAsyncValue) {
+            return ((JAsyncValue) value).copyOperation(insn);
+        }
+        return super.copyOperation(insn, value);
+    }
+
+    @Override
     public BasicValue naryOperation(AbstractInsnNode insn, List<? extends BasicValue> values) throws AnalyzerException {
-        AsmHelper.processConstruct(insn, values);
+        // AsmHelper.processConstruct(insn, values);
         return super.naryOperation(insn, values);
     }
 
@@ -42,18 +50,23 @@ public class MyVerifier extends BasicVerifier {
 
     @Override
     protected boolean isArrayValue(BasicValue value) {
-        if (value != null && value.getType() != null) {
-            return value.getType().getSort() == Type.ARRAY;
-        }
-        return super.isArrayValue(value);
+        Type type = value.getType();
+        return type != null && (type.getSort() == Type.ARRAY || type.equals(NULL_TYPE));
     }
 
     @Override
     protected BasicValue getElementValue(BasicValue objectArrayValue) throws AnalyzerException {
-        if (objectArrayValue == null || objectArrayValue.getType() == null || objectArrayValue.getType().getSort() != Type.ARRAY) {
+        if (objectArrayValue == null || objectArrayValue.getType() == null) {
             return super.getElementValue(objectArrayValue);
         }
-        return new JAsyncValue(AsmHelper.getComponentType(objectArrayValue.getType(), false));
+        if (objectArrayValue.getType().getSort() != Type.ARRAY) {
+            if (objectArrayValue.getType().equals(Constants.NULL_DESC)) {
+                return newValue(Constants.OBJECT_DESC);
+            } else {
+                return super.getElementValue(objectArrayValue);
+            }
+        }
+        return newValue(AsmHelper.getComponentType(objectArrayValue.getType(), false));
     }
 
     @Override

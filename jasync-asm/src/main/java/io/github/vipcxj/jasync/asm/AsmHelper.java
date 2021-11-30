@@ -1,14 +1,10 @@
 package io.github.vipcxj.jasync.asm;
 
-import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
-import org.objectweb.asm.tree.analysis.Analyzer;
-import org.objectweb.asm.tree.analysis.AnalyzerException;
-import org.objectweb.asm.tree.analysis.BasicValue;
-import org.objectweb.asm.tree.analysis.Frame;
+import org.objectweb.asm.tree.analysis.*;
 import org.objectweb.asm.util.Printer;
 import org.objectweb.asm.util.Textifier;
 import org.objectweb.asm.util.TraceMethodVisitor;
@@ -38,17 +34,6 @@ public class AsmHelper {
             return isAwait(methodInsnNode.getOpcode(), methodInsnNode.owner, methodInsnNode.name, methodInsnNode.desc);
         }
         return false;
-    }
-
-    public static void collectLabels(MethodNode mv, Map<LabelNode, LabelNode> cloneLabels) {
-        if (mv.instructions != null) {
-            for (AbstractInsnNode instruction : mv.instructions) {
-                if (instruction instanceof LabelNode) {
-                    LabelNode labelNode = (LabelNode) instruction;
-                    cloneLabels.put(labelNode, new LabelNode(new Label()));
-                }
-            }
-        }
     }
 
     private static void printMethodSign(MethodNode methodNode, Printer printer) {
@@ -93,13 +78,79 @@ public class AsmHelper {
         printer.getText().addAll(newText);
     }
 
-    public static void printFrameProblem(MethodNode methodNode, Analyzer<? extends BasicValue> analyzer, AnalyzerException error, int from, int to) {
-        PrintWriter printWriter = new PrintWriter(System.out);
+    private static List<AbstractInsnNode> getInsnList(MethodNode methodNode) {
+        return Arrays.asList(methodNode.instructions.toArray());
+    }
+
+    private static void printFrameProblem(
+            PrintWriter printWriter,
+            String owner,
+            MethodNode methodNode,
+            AbstractInsnNode errorNode,
+            List<AbstractInsnNode> insnNodes,
+            List<Frame<? extends BasicValue>> frames,
+            int byteCodeOption
+    ) {
+        if (!JAsyncInfo.isLogByteCode(byteCodeOption)) {
+            return;
+        }
+        if (owner != null) {
+            printWriter.println("Method in " + Type.getObjectType(owner).getClassName() + ":");
+        } else {
+            printWriter.println("Method:");
+        }
+        Textifier methodPrinter = new Textifier();
+        printMethodSign(methodNode, methodPrinter);
+        cleanMethodSign(methodPrinter);
+        methodPrinter.print(printWriter);
+        printWriter.println("============");
+
+        InsnTextifier textifier = new InsnTextifier(insnNodes, frames);
+        if (JAsyncInfo.isLogByteCodeWithFrame(byteCodeOption)) {
+            textifier.getHelper().print(printWriter, true);
+        }
+        if (errorNode != null) {
+            textifier.getTargets().add(errorNode);
+        }
+        printWriter.println("Instructions:");
+        textifier.print(printWriter, methodNode, byteCodeOption);
+        printWriter.flush();
+    }
+
+    public static void printFrameProblem(String owner, MethodNode methodNode, Frame<? extends BasicValue>[] frames, int byteCodeOption) {
+        printFrameProblem(owner, methodNode, frames, null, byteCodeOption, -1, 1);
+    }
+
+    public static void printFrameProblem(String owner, MethodNode methodNode, Frame<? extends BasicValue>[] frames, AnalyzerException error, int byteCodeOption, int from, int to) {
+        if (!JAsyncInfo.isLogByteCode(byteCodeOption)) {
+            return;
+        }
         if (from > 0 || to < 0) {
             throw new IllegalArgumentException("The arg from should greater than 0, and the arg to should less than 0.");
         }
-        AbstractInsnNode errorNode = error.node;
+        PrintWriter printWriter = new PrintWriter(System.out);
+        if (frames == null && owner != null) {
+            BranchAnalyzer analyzer = new BranchAnalyzer();
+            try {
+                analyzer.analyze(owner, methodNode);
+                frames = analyzer.getFrames();
+            } catch (Throwable ignored) { }
+        }
+        if (frames == null) {
+            //noinspection unchecked
+            frames = new Frame[0];
+        }
+        AbstractInsnNode errorNode = error != null ? error.node : null;
         if (errorNode == null) {
+            printFrameProblem(
+                    printWriter,
+                    owner,
+                    methodNode,
+                    null,
+                    getInsnList(methodNode),
+                    Arrays.asList(frames),
+                    byteCodeOption
+            );
             return;
         }
         List<AbstractInsnNode> insnNodes = new LinkedList<>();
@@ -116,33 +167,29 @@ public class AsmHelper {
             insnNodes.add(node);
             node = node.getNext();
         }
-        List<Frame<? extends BasicValue>> frames = new ArrayList<>();
+        List<Frame<? extends BasicValue>> frameList = new ArrayList<>();
         AbstractInsnNode firstInsn = insnNodes.get(0);
         int firstIndex = methodNode.instructions.indexOf(firstInsn);
         for (i = firstIndex; i < firstIndex + insnNodes.size(); ++i) {
-            frames.add(analyzer.getFrames()[i]);
+            if (i < frames.length) {
+                frameList.add(frames[i]);
+            }
         }
-
-        printWriter.println("Method:");
-        Textifier methodPrinter = new Textifier();
-        printMethodSign(methodNode, methodPrinter);
-        cleanMethodSign(methodPrinter);
-        methodPrinter.print(printWriter);
-        printWriter.println("============");
-
-        InsnTextifier textifier = new InsnTextifier(insnNodes, frames);
-        textifier.getHelper().print(printWriter, true);
-        textifier.getTargets().add(errorNode);
-        printWriter.println("Instructions:");
-        textifier.print(printWriter);
-        printWriter.flush();
+        printFrameProblem(printWriter, owner, methodNode, errorNode, insnNodes, frameList, byteCodeOption);
     }
 
-    public static int storeStackToLocal(int validLocals, Frame<? extends BasicValue> frame, List<AbstractInsnNode> results) {
+    public static int storeStackToLocal(int validLocals, BranchAnalyzer.Node<? extends BasicValue> frame, List<AbstractInsnNode> results, AbstractInsnNode[] insnNodes) {
         int iLocal = validLocals;
         int stackSize = frame.getStackSize();
         for (int i = stackSize - 1; i >= 0; --i) {
             BasicValue value = frame.getStack(i);
+            if (value instanceof JAsyncValue) {
+                JAsyncValue asyncValue = (JAsyncValue) value;
+                if (asyncValue.isUninitialized()) {
+                    AsmHelper.removeNewInsnNodes(insnNodes, asyncValue, frame);
+                    continue;
+                }
+            }
             Type type = value.getType();
             if (type != null) {
                 results.add(new VarInsnNode(type.getOpcode(Opcodes.ISTORE), iLocal));
@@ -245,7 +292,15 @@ public class AsmHelper {
         }
     }
 
-    public static boolean isSubTypeOf(Type a, Type b) {
+    private static boolean isIntLikeType(Type type) {
+        return type.getSort() == Type.BOOLEAN
+                || type.getSort() == Type.CHAR
+                || type.getSort() == Type.BYTE
+                || type.getSort() == Type.SHORT
+                || type.getSort() == Type.INT;
+    }
+
+    public static boolean isSubTypeOf(Type a, Type b, boolean jvm) {
         if (Objects.equals(a, b)) {
             return true;
         }
@@ -255,8 +310,14 @@ public class AsmHelper {
         if (Constants.OBJECT_DESC.equals(b)) {
             return a.getSort() == Type.OBJECT || a.getSort() == Type.ARRAY;
         }
+        if (Constants.CLONEABLE_DESC.equals(b) || Constants.SERIALIZABLE_DESC.equals(b)) {
+            return a.getSort() == Type.ARRAY;
+        }
         if (b.getSort() == Type.ARRAY) {
-            return a.getSort() == Type.ARRAY && isSubTypeOf(getComponentType(a, false), getComponentType(b, false));
+            return a.getSort() == Type.ARRAY && isSubTypeOf(getComponentType(a, false), getComponentType(b, false), false);
+        }
+        if (jvm && isIntLikeType(b)) {
+            return isIntLikeType(a);
         }
         return false;
     }
@@ -294,36 +355,51 @@ public class AsmHelper {
         if (value.getType() == null || expected.getType() == null) {
             return false;
         }
-        boolean isSub = isSubTypeOf(value.getType(), expected.getType());
-        if (value instanceof JAsyncValue) {
-            JAsyncValue jAsyncValue = (JAsyncValue) value;
-            return !jAsyncValue.isUninitialized() && isSub;
-        }
-        if (expected instanceof JAsyncValue) {
-            JAsyncValue jAsyncValue = (JAsyncValue) expected;
-            return !jAsyncValue.isUninitialized() && isSub;
-        }
-        return isSub;
+        return isSubTypeOf(value.getType(), expected.getType(), true);
     }
 
     public static boolean needCastTo(Type from, Type to) {
-        return !isSubTypeOf(from, to);
+        return !isSubTypeOf(from, to, true);
     }
 
-    public static void processConstruct(AbstractInsnNode insn, List<? extends BasicValue> values) {
-        if (insn.getOpcode() == Opcodes.INVOKESPECIAL) {
-            MethodInsnNode methodInsnNode = (MethodInsnNode) insn;
+    public static <V extends Value> boolean executeConstruction(Frame<V> frame, AbstractInsnNode insnNode, Interpreter<V> interpreter, FrameExecutor<V> delegated) throws AnalyzerException {
+        if (insnNode.getOpcode() == Opcodes.INVOKESPECIAL) {
+            MethodInsnNode methodInsnNode = (MethodInsnNode) insnNode;
             if ("<init>".equals(methodInsnNode.name)) {
-                BasicValue newInstValue = values.get(0);
-                if (newInstValue instanceof JAsyncValue) {
-                    ((JAsyncValue) newInstValue).setUninitialized(false);
+                Type[] argumentTypes = Type.getArgumentTypes(methodInsnNode.desc);
+                Value ownerValue = frame.getStack(frame.getStackSize() - argumentTypes.length - 1);
+                if (ownerValue instanceof JAsyncValue) {
+                    JAsyncValue jAsyncValue = (JAsyncValue) ownerValue;
+                    delegated.execute(insnNode, interpreter);
+                    for (int i = 0; i < frame.getStackSize(); ++i) {
+                        V stack = frame.getStack(i);
+                        if (stack == ownerValue) {
+                            frame.setStack(i, interpreter.newValue(jAsyncValue.getType()));
+                        }
+                    }
+                    return true;
                 }
             }
+        }
+        return false;
+    }
+
+    public interface FrameExecutor<V extends Value> {
+        void execute(AbstractInsnNode insn, Interpreter<V> interpreter) throws AnalyzerException;
+    }
+
+    public static void removeNewInsnNodes(AbstractInsnNode[] insnNodes, JAsyncValue asyncValue, BranchAnalyzer.Node<? extends BasicValue> node) {
+        for (BranchAnalyzer.Node<? extends BasicValue> precursor : node.getPrecursors()) {
+            AbstractInsnNode insnNode = precursor.getInsnNode();
+            if (insnNode == asyncValue.getNewInsnNode() || (asyncValue.getCopyInsnNodes() != null && asyncValue.getCopyInsnNodes().contains(insnNode))) {
+                insnNodes[precursor.getIndex()] = null;
+            }
+            removeNewInsnNodes(insnNodes, asyncValue, precursor);
         }
     }
 
     // Used for debug. Because asm package is sharded, so the get method can not be invoked by the debugger.
-    @SuppressWarnings("unused")
+    /** @noinspection unused, RedundantSuppression */
     public static AbstractInsnNode getInsn(Object methodNode, int i) {
         try {
             Field field = methodNode.getClass().getField("instructions");
@@ -332,6 +408,84 @@ public class AsmHelper {
             return (AbstractInsnNode) get.invoke(insnList, i);
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | NoSuchFieldException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private static Class<?> getTargetClassByPattern(Class<?> toTest, String regex) {
+        if (toTest == null) {
+            return null;
+        }
+        if (toTest.getName().matches(regex)) {
+            return toTest;
+        }
+        for (Class<?> anInterface : toTest.getInterfaces()) {
+            Class<?> found = getTargetClassByPattern(anInterface, regex);
+            if (found != null) {
+                return found;
+            }
+        }
+        return getTargetClassByPattern(toTest.getSuperclass(), regex);
+    }
+
+    // Used for debug. Because asm package is sharded, so the indexOf method can not be invoked by the debugger.
+    /** @noinspection unused, RedundantSuppression */
+    public static int indexOfInsn(Object methodNode, Object insn) {
+        try {
+            Field field = methodNode.getClass().getField("instructions");
+            Object insnList = field.get(methodNode);
+            Method indexOf = insnList.getClass().getMethod("indexOf", getTargetClassByPattern(insn.getClass(), ".*org\\.objectweb\\.asm\\.tree\\.AbstractInsnNode"));
+            return (Integer) indexOf.invoke(insnList, insn);
+        } catch (IllegalAccessException | NoSuchFieldException | NoSuchMethodException | InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // Used for debug. Because asm package is sharded, so the method can not be invoked by the debugger.
+    /** @noinspection unused, RedundantSuppression */
+    public static String getMethodName(Object insnNode) {
+        Class<?> methodInsnClass = getTargetClassByPattern(insnNode.getClass(), ".*org\\.objectweb\\.asm\\.tree\\.MethodInsnNode");
+        if (methodInsnClass == null) {
+            return null;
+        }
+        try {
+            Field name = methodInsnClass.getField("name");
+            return (String) name.get(insnNode);
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            return null;
+        }
+    }
+
+    // Used for debug. Because asm package is sharded, so the method can not be invoked by the debugger.
+    /** @noinspection unused, RedundantSuppression */
+    public static String getMethodDesc(Object insnNode) {
+        Class<?> methodInsnClass = getTargetClassByPattern(insnNode.getClass(), ".*org\\.objectweb\\.asm\\.tree\\.MethodInsnNode");
+        if (methodInsnClass == null) {
+            return null;
+        }
+        try {
+            Field name = methodInsnClass.getField("desc");
+            return (String) name.get(insnNode);
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            return null;
+        }
+    }
+
+    public static void checkInsnList(InsnList insnList) {
+        AbstractInsnNode node = insnList.getFirst();
+        int i = 0;
+        while (node != null) {
+            node = node.getNext();
+            ++i;
+        }
+        if (insnList.size() != i) {
+            System.out.println("The insn list was broken at " + i + ".");
+            List<AbstractInsnNode> insnNodes = new ArrayList<>();
+            for (int j = 0; j < i; ++j) {
+                insnNodes.add(insnList.get(j));
+            }
+            InsnTextifier textifier = new InsnTextifier(insnNodes, Collections.emptyList());
+            PrintWriter printWriter = new PrintWriter(System.out);
+            textifier.print(printWriter, null, JAsyncInfo.BYTE_CODE_OPTION_ON);
         }
     }
 }

@@ -6,13 +6,15 @@ import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.analysis.AnalyzerException;
 import org.objectweb.asm.tree.analysis.BasicValue;
+import org.objectweb.asm.tree.analysis.Value;
 
-import java.util.Objects;
+import java.util.*;
 
 public class JAsyncValue extends BasicValue {
 
     private boolean uninitialized;
-    private AbstractInsnNode insnNode;
+    private AbstractInsnNode newInsnNode;
+    private Set<AbstractInsnNode> copyInsnNodes;
 
 
     /**
@@ -54,7 +56,7 @@ public class JAsyncValue extends BasicValue {
         return newValue;
     }
 
-    public static BasicValue newValue(Type type) {
+    public static JAsyncValue newValue(Type type) {
         if (type != null && (type.getSort() == Type.OBJECT || type.getSort() == Type.ARRAY)) {
             return new JAsyncValue(type);
         }
@@ -66,10 +68,29 @@ public class JAsyncValue extends BasicValue {
             TypeInsnNode typeInsnNode = (TypeInsnNode) insn;
             JAsyncValue value = new JAsyncValue(Type.getObjectType(typeInsnNode.desc));
             value.setUninitialized(true);
-            value.setInsnNode(insn);
+            value.setNewInsnNode(insn);
             return value;
         } else {
             return null;
+        }
+    }
+
+    public JAsyncValue copyOperation(AbstractInsnNode insn) {
+        if (isUninitialized()) {
+            if (copyInsnNodes == null) {
+                copyInsnNodes = new HashSet<>();
+            }
+            copyInsnNodes.add(insn);
+        }
+        return this;
+    }
+
+    public static boolean isUninitialized(Value value) {
+        if (value instanceof JAsyncValue) {
+            JAsyncValue jAsyncValue = (JAsyncValue) value;
+            return jAsyncValue.isUninitialized();
+        } else {
+            return false;
         }
     }
 
@@ -81,12 +102,16 @@ public class JAsyncValue extends BasicValue {
         this.uninitialized = uninitialized;
     }
 
-    public AbstractInsnNode getInsnNode() {
-        return insnNode;
+    public AbstractInsnNode getNewInsnNode() {
+        return newInsnNode;
     }
 
-    public void setInsnNode(AbstractInsnNode insnNode) {
-        this.insnNode = insnNode;
+    public void setNewInsnNode(AbstractInsnNode newInsnNode) {
+        this.newInsnNode = newInsnNode;
+    }
+
+    public Set<AbstractInsnNode> getCopyInsnNodes() {
+        return copyInsnNodes != null ? copyInsnNodes : Collections.emptySet();
     }
 
     @Override

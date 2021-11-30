@@ -16,7 +16,7 @@ public class ATest {
         return JPromise2.just(2);
     }
 
-    @Async(verify = true, logByteCode = true)
+    @Async
     public JPromise2<Integer> a(int input) {
         Number a = 5;
         @LocalAnn
@@ -46,6 +46,19 @@ public class ATest {
     @Test
     public void testA() {
         Assertions.assertEquals(6, a(1).block());
+    }
+
+    @Async
+    @SuppressWarnings({"BoxingBoxedValue", "CachedNumberConstructorCall"})
+    public JPromise2<Integer> aaa() {
+        Integer one = new Integer(JPromise2.just(1).await());
+        Integer two = new Integer(JPromise2.just(2).await());
+        return JPromise2.just(one + two);
+    }
+
+    @Test
+    public void testAAA() {
+        Assertions.assertEquals(3, aaa().block());
     }
 
     @Async

@@ -1,8 +1,7 @@
 package io.github.vipcxj.jasync.asm;
 
 import org.objectweb.asm.*;
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.*;
 import org.objectweb.asm.tree.analysis.BasicValue;
 import org.objectweb.asm.tree.analysis.Frame;
 import org.objectweb.asm.util.Textifier;
@@ -21,6 +20,8 @@ public class InsnTextifier extends Textifier {
     private int index;
     private boolean withFrame;
     private int tab;
+    private int numberWidth;
+    private int offset;
     private final Set<AbstractInsnNode> targets;
     private final VarNameHelper helper;
 
@@ -31,6 +32,8 @@ public class InsnTextifier extends Textifier {
         this.index = 0;
         this.withFrame = true;
         this.tab = 2;
+        this.numberWidth = 0;
+        this.offset = 0;
         this.helper = new VarNameHelper();
         for (Frame<? extends BasicValue> frame : frames) {
             if (frame != null) {
@@ -40,16 +43,12 @@ public class InsnTextifier extends Textifier {
         this.targets = new HashSet<>();
     }
 
-    public void setTab(int tab) {
-        this.tab = tab;
-    }
-
-    public int getTab() {
-        return tab;
-    }
-
-    public void setWithFrame(boolean withFrame) {
-        this.withFrame = withFrame;
+    private static int calcNumberWidth(int number) {
+        int res = 1;
+        while ((number /= 10) != 0) {
+            ++res;
+        }
+        return res;
     }
 
     public VarNameHelper getHelper() {
@@ -60,16 +59,34 @@ public class InsnTextifier extends Textifier {
         return targets;
     }
 
-    public void print(PrintWriter printWriter) {
+    public void adapt(MethodNode methodNode, int option) {
+        if (methodNode != null) {
+            if (insnNodes != null && !insnNodes.isEmpty()) {
+                AbstractInsnNode firstNode = insnNodes.get(0);
+                if (methodNode.instructions.contains(firstNode)) {
+                    this.offset = methodNode.instructions.indexOf(firstNode);
+                    this.numberWidth = JAsyncInfo.isLogByteCodeWithIndex(option) ? calcNumberWidth(methodNode.instructions.size()) : 0;
+                    this.tab = Math.max(this.tab, 3);
+                    this.withFrame = JAsyncInfo.isLogByteCodeWithFrame(option);
+                    return;
+                }
+            }
+        }
+        this.offset = 0;
+        this.numberWidth = 0;
+    }
+
+    public void print(PrintWriter printWriter, MethodNode methodNode, int option) {
         this.text.clear();
         this.index = 0;
-        MethodNode methodNode = new MethodNode();
+        adapt(methodNode, option);
+        MethodNode tempNode = new MethodNode();
         LabelMap labelMap = new LabelMap();
         for (AbstractInsnNode insnNode : insnNodes) {
-            methodNode.instructions.add(insnNode.clone(labelMap));
+            tempNode.instructions.add(insnNode.clone(labelMap));
         }
         MethodVisitor methodVisitor = new TraceMethodVisitor(this);
-        methodNode.accept(methodVisitor);
+        tempNode.accept(methodVisitor);
         if (printWriter != null) {
             super.print(printWriter);
             printWriter.flush();
@@ -116,16 +133,17 @@ public class InsnTextifier extends Textifier {
         return sb.toString();
     }
 
-    private static String tabs(int num) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < num; ++i) {
-            sb.append(" ");
+    private static String tabs(int num, int numberWidth, int number) {
+        String tab = String.format("%" + num + "s", " ");
+        if (numberWidth > 0) {
+            return String.format("%0" + numberWidth + "d", number) + tab;
+        } else {
+            return tab;
         }
-        return sb.toString();
     }
 
-    public static String printFrame(Frame<? extends BasicValue> frame, VarNameHelper helper, int tab) {
-        return tabs(tab) +
+    public static String printFrame(Frame<? extends BasicValue> frame, VarNameHelper helper, int tab, int numberWidth, int number) {
+        return tabs(tab, numberWidth, number) +
                 "[" +
                 printFramePart(frame, helper, false) +
                 "] [" +
@@ -134,16 +152,40 @@ public class InsnTextifier extends Textifier {
                 System.lineSeparator();
     }
 
-    protected void beforeInsn(int opcode) {
-        AbstractInsnNode insnNode = insnNodes.get(index);
-        Frame<? extends BasicValue> frame = frames.get(index);
-        assert insnNode.getOpcode() == opcode;
-        if (withFrame && frame != null) {
-            text.add(printFrame(frame, helper, tab));
+    private String printFrame(int i, VarNameHelper helper) {
+        Frame<? extends BasicValue> frame = i < frames.size() ? frames.get(i) : null;
+        if (frame != null) {
+            return printFrame(frame, helper, tab, numberWidth, i + offset);
+        } else {
+            return null;
         }
     }
 
-    private static Object tagText(Object text) {
+    protected AbstractInsnNode beforeInsn(int opcode) {
+        return beforeInsn(opcode, false, false, false);
+    }
+
+    protected AbstractInsnNode beforeInsn(int opcode, boolean frameNode, boolean lineNode, boolean labelNode) {
+        AbstractInsnNode insnNode = insnNodes.get(index);
+        if (frameNode) {
+            assert insnNode instanceof FrameNode;
+        } else if (lineNode) {
+            assert insnNode instanceof LineNumberNode;
+        } else if (labelNode) {
+            assert insnNode instanceof LabelNode;
+        } else {
+            assert insnNode.getOpcode() == opcode;
+        }
+        if (withFrame) {
+            String frameText = printFrame(index, helper);
+            if (frameText != null) {
+                text.add(frameText);
+            }
+        }
+        return insnNode;
+    }
+
+    private Object tagText(Object text) {
         if (text instanceof List) {
             //noinspection unchecked
             List<Object> list = (List<Object>) text;
@@ -153,28 +195,28 @@ public class InsnTextifier extends Textifier {
             return list;
         } else if (text != null) {
             String strText = text.toString();
-            Matcher matcher = PT_SPACE_START.matcher(strText);
-            if (matcher.find()) {
-                String spaces = matcher.group();
-                int length = spaces.length();
-                String lefts = strText.substring(length);
-                if (length <= 2) {
-                    strText = "> " + lefts;
+            String number = strText.substring(0, numberWidth);
+            String strTab = strText.substring(numberWidth, numberWidth + tab);
+            String content = strText.substring(numberWidth + tab);
+            if (tab <= 2) {
+                if (numberWidth > 0) {
+                    return number + " >" + content;
                 } else {
-                    strText = spaces.substring(0, length - 2) + "> " + lefts;
+                    return number + "> " + content;
                 }
-            } else {
-                strText = "> " + strText;
             }
-            return strText;
+            if (tab == 3) {
+                return number + " > " + content;
+            } else {
+                return number + " > " + strTab.substring(3) + content;
+            }
         } else {
             return null;
         }
     }
 
-    protected void afterInsn(int opcode, int from, int to) {
-        AbstractInsnNode insnNode = insnNodes.get(index);
-        forceMinTab(tab, from, to);
+    protected void afterInsn(AbstractInsnNode insnNode, int from, int to) {
+        forceMinTab(index, from, to);
         if (to > from && targets.contains(insnNode)) {
             text.set(from, tagText(text.get(from)));
         }
@@ -183,119 +225,146 @@ public class InsnTextifier extends Textifier {
 
     @Override
     public void visitInsn(int opcode) {
-        beforeInsn(opcode);
+        AbstractInsnNode insnNode = beforeInsn(opcode);
         int before = text.size();
         super.visitInsn(opcode);
         int after = text.size();
-        afterInsn(opcode, before, after);
+        afterInsn(insnNode, before, after);
     }
 
     @Override
     public void visitIntInsn(int opcode, int operand) {
-        beforeInsn(opcode);
+        AbstractInsnNode insnNode = beforeInsn(opcode);
         int before = text.size();
         super.visitIntInsn(opcode, operand);
         int after = text.size();
-        afterInsn(opcode, before, after);
+        afterInsn(insnNode, before, after);
     }
 
     @Override
     public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
-        beforeInsn(opcode);
+        AbstractInsnNode insnNode = beforeInsn(opcode);
         int before = text.size();
         super.visitFieldInsn(opcode, owner, name, descriptor);
         int after = text.size();
-        afterInsn(opcode, before, after);
+        afterInsn(insnNode, before, after);
     }
 
     @Override
     public void visitIincInsn(int var, int increment) {
-        beforeInsn(Opcodes.IINC);
+        AbstractInsnNode insnNode = beforeInsn(Opcodes.IINC);
         int before = text.size();
         super.visitIincInsn(var, increment);
         int after = text.size();
-        afterInsn(Opcodes.IINC, before, after);
+        afterInsn(insnNode, before, after);
     }
 
     @Override
     public void visitJumpInsn(int opcode, Label label) {
-        beforeInsn(opcode);
+        AbstractInsnNode insnNode = beforeInsn(opcode);
         int before = text.size();
         super.visitJumpInsn(opcode, label);
         int after = text.size();
-        afterInsn(opcode, before, after);
+        afterInsn(insnNode, before, after);
     }
 
     @Override
     public void visitLdcInsn(Object value) {
-        beforeInsn(Opcodes.LDC);
+        AbstractInsnNode insnNode = beforeInsn(Opcodes.LDC);
         int before = text.size();
         super.visitLdcInsn(value);
         int after = text.size();
-        afterInsn(Opcodes.LDC, before, after);
+        afterInsn(insnNode, before, after);
     }
 
     @Override
     public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-        beforeInsn(opcode);
+        AbstractInsnNode insnNode = beforeInsn(opcode);
         int before = text.size();
         super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
         int after = text.size();
-        afterInsn(opcode, before, after);
+        afterInsn(insnNode, before, after);
     }
 
     @Override
     public void visitTypeInsn(int opcode, String type) {
-        beforeInsn(opcode);
+        AbstractInsnNode insnNode = beforeInsn(opcode);
         int before = text.size();
         super.visitTypeInsn(opcode, type);
         int after = text.size();
-        afterInsn(opcode, before, after);
+        afterInsn(insnNode, before, after);
     }
 
     @Override
     public void visitVarInsn(int opcode, int var) {
-        beforeInsn(opcode);
+        AbstractInsnNode insnNode = beforeInsn(opcode);
         int before = text.size();
         super.visitVarInsn(opcode, var);
         int after = text.size();
-        afterInsn(opcode, before, after);
+        afterInsn(insnNode, before, after);
     }
 
     @Override
     public void visitInvokeDynamicInsn(String name, String descriptor, Handle bootstrapMethodHandle, Object... bootstrapMethodArguments) {
-        beforeInsn(Opcodes.INVOKEDYNAMIC);
+        AbstractInsnNode insnNode = beforeInsn(Opcodes.INVOKEDYNAMIC);
         int before = text.size();
         super.visitInvokeDynamicInsn(name, descriptor, bootstrapMethodHandle, bootstrapMethodArguments);
         int after = text.size();
-        afterInsn(Opcodes.INVOKEDYNAMIC, before, after);
+        afterInsn(insnNode, before, after);
     }
 
     @Override
     public void visitLookupSwitchInsn(Label dflt, int[] keys, Label[] labels) {
-        beforeInsn(Opcodes.LOOKUPSWITCH);
+        AbstractInsnNode insnNode = beforeInsn(Opcodes.LOOKUPSWITCH);
         int before = text.size();
         super.visitLookupSwitchInsn(dflt, keys, labels);
         int after = text.size();
-        afterInsn(Opcodes.LOOKUPSWITCH, before, after);
+        afterInsn(insnNode, before, after);
     }
 
     @Override
     public void visitTableSwitchInsn(int min, int max, Label dflt, Label... labels) {
-        beforeInsn(Opcodes.TABLESWITCH);
+        AbstractInsnNode insnNode = beforeInsn(Opcodes.TABLESWITCH);
         int before = text.size();
         super.visitTableSwitchInsn(min, max, dflt, labels);
         int after = text.size();
-        afterInsn(Opcodes.TABLESWITCH, before, after);
+        afterInsn(insnNode, before, after);
     }
 
     @Override
     public void visitMultiANewArrayInsn(String descriptor, int numDimensions) {
-        beforeInsn(Opcodes.MULTIANEWARRAY);
+        AbstractInsnNode insnNode = beforeInsn(Opcodes.MULTIANEWARRAY);
         int before = text.size();
         super.visitMultiANewArrayInsn(descriptor, numDimensions);
         int after = text.size();
-        afterInsn(Opcodes.MULTIANEWARRAY, before, after);
+        afterInsn(insnNode, before, after);
+    }
+
+    @Override
+    public void visitLineNumber(int line, Label start) {
+        AbstractInsnNode insnNode = beforeInsn(-1, false, true, false);
+        int before = text.size();
+        super.visitLineNumber(line, start);
+        int after = text.size();
+        afterInsn(insnNode, before, after);
+    }
+
+    @Override
+    public void visitFrame(int type, int numLocal, Object[] local, int numStack, Object[] stack) {
+        AbstractInsnNode insnNode = beforeInsn(-1, true, false, false);
+        int before = text.size();
+        super.visitFrame(type, numLocal, local, numStack, stack);
+        int after = text.size();
+        afterInsn(insnNode, before, after);
+    }
+
+    @Override
+    public void visitLabel(Label label) {
+        AbstractInsnNode insnNode = beforeInsn(-1, false, false, true);
+        int before = text.size();
+        super.visitLabel(label);
+        int after = text.size();
+        afterInsn(insnNode, before, after);
     }
 
     @Override
@@ -305,10 +374,6 @@ public class InsnTextifier extends Textifier {
         for (int i = from; i < to; ++i) {
             text.set(i, traverseText(text.get(i), mapper));
         }
-    }
-
-    protected void traverseText(Function<Object, Object> mapper) {
-        traverseText(mapper, 0, text.size());
     }
 
     protected Object traverseText(Object text, Function<Object, Object> mapper) {
@@ -356,13 +421,8 @@ public class InsnTextifier extends Textifier {
         return result[0];
     }
 
-    private String addTab(String text, int num) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < num; ++i) {
-            sb.append(" ");
-        }
-        sb.append(text);
-        return sb.toString();
+    private String adjustTab(String text, int currentTab, int lineNumber) {
+        return tabs(tab, numberWidth, lineNumber) + text.substring(currentTab);
     }
 
     protected String join(String[] parts, String by) {
@@ -376,33 +436,27 @@ public class InsnTextifier extends Textifier {
         return sb.toString();
     }
 
-    protected void forceMinTab(int tab, int from, int to) {
+    protected void forceMinTab(int index, int from, int to) {
         int cTab = Integer.MAX_VALUE;
         for (int i = from; i < to; ++i) {
             Object o = text.get(i);
             cTab = Math.min(cTab, calcMinTab(o));
         }
         if (cTab != Integer.MAX_VALUE) {
-            int diff = tab - cTab;
-            if (diff != 0) {
-                traverseText(t -> {
-                    String s = t.toString();
-                    boolean endBreak = PT_END_BREAK_LINE.matcher(s).find();
-                    String[] lines = s.split(PT_BREAK_LINE.pattern());
-                    for (int i = 0; i < lines.length; ++i) {
-                        if (diff > 0) {
-                            lines[i] = addTab(lines[i], diff);
-                        } else {
-                            lines[i] = lines[i].substring(-diff);
-                        }
-                    }
-                    s = join(lines, System.lineSeparator());
-                    if (endBreak) {
-                        s += System.lineSeparator();
-                    }
-                    return s;
-                }, from, to);
-            }
+            int theTab = cTab;
+            traverseText(t -> {
+                String s = t.toString();
+                boolean endBreak = PT_END_BREAK_LINE.matcher(s).find();
+                String[] lines = s.split(PT_BREAK_LINE.pattern());
+                for (int i = 0; i < lines.length; ++i) {
+                        lines[i] = adjustTab(lines[i], theTab, index);
+                }
+                s = join(lines, System.lineSeparator());
+                if (endBreak) {
+                    s += System.lineSeparator();
+                }
+                return s;
+            }, from, to);
         }
     }
 }

@@ -20,6 +20,10 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
         super(new TypeInterpreter());
     }
 
+    public BranchAnalyzer(Interpreter<BasicValue> interpreter) {
+        super(interpreter);
+    }
+
     @Override
     public Frame<BasicValue>[] analyze(String owner, MethodNode method) throws AnalyzerException {
         this.methodNode = method;
@@ -86,12 +90,21 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
     }
 
     private void checkCast(Node<? extends BasicValue> node) {
-        if (node.insnNode instanceof MethodInsnNode) {
-            MethodInsnNode methodInsnNode = (MethodInsnNode) node.insnNode;
-            Type[] argumentTypes = Type.getArgumentTypes(methodInsnNode.desc);
-            if (methodInsnNode.getOpcode() != Opcodes.INVOKESTATIC) {
+        if (node.insnNode instanceof MethodInsnNode || node.insnNode instanceof  InvokeDynamicInsnNode) {
+            String desc;
+            String owner;
+            if (node.insnNode instanceof MethodInsnNode) {
+                desc = ((MethodInsnNode) node.insnNode).desc;
+                owner = ((MethodInsnNode) node.insnNode).owner;
+            } else {
+                desc = ((InvokeDynamicInsnNode) node.insnNode).desc;
+                owner = null;
+            }
+            Type[] argumentTypes = Type.getArgumentTypes(desc);
+            if (node.insnNode.getOpcode() != Opcodes.INVOKESTATIC && node.insnNode.getOpcode() != Opcodes.INVOKEDYNAMIC) {
                 Type[] newArgumentTypes = new Type[argumentTypes.length + 1];
-                newArgumentTypes[0] = Type.getObjectType(methodInsnNode.owner);
+                assert owner != null;
+                newArgumentTypes[0] = Type.getObjectType(owner);
                 System.arraycopy(argumentTypes, 0, newArgumentTypes, 1, argumentTypes.length);
                 argumentTypes = newArgumentTypes;
             }
@@ -271,6 +284,13 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
                 this.localVars = other.localVars.clone();
             } else {
                 this.localVars = new LocalVar[frame.getLocals()];
+            }
+        }
+
+        @Override
+        public void execute(AbstractInsnNode insn, Interpreter<V> interpreter) throws AnalyzerException {
+            if (!AsmHelper.executeConstruction(this, insn, interpreter, super::execute)) {
+                super.execute(insn, interpreter);
             }
         }
 

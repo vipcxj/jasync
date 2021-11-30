@@ -43,12 +43,18 @@ public class ChainMethodNode extends MethodVisitor {
 
     private void verifyMethod(MethodNode methodNode) {
         BasicVerifier verifier = new MyVerifier();
-        Analyzer<BasicValue> analyzer = new Analyzer<>(verifier);
+        Analyzer<BasicValue> analyzer = new BranchAnalyzer(verifier);
         try {
             analyzer.analyze(classContext.getName(), methodNode);
         } catch (AnalyzerException e) {
-            e.printStackTrace();
-            AsmHelper.printFrameProblem(methodNode, analyzer, e, -5, 16);
+            AsmHelper.printFrameProblem(
+                    classContext.getName(),
+                    methodNode,
+                    analyzer.getFrames(),
+                    e,
+                    JAsyncInfo.BYTE_CODE_OPTION_FULL_SUPPORT,
+                    -12, 12
+            );
             throw new RuntimeException(e);
         }
     }
@@ -62,12 +68,21 @@ public class ChainMethodNode extends MethodVisitor {
     public void visitEnd() {
         super.visitEnd();
         MethodContext methodContext = new MethodContext(classContext, methodNode, false, null);
-        methodContext.process();
         JAsyncInfo info = methodContext.getInfo();
-        if (info.isLogByteCode()) {
-            log(methodNode, new Textifier());
-        }
-        if (info.isLogAsm()) {
+        AsmHelper.printFrameProblem(
+                classContext.getName(),
+                methodNode,
+                methodContext.getFrames(),
+                info.getLogOriginalByteCode()
+        );
+        methodContext.process();
+        AsmHelper.printFrameProblem(
+                classContext.getName(),
+                methodNode,
+                null,
+                info.getLogResultByteCode()
+        );
+        if (info.isLogResultAsm()) {
             log(methodNode, new ASMifier());
         }
         if (info.isVerify()) {
@@ -77,10 +92,13 @@ public class ChainMethodNode extends MethodVisitor {
             methodNode.accept(nextVisitor);
         }
         for (MethodContext lambdaContext : classContext.getLambdaContexts(methodContext)) {
-            if (info.isLogByteCode()) {
-                log(lambdaContext.getMv(), new Textifier());
-            }
-            if (info.isLogAsm()) {
+            AsmHelper.printFrameProblem(
+                    classContext.getName(),
+                    lambdaContext.getMv(),
+                    null,
+                    info.getLogResultByteCode()
+            );
+            if (info.isLogResultAsm()) {
                 log(lambdaContext.getMv(), new ASMifier());
             }
             if (info.isVerify()) {

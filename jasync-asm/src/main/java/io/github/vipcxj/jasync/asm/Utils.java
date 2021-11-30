@@ -11,8 +11,27 @@ public class Utils {
 
     private static final String PROMISE_TYPES_FILE_PROPERTY = "jasync_promise_types_file";
     private static final String FULL_TYPES_FILE_PROPERTY = "jasync_full_types_file";
+    private static final String USE_CLASS_LOADER_PROPERTY = "jasync_use_class_loader";
     private static Set<String> promiseTypes;
     private static Map<String, TypeInfo> typeInfoMap;
+    private static boolean USE_CLASS_LOADER = isUseClassLoader();
+
+    private static boolean isUseClassLoader() {
+        try {
+            String property = System.getProperty(USE_CLASS_LOADER_PROPERTY);
+            if (property == null) {
+                return true;
+            }
+            property = property.trim();
+            if ("off".equalsIgnoreCase(property) || "no".equalsIgnoreCase(property) || "0".equalsIgnoreCase(property) || "false".equalsIgnoreCase(property)) {
+                return false;
+            }
+        } catch (Throwable t) {
+            System.err.println("Unable to get the env \"jasync_use_class_loader\".");
+            t.printStackTrace();
+        }
+        return true;
+    }
 
     public static Class<?> getTargetClass(Class<?> toTest, String name) {
         if (toTest == null) {
@@ -64,6 +83,7 @@ public class Utils {
     }
 
     private static final String OBJECT_BINARY_NAME = "java.lang.Object";
+    private static final String NULL_BINARY_NAME = "null";
 
     private static Map<String, TypeInfo> getTypeInfoMap() {
         if (typeInfoMap == null) {
@@ -123,8 +143,16 @@ public class Utils {
     }
 
     private static String getSuperTypeFromClassLoader(String type) {
+        if (!USE_CLASS_LOADER) {
+            return null;
+        }
         Class<?> aClass = getClass(type);
-        return aClass != null ? aClass.getSuperclass().getName() : null;
+        if (aClass != null) {
+            Class<?> superClass = aClass.getSuperclass();
+            return superClass != null ? superClass.getName() : OBJECT_BINARY_NAME;
+        } else {
+            return null;
+        }
     }
 
     private static String getSuperType(String type) {
@@ -140,6 +168,9 @@ public class Utils {
     }
 
     private static String[] getInterfacesFromClassLoader(String type) {
+        if (!USE_CLASS_LOADER) {
+            return null;
+        }
         Class<?> aClass = getClass(type);
         if (aClass != null) {
             Class<?>[] interfaceClasses = aClass.getInterfaces();
@@ -177,6 +208,12 @@ public class Utils {
             return 1;
         }
         if (OBJECT_BINARY_NAME.equals(type1)) {
+            return -1;
+        }
+        if (NULL_BINARY_NAME.equals(type1)) {
+            return 1;
+        }
+        if (NULL_BINARY_NAME.equals(type2)) {
             return -1;
         }
         if (Objects.equals(type1, type2)) {
@@ -224,7 +261,7 @@ public class Utils {
         return superName;
     }
 
-    private static String stepInterfaces(Set<String> ancestors, String typeName) {
+/*    private static String stepInterfaces(Set<String> ancestors, String typeName) {
         if (OBJECT_BINARY_NAME.equals(typeName)) {
             return OBJECT_BINARY_NAME;
         }
@@ -252,7 +289,7 @@ public class Utils {
             nextInterfaces = newNextInterfaces;
         }
         return unknown ? null : OBJECT_BINARY_NAME;
-    }
+    }*/
 
     /**
      * Get the nearest common ancestors of the type1 and type2.
@@ -268,27 +305,39 @@ public class Utils {
         if (OBJECT_BINARY_NAME.equals(type1) || OBJECT_BINARY_NAME.equals(type2)) {
             return OBJECT_BINARY_NAME;
         }
+        if (NULL_BINARY_NAME.equals(type1)) {
+            return type2;
+        }
+        if (NULL_BINARY_NAME.equals(type2)) {
+            return type1;
+        }
+        if (isSubTypeOf(type1, type2) == 1) {
+            return type2;
+        }
+        if (isSubTypeOf(type2, type1) == 1) {
+            return type1;
+        }
         Set<String> ancestors = new HashSet<>();
         stepSuperName(ancestors, type1);
-        String root = stepSuperName(ancestors, type2);
-        boolean unknown = false;
-        if (root == null) {
-            unknown = true;
-        } else if (!OBJECT_BINARY_NAME.equals(root)) {
-            return root;
-        }
-        root = stepInterfaces(ancestors, type1);
-        if (root == null) {
-            unknown = true;
-        } else if (!OBJECT_BINARY_NAME.equals(root)) {
-            return root;
-        }
-        root = stepInterfaces(ancestors, type2);
-        if (root == null) {
-            unknown = true;
-        } else if (!OBJECT_BINARY_NAME.equals(root)) {
-            return root;
-        }
-        return unknown ? null : OBJECT_BINARY_NAME;
+        return stepSuperName(ancestors, type2);
+//        boolean unknown = false;
+//        if (root == null) {
+//            unknown = true;
+//        } else if (!OBJECT_BINARY_NAME.equals(root)) {
+//            return root;
+//        }
+//        root = stepInterfaces(ancestors, type1);
+//        if (root == null) {
+//            unknown = true;
+//        } else if (!OBJECT_BINARY_NAME.equals(root)) {
+//            return root;
+//        }
+//        root = stepInterfaces(ancestors, type2);
+//        if (root == null) {
+//            unknown = true;
+//        } else if (!OBJECT_BINARY_NAME.equals(root)) {
+//            return root;
+//        }
+//        return unknown ? null : OBJECT_BINARY_NAME;
     }
 }

@@ -5,8 +5,14 @@ import org.objectweb.asm.Type;
 
 public class Constants {
     public static final String ANN_ASYNC_DESC = "Lio/github/vipcxj/jasync/spec/annotations/Async;";
+    public static final String NULL_NAME = "null";
+    public static final Type NULL_DESC = Type.getObjectType(NULL_NAME);
     public static final String OBJECT_NAME = "java/lang/Object";
     public static final Type OBJECT_DESC = Type.getObjectType(OBJECT_NAME);
+    public static final String CLONEABLE_NAME = "java/lang/Cloneable";
+    public static final Type CLONEABLE_DESC = Type.getObjectType(CLONEABLE_NAME);
+    public static final String SERIALIZABLE_NAME = "java/lang/Serializable";
+    public static final Type SERIALIZABLE_DESC = Type.getObjectType(SERIALIZABLE_NAME);
     public static final String THROWABLE_NAME = "java/lang/Throwable";
     public static final String JPROMISE_NAME = "io/github/vipcxj/jasync/spec/JPromise2";
     public static final Type JPROMISE_DESC = Type.getObjectType(JPROMISE_NAME);
