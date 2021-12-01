@@ -1,7 +1,6 @@
 package io.github.vipcxj.jasync.test;
 
-import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.JPromise;
+import io.github.vipcxj.jasync.spec.JPromise2;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -11,92 +10,92 @@ import org.junit.jupiter.params.provider.ValueSource;
 public class SwitchTest {
 
     @Async
-    private JPromise<Integer> testReturn(int i) {
+    private JPromise2<Integer> testReturn(int i) {
         int res;
         switch (i) {
             case 1:
             case 2:
-                res = JAsync.just(i).await();
-                return JAsync.just(res);
+                res = JPromise2.just(i).await();
+                return JPromise2.just(res);
             case 3:
             case 4:
-                res = JAsync.just(i * 2).await();
-                return JAsync.just(res);
+                res = JPromise2.just(i * 2).await();
+                return JPromise2.just(res);
             default:
-                res = JAsync.just(0).await();
-                return JAsync.just(res);
+                res = JPromise2.just(0).await();
+                return JPromise2.just(res);
         }
     }
 
     @Async
-    private JPromise<Integer> testBreak(int i) {
+    private JPromise2<Integer> testBreak(int i) {
         int res;
         switch (i) {
             case 1:
             case 2:
-                res = JAsync.just(i).await();
+                res = JPromise2.just(i).await();
                 break;
             case 3:
             case 4:
-                res = JAsync.just(i * 2).await();
+                res = JPromise2.just(i * 2).await();
                 break;
             default:
-                res = JAsync.just(0).await();
+                res = JPromise2.just(0).await();
         }
-        return JAsync.just(res);
+        return JPromise2.just(res);
     }
 
     @SuppressWarnings("UnusedAssignment")
     @Async
-    private JPromise<Integer> testNoBreak1(int i) {
+    private JPromise2<Integer> testNoBreak1(int i) {
         int res;
         switch (i) {
             case 1:
             case 2:
-                res = JAsync.just(i).await();
+                res = JPromise2.just(i).await();
             case 3:
             case 4:
-                res = JAsync.just(i * 2).await();
+                res = JPromise2.just(i * 2).await();
             default:
-                res = JAsync.just(0).await();
+                res = JPromise2.just(0).await();
         }
-        return JAsync.just(res);
+        return JPromise2.just(res);
     }
 
     @SuppressWarnings("UnusedAssignment")
     @Async
-    private JPromise<Integer> testNoBreak2(int i) {
+    private JPromise2<Integer> testNoBreak2(int i) {
         int res;
         switch (i) {
             default:
-                res = JAsync.just(0).await();
+                res = JPromise2.just(0).await();
                 break;
             case 1:
             case 2:
-                res = JAsync.just(i).await();
+                res = JPromise2.just(i).await();
             case 3:
             case 4:
-                res = JAsync.just(i * 2).await();
+                res = JPromise2.just(i * 2).await();
         }
-        return JAsync.just(res);
+        return JPromise2.just(res);
     }
 
     @SuppressWarnings("UnusedAssignment")
     @Async
-    private JPromise<Integer> testNoBreak3(int i) {
+    private JPromise2<Integer> testNoBreak3(int i) {
         int res = -3;
         switch (i) {
             default:
-                res = JAsync.just(0).await();
+                res = JPromise2.just(0).await();
             case 1:
             case 2:
-                res = JAsync.just(i).await();
+                res = JPromise2.just(i).await();
             case 3:
                 break;
             case 4:
-                res = JAsync.just(i * 2).await();
+                res = JPromise2.just(i * 2).await();
         }
-        return JAsync.just(res);
+        return JPromise2.just(res);
     }
 
     @ParameterizedTest

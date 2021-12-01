@@ -1,7 +1,6 @@
 package io.github.vipcxj.jasync.test;
 
-import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.JPromise;
+import io.github.vipcxj.jasync.spec.JPromise2;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import lombok.Data;
 import org.junit.jupiter.api.Assertions;
@@ -33,8 +32,8 @@ public class WithLombok {
     }
 
     @Async
-    public JPromise<Boolean> isLombok() {
-        return JAsync.just(object.isLombok());
+    public JPromise2<Boolean> isLombok() {
+        return JPromise2.just(object.isLombok());
     }
 
     @Test

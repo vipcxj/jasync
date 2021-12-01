@@ -10,7 +10,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-@SuppressWarnings("UnusedLabel")
+@SuppressWarnings({"UnusedLabel", "ConstantConditions"})
 public class LabelTest {
 
     @Async
@@ -66,16 +66,6 @@ public class LabelTest {
     public void testIfNoAwait() {
         Assertions.assertEquals(1, ifNoAwait(true).block());
         Assertions.assertEquals(2, ifNoAwait(false).block());
-    }
-
-    private boolean aaa(boolean a) {
-        return !a;
-    }
-
-    private void bbb() {
-        boolean c = aaa(false);
-        c = aaa(c);
-        System.out.println(c);
     }
 
     @Async

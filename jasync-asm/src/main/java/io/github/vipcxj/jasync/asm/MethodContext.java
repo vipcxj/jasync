@@ -27,7 +27,7 @@ public class MethodContext {
     public MethodContext(ClassContext classContext, MethodNode mv, boolean loop, MethodContext parent) {
         this.classContext = classContext;
         this.mv = mv;
-        this.info = JAsyncInfo.of(mv);
+        this.info = parent != null ? parent.getInfo() : JAsyncInfo.of(mv);
         this.localsToUpdate = new ArrayList<>();
         this.stacksToUpdate = new ArrayList<>();
         this.loop = loop;
@@ -39,7 +39,7 @@ public class MethodContext {
             AsmHelper.printFrameProblem(
                     classContext.getName(),
                     mv,
-                    analyzer.getNodes(),
+                    analyzer.getFrames(),
                     e,
                     JAsyncInfo.BYTE_CODE_OPTION_FULL_SUPPORT,
                     -5,
@@ -61,7 +61,7 @@ public class MethodContext {
     }
 
     public JAsyncInfo getInfo() {
-        return getRootMethodContext().info;
+        return info;
     }
 
     public BranchAnalyzer.Node<BasicValue>[] getFrames() {
@@ -1071,7 +1071,9 @@ public class MethodContext {
             int stacks = node.getStackSize();
             int j = offset;
             for (Arguments.ExtendType extendType : arguments.getTypes()) {
-                if (j >= locals && j < locals + stacks) {
+                // arguments 的构成恰好同构于 locals + stack，
+                // 虽然最后一位, arguments 中是 await 的结果，而 frame 中是 Promise. 但它们都是 Object, 可以做相同处理.
+                if (j >= locals) {
                     if (extendType.isInitialized()) {
                         lambdaNode.visitVarInsn(extendType.getOpcode(Opcodes.ILOAD), j);
                         j += extendType.getSize();

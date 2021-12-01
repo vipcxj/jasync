@@ -1,7 +1,6 @@
 package io.github.vipcxj.jasync.test;
 
-import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.JPromise;
+import io.github.vipcxj.jasync.spec.JPromise2;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -9,47 +8,47 @@ import org.junit.jupiter.api.Test;
 public class WhileTest {
 
     @Async
-    public JPromise<Integer> sum1(int to) {
+    public JPromise2<Integer> sum1(int to) {
         int sum = 0;
         while (sum < to) {
-            sum += JAsync.just(1).await();
+            sum += JPromise2.just(1).await();
         }
-        return JAsync.just(sum);
+        return JPromise2.just(sum);
     }
 
     @Async
-    public JPromise<Integer> sum2(int to) {
+    public JPromise2<Integer> sum2(int to) {
         int sum = 0;
-        while (sum < JAsync.just(to).await()) {
-            sum += JAsync.just(1).await();
+        while (sum < JPromise2.just(to).await()) {
+            sum += JPromise2.just(1).await();
         }
-        return JAsync.just(sum);
+        return JPromise2.just(sum);
     }
 
     @Async
-    public JPromise<Integer> multi1(int a, int b) {
+    public JPromise2<Integer> multi1(int a, int b) {
         int res = 0;
         int i = 0, j = 0;
         while (i++ < a) {
             while (j++ < b) {
-                res += JAsync.just(1).await();
+                res += JPromise2.just(1).await();
             }
             j = 0;
         }
-        return JAsync.just(res);
+        return JPromise2.just(res);
     }
 
     @Async(debug = true)
-    public JPromise<Integer> multi2(int a, int b) {
+    public JPromise2<Integer> multi2(int a, int b) {
         int res = 0;
         int i = 0, j = 0;
-        while (i++ < JAsync.just(a).await()) {
-            while (j++ < JAsync.just(b).await()) {
-                res += JAsync.just(1).await();
+        while (i++ < JPromise2.just(a).await()) {
+            while (j++ < JPromise2.just(b).await()) {
+                res += JPromise2.just(1).await();
             }
             j = 0;
         }
-        return JAsync.just(res);
+        return JPromise2.just(res);
     }
 
     @Test

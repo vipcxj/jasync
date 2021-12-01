@@ -449,7 +449,7 @@ public class InsnTextifier extends Textifier {
                 boolean endBreak = PT_END_BREAK_LINE.matcher(s).find();
                 String[] lines = s.split(PT_BREAK_LINE.pattern());
                 for (int i = 0; i < lines.length; ++i) {
-                        lines[i] = adjustTab(lines[i], theTab, index);
+                        lines[i] = adjustTab(lines[i], theTab, index + offset);
                 }
                 s = join(lines, System.lineSeparator());
                 if (endBreak) {

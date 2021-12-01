@@ -1,46 +1,46 @@
 package io.github.vipcxj.jasync.test;
 
-import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.JPromise;
+import io.github.vipcxj.jasync.spec.JPromise2;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class AwaitTest {
 
-    private JPromise<Integer> zero() {
-        return JAsync.just(0);
+    private JPromise2<Integer> zero() {
+        return JPromise2.just(0);
     }
 
-    private JPromise<Integer> one() {
-        return JAsync.just(1);
+    private JPromise2<Integer> one() {
+        return JPromise2.just(1);
     }
 
-    private JPromise<Integer> two() {
-        return JAsync.just(2);
+    private JPromise2<Integer> two() {
+        return JPromise2.just(2);
     }
 
-    private JPromise<Integer> three() {
-        return JAsync.just(3);
+    private JPromise2<Integer> three() {
+        return JPromise2.just(3);
     }
 
-    private JPromise<Integer> plus(int a, int b) {
-        return JAsync.just(a + b);
+    private JPromise2<Integer> plus(int a, int b) {
+        return JPromise2.just(a + b);
     }
 
-    private JPromise<Integer> mul(int a , int b) {
-        return JAsync.just(a * b);
+    @SuppressWarnings("SameParameterValue")
+    private JPromise2<Integer> mul(int a , int b) {
+        return JPromise2.just(a * b);
     }
 
     @Async
-    private JPromise<String> simpleAwait() {
-        JPromise<String> helloWorld = JAsync.just("hello world");
-        return JAsync.just(helloWorld.await());
+    private JPromise2<String> simpleAwait() {
+        JPromise2<String> helloWorld = JPromise2.just("hello world");
+        return JPromise2.just(helloWorld.await());
     }
 
     @Test
     public void testSimpleAwait() {
-        Assertions.assertEquals("hello world", simpleAwait().block());;
+        Assertions.assertEquals("hello world", simpleAwait().block());
     }
 
     private int nestedNoAwait1() {
@@ -48,11 +48,11 @@ public class AwaitTest {
     }
 
     @Async
-    private JPromise<Integer> nestedAwait1() {
+    private JPromise2<Integer> nestedAwait1() {
         int res = 1 + plus(one().await(), plus(3, two().await()).await()).await()
                 + zero().await()
                 +  mul(three().await(), 4).await();
-        return JAsync.just(res);
+        return JPromise2.just(res);
     }
 
     @Test
@@ -66,10 +66,10 @@ public class AwaitTest {
     }
 
     @Async
-    private JPromise<Integer> nestedAwait2() {
+    private JPromise2<Integer> nestedAwait2() {
         int i = 0;
         i = plus(++i, two().await() * ++i).await();
-        return JAsync.just(i);
+        return JPromise2.just(i);
     }
 
     @Test

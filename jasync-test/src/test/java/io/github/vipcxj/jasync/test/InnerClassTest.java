@@ -1,7 +1,6 @@
 package io.github.vipcxj.jasync.test;
 
-import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.JPromise;
+import io.github.vipcxj.jasync.spec.JPromise2;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -12,18 +11,18 @@ public class InnerClassTest {
     class InnerClass {
 
         @Async
-        private JPromise<String> fun() {
-            return JAsync.just(
-                    JAsync.just("InnerClass").await()
+        private JPromise2<String> fun() {
+            return JPromise2.just(
+                    JPromise2.just("InnerClass").await()
             );
         }
 
         class NestInnerClass {
 
             @Async
-            private JPromise<String> fun() {
-                return JAsync.just(
-                        JAsync.just("InnerClass").await() + "." + JAsync.just("NestInnerClass").await()
+            private JPromise2<String> fun() {
+                return JPromise2.just(
+                        JPromise2.just("InnerClass").await() + "." + JPromise2.just("NestInnerClass").await()
                 );
             }
         }
@@ -32,26 +31,26 @@ public class InnerClassTest {
     static class StaticInnerClass {
 
         @Async
-        private JPromise<String> fun() {
-            return JAsync.just(
-                    JAsync.just("StaticInnerClass").await()
+        private JPromise2<String> fun() {
+            return JPromise2.just(
+                    JPromise2.just("StaticInnerClass").await()
             );
         }
 
         class NestInnerClass {
             @Async
-            private JPromise<String> fun() {
-                return JAsync.just(
-                        JAsync.just("StaticInnerClass").await() + "." + JAsync.just("NestInnerClass").await()
+            private JPromise2<String> fun() {
+                return JPromise2.just(
+                        JPromise2.just("StaticInnerClass").await() + "." + JPromise2.just("NestInnerClass").await()
                 );
             }
         }
 
         static class StaticNestInnerClass {
             @Async
-            private JPromise<String> fun() {
-                return JAsync.just(
-                        JAsync.just("StaticInnerClass").await() + "." + JAsync.just("StaticNestInnerClass").await()
+            private JPromise2<String> fun() {
+                return JPromise2.just(
+                        JPromise2.just("StaticInnerClass").await() + "." + JPromise2.just("StaticNestInnerClass").await()
                 );
             }
         }

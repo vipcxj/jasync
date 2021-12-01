@@ -43,7 +43,7 @@ public class IfTest {
             String hello = JPromise2.just("hello ").await();
             return JPromise2.just(hello + message);
         }
-        return null;
+        return JPromise2.empty();
     }
 
     @Test
