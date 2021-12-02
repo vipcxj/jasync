@@ -18,15 +18,21 @@ public class MethodContext {
     private final List<Integer> stacksToUpdate;
     private final boolean loop;
     private int index = 0;
+    private List<Integer> map;
 
     protected final MethodContext parent;
     private final List<MethodContext> children;
     private final AbstractInsnNode[] insnNodes;
     private List<Set<Integer>> loops;
 
-    public MethodContext(ClassContext classContext, MethodNode mv, boolean loop, MethodContext parent) {
+    public MethodContext(ClassContext classContext, MethodNode mv) {
+        this(classContext, mv, null, false, null);
+    }
+
+    public MethodContext(ClassContext classContext, MethodNode mv, List<Integer> map, boolean loop, MethodContext parent) {
         this.classContext = classContext;
         this.mv = mv;
+        this.map = map;
         this.info = parent != null ? parent.getInfo() : JAsyncInfo.of(mv);
         this.localsToUpdate = new ArrayList<>();
         this.stacksToUpdate = new ArrayList<>();
@@ -40,6 +46,7 @@ public class MethodContext {
                     classContext.getName(),
                     mv,
                     analyzer.getFrames(),
+                    map,
                     e,
                     JAsyncInfo.BYTE_CODE_OPTION_FULL_SUPPORT,
                     -5,
@@ -52,12 +59,16 @@ public class MethodContext {
         insnNodes = new AbstractInsnNode[this.frames.length];
     }
 
-    public MethodContext createChild(MethodNode methodNode, boolean loop) {
-        return new MethodContext(classContext, methodNode, loop, this);
+    public MethodContext createChild(MethodNode methodNode, List<Integer> map, boolean loop) {
+        return new MethodContext(classContext, methodNode, map, loop, this);
     }
 
     public MethodNode getMv() {
         return mv;
+    }
+
+    public List<Integer> getMap() {
+        return map;
     }
 
     public JAsyncInfo getInfo() {
@@ -109,14 +120,14 @@ public class MethodContext {
         mv.maxStack = Math.max(mv.maxStack, stacksToUpdate.stream().mapToInt(i -> i).max().orElse(0));
     }
 
-    public void addLambdaContext(MethodNode lambdaNode, boolean loop) {
-        MethodContext childContext = createChild(lambdaNode, loop);
+    public void addLambdaContext(MethodNode lambdaNode, List<Integer> map, boolean loop) {
+        MethodContext childContext = createChild(lambdaNode, map, loop);
         children.add(childContext);
         this.classContext.addLambda(getRootMethodContext(), childContext);
     }
 
-    public void addLambdaContext(MethodNode lambdaNode) {
-        addLambdaContext(lambdaNode, false);
+    public void addLambdaContext(MethodNode lambdaNode, List<Integer> map) {
+        addLambdaContext(lambdaNode, map, false);
     }
 
 
@@ -138,17 +149,21 @@ public class MethodContext {
             List<LocalVariableNode> localVariableNodes = new ArrayList<>();
             LocalVariableNode[] localVariableArray = new LocalVariableNode[mv.maxLocals];
             InsnList newInsnList = new InsnList();
+            List<Integer> newMap = new ArrayList<>();
             for (int i = 0; i < insnNodes.length; ++i) {
                 AbstractInsnNode insnNode = insnNodes[i];
                 if (insnNode != null) {
+                    int mappedIndex = mapped(i);
                     BranchAnalyzer.Node<BasicValue> frame = frames[i];
                     Type needCastTo = frame.getNeedCastTo();
                     if (needCastTo != null) {
+                        newMap.add(mappedIndex);
                         newInsnList.add(new TypeInsnNode(Opcodes.CHECKCAST, needCastTo.getInternalName()));
                     }
                     if (insnNode instanceof PackageInsnNode) {
                         PackageInsnNode packageInsnNode = (PackageInsnNode) insnNode;
                         for (AbstractInsnNode node : packageInsnNode.getInsnNodes()) {
+                            newMap.add(mappedIndex);
                             newInsnList.add(node);
                         }
                         for (int j = 0; j < localVariableArray.length; ++j) {
@@ -159,6 +174,7 @@ public class MethodContext {
                             pushLocalVariable(localVariableArray, j, localVariableNodes, null);
                         }
                     } else {
+                        newMap.add(mappedIndex);
                         newInsnList.add(insnNode);
                         updateLocalVar(localVariableArray, localVariableNodes, insnNode, frame);
                     }
@@ -171,6 +187,7 @@ public class MethodContext {
             } else {
                 completeLocalVar(localVariableArray, localVariableNodes, null, true);
             }
+            map = newMap;
             getMv().instructions = newInsnList;
             getMv().localVariables = localVariableNodes;
             updateMax();
@@ -617,7 +634,7 @@ public class MethodContext {
         }
     }
 
-    private void objectToPrimitive(MethodNode methodNode, Type type) {
+    private int objectToPrimitive(MethodNode methodNode, Type type) {
         // stack: ..., Integer
         if (type.getSort() == Type.INT) {
             // t.intValue()
@@ -629,6 +646,7 @@ public class MethodContext {
                     Constants.INTEGER_INT_VALUE_DESC.getDescriptor(),
                     false
             );
+            return 1;
         }
         // stack: ..., Float
         else if (type.getSort() == Type.FLOAT) {
@@ -641,6 +659,7 @@ public class MethodContext {
                     Constants.FLOAT_FLOAT_VALUE_DESC.getDescriptor(),
                     false
             );
+            return 1;
         }
         // stack: ..., Long
         else if (type.getSort() == Type.LONG) {
@@ -653,6 +672,7 @@ public class MethodContext {
                     Constants.LONG_LONG_VALUE_DESC.getDescriptor(),
                     false
             );
+            return 1;
         }
         // stack: ..., Double
         else if (type.getSort() == Type.DOUBLE) {
@@ -665,6 +685,7 @@ public class MethodContext {
                     Constants.DOUBLE_DOUBLE_VALUE_DESC.getDescriptor(),
                     false
             );
+            return 1;
         }
         // stack: ..., Boolean
         else if (type.getSort() == Type.BOOLEAN) {
@@ -677,6 +698,7 @@ public class MethodContext {
                     Constants.BOOLEAN_BOOLEAN_VALUE_DESC.getDescriptor(),
                     false
             );
+            return 1;
         }
         // stack: ..., Short
         else if (type.getSort() == Type.SHORT) {
@@ -689,6 +711,7 @@ public class MethodContext {
                     Constants.SHORT_SHORT_VALUE_DESC.getDescriptor(),
                     false
             );
+            return 1;
         }
         // stack: ..., Character
         else if (type.getSort() == Type.CHAR) {
@@ -701,6 +724,7 @@ public class MethodContext {
                     Constants.CHARACTER_CHAR_VALUE_DESC.getDescriptor(),
                     false
             );
+            return 1;
         }
         // stack: ..., Byte
         else if (type.getSort() == Type.BYTE) {
@@ -713,12 +737,17 @@ public class MethodContext {
                     Constants.BYTE_BYTE_VALUE_DESC.getDescriptor(),
                     false
             );
+            return 1;
         }
+        return 0;
     }
 
-    private void objectToType(MethodNode methodNode, Type type) {
+    private int objectToType(MethodNode methodNode, Type type) {
         if (AsmHelper.needCastTo(Constants.OBJECT_DESC, type)) {
             methodNode.visitTypeInsn(Opcodes.CHECKCAST, type.getInternalName());
+            return 1;
+        } else {
+            return 0;
         }
     }
 
@@ -853,7 +882,8 @@ public class MethodContext {
         insnNodes.add(new InsnNode(Opcodes.ARETURN));
     }
 
-    private int popStack(BranchAnalyzer.Node<? extends BasicValue> node, boolean loop, MethodNode lambdaNode) {
+    private int popStack(BranchAnalyzer.Node<? extends BasicValue> node, List<Integer> lambdaMap, boolean loop, MethodNode lambdaNode) {
+        int mappedIndex = mapped(node.getIndex());
         // local: this?, JPortal, JStack
         int locals = node.getLocals();
         // The last local var is stack in the loop method.
@@ -864,25 +894,30 @@ public class MethodContext {
             // load portal to index: 0 / 1 + usedLocals.
             // stack: [] -> JPortal
             lambdaNode.visitVarInsn(Opcodes.ALOAD, portalSlot);
+            lambdaMap.add(mappedIndex);
             AsmHelper.updateStack(lambdaNode, 1);
             portalSlot += usedLocals;
             // stack: JPortal -> []
             // locals: ..., -> ..., JPortal
             lambdaNode.visitVarInsn(Opcodes.ASTORE, portalSlot);
+            lambdaMap.add(mappedIndex);
             AsmHelper.updateLocal(lambdaNode, portalSlot + 1);
 
             // load stack to index: 1 / 2 + usedLocals
             // stack: [] -> JStack
             lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
+            lambdaMap.add(mappedIndex);
             stackSlot = portalSlot + 1;
             // stack: JStack -> []
             // locals: ..., JPortal -> ..., JPortal, JStack
             lambdaNode.visitVarInsn(Opcodes.ASTORE, stackSlot);
+            lambdaMap.add(mappedIndex);
             AsmHelper.updateLocal(lambdaNode, stackSlot + 1);
         }
         // push stack
         // stack: [] -> JStack
         lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
+        lambdaMap.add(mappedIndex);
         AsmHelper.updateStack(lambdaNode, 1);
         // restore locals
         for (int i = isStatic() ? 0 : 1; i < locals;) {
@@ -900,17 +935,21 @@ public class MethodContext {
             }
             // stack: JStack -> JStack, JStack
             lambdaNode.visitInsn(Opcodes.DUP);
+            lambdaMap.add(mappedIndex);
             // stack: JStack, JStack -> JStack, T
             pop(lambdaNode);
+            lambdaMap.add(mappedIndex);
             AsmHelper.updateStack(lambdaNode, 2);
             if (value != null && value.getType() != null) {
                 Type type = value.getType();
+                int numInsn;
                 if (type.getSort() != Type.OBJECT && type.getSort() != Type.ARRAY) {
                     // stack: JStack, T -> JStack, t
-                    objectToPrimitive(lambdaNode, type);
+                    numInsn = objectToPrimitive(lambdaNode, type);
                 } else {
-                    objectToType(lambdaNode, type);
+                    numInsn = objectToType(lambdaNode, type);
                 }
+                addManyMap(lambdaMap, mappedIndex, numInsn);
                 // stack: JStack, t -> JStack
                 // local: ..., u, ... -> ..., t, ...
                 lambdaNode.visitVarInsn(type.getOpcode(Opcodes.ISTORE), i);
@@ -919,6 +958,7 @@ public class MethodContext {
                 // local: ..., u, ... -> ..., t, ...
                 lambdaNode.visitVarInsn(Opcodes.ASTORE, i);
             }
+            lambdaMap.add(mappedIndex);
             i = nextPos;
         }
         // restore stacks
@@ -936,16 +976,20 @@ public class MethodContext {
                             newing = false;
                             // stack: ..., new type -> ..., new type, new type
                             lambdaNode.visitInsn(Opcodes.DUP);
+                            lambdaMap.add(mappedIndex);
                             // stack: ..., new type, new type -> ..., new type, new type, JStack
                             lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
+                            lambdaMap.add(mappedIndex);
                         } else {
                             throw new IllegalStateException("An uninitialized this object is in the wrong position.");
                         }
                     } else {
                         // stack: ..., JStack -> ...,
                         lambdaNode.visitInsn(Opcodes.POP);
+                        lambdaMap.add(mappedIndex);
                         // stack: ..., -> ..., new type
                         lambdaNode.visitTypeInsn(Opcodes.NEW, asyncValue.getType().getInternalName());
+                        lambdaMap.add(mappedIndex);
                         newing = true;
                     }
                     uninitializedValues.add(asyncValue);
@@ -957,28 +1001,34 @@ public class MethodContext {
                 newing = false;
                 // stack: ..., new type -> ..., new type, JStack
                 lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
+                lambdaMap.add(mappedIndex);
                 System.out.println("An uninitialized this object lost.");
             }
             // stack: ..., JStack -> ..., T
             pop(lambdaNode);
+            lambdaMap.add(mappedIndex);
             if (value != null && value.getType() != null) {
                 Type type = value.getType();
                 if (type.getSort() != Type.OBJECT && type.getSort() != Type.ARRAY) {
                     // stack: ..., T -> ..., t
-                    objectToPrimitive(lambdaNode, type);
+                    int numInsn = objectToPrimitive(lambdaNode, type);
+                    addManyMap(lambdaMap, mappedIndex, numInsn);
                 }
             }
             // stack: ..., t -> ..., t, JStack
             lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
+            lambdaMap.add(mappedIndex);
             lastValue = value;
         }
         if (newing) {
             // stack: ..., new type -> ..., new type, JStack
             lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
+            lambdaMap.add(mappedIndex);
             System.out.println("An uninitialized this object lost.");
         }
         // stack: ..., JStack -> ...
         lambdaNode.visitInsn(Opcodes.POP);
+        lambdaMap.add(mappedIndex);
         AsmHelper.updateStack(lambdaNode, 1 + stackSize);
         return portalSlot;
     }
@@ -1008,7 +1058,9 @@ public class MethodContext {
                 true
         );
         outLambda.visitInsn(Opcodes.ARETURN);
-        addLambdaContext(outLambda);
+        List<Integer> outLambdaMap = new ArrayList<>();
+        addManyMap(outLambdaMap, mapped(node.getIndex()), outLambda.instructions.size());
+        addLambdaContext(outLambda, outLambdaMap);
 
         if (!isStatic()) {
             // push this to stack
@@ -1035,7 +1087,9 @@ public class MethodContext {
                 true
         );
         midLambda.visitInsn(Opcodes.ARETURN);
-        addLambdaContext(midLambda);
+        List<Integer> midLambdaMap = new ArrayList<>();
+        addManyMap(midLambdaMap, mapped(node.getIndex()), midLambda.instructions.size());
+        addLambdaContext(midLambda, midLambdaMap);
 
         AbstractInsnNode insnNode = getMv().instructions.get(node.getIndex());
         if (!(insnNode instanceof LabelNode)) {
@@ -1055,9 +1109,13 @@ public class MethodContext {
     }
 
     private void buildLambda(MethodNode lambdaNode, Arguments arguments, AbstractInsnNode[] insnArray, int locals, BranchAnalyzer.Node<? extends BasicValue> node, LabelNode portalLabel) {
+        List<Integer> lambdaMap = new ArrayList<>();
+        int index = node.getIndex();
+        int mappedIndex = mapped(index);
         lambdaNode.visitCode();
         LabelNode startLabelNode = new LabelNode();
         lambdaNode.instructions.add(startLabelNode);
+        lambdaMap.add(mappedIndex);
         List<LocalVariableNode> localVariableNodes = new ArrayList<>();
         LocalVariableNode[] localVariableArray = new LocalVariableNode[getMv().maxLocals];
         updateLocalVar(localVariableArray, localVariableNodes, startLabelNode, node);
@@ -1076,12 +1134,15 @@ public class MethodContext {
                 if (j >= locals) {
                     if (extendType.isInitialized()) {
                         lambdaNode.visitVarInsn(extendType.getOpcode(Opcodes.ILOAD), j);
+                        lambdaMap.add(mappedIndex);
                         j += extendType.getSize();
                     } else {
                         if (extendType.getOffset() == 0) {
                             lambdaNode.visitTypeInsn(Opcodes.NEW, extendType.getType().getInternalName());
+                            lambdaMap.add(mappedIndex);
                         } else if (extendType.getOffset() == 1) {
                             lambdaNode.visitInsn(Opcodes.DUP);
+                            lambdaMap.add(mappedIndex);
                         } else {
                             throw new IllegalStateException("The uninitialized this object is in a wrong position.");
                         }
@@ -1092,11 +1153,12 @@ public class MethodContext {
             }
             AsmHelper.updateStack(lambdaNode, stacks);
         } else {
-            portalSlot = popStack(node, loop, lambdaNode);
+            portalSlot = popStack(node, lambdaMap, loop, lambdaNode);
         }
         if (lambdaNode.instructions.size() > 1) {
             LabelNode restoreLabelNode = new LabelNode();
             lambdaNode.instructions.add(restoreLabelNode);
+            lambdaMap.add(mappedIndex);
         }
 
         LabelNode jumpEndNode = null;
@@ -1126,16 +1188,19 @@ public class MethodContext {
         }
 
         LinkedList<AbstractInsnNode> insnList = new LinkedList<>();
+        List<Integer> insnListMap = new ArrayList<>();
         List<AbstractInsnNode> preInsnList = new LinkedList<>();
+        List<Integer> preInsnListMap = new ArrayList<>();
         List<BranchAnalyzer.Node<? extends BasicValue>> preFrames = new LinkedList<>();
-        int index = node.getIndex();
         int i = 0;
         boolean reconnect = false;
         for (AbstractInsnNode insnNode : insnArray) {
             if (insnNode != null && i != index) {
                 List<AbstractInsnNode> target;
+                List<Integer> targetMap;
                 if (i < index) {
                     target = preInsnList;
+                    targetMap = preInsnListMap;
                     if (i == index - 1) {
                         BranchAnalyzer.Node<BasicValue> frame = getFrames()[i];
                         if (frame.getSuccessors().contains(node)) {
@@ -1144,12 +1209,15 @@ public class MethodContext {
                     }
                 } else {
                     target = insnList;
+                    targetMap = insnListMap;
                 }
                 BranchAnalyzer.Node<BasicValue> frame = getFrames()[i];
+                int originalIndex = mapped(i);
                 if (insnNode instanceof PackageInsnNode) {
                     PackageInsnNode packageInsnNode = (PackageInsnNode) insnNode;
                     for (AbstractInsnNode n : packageInsnNode.getInsnNodes()) {
                         target.add(n);
+                        targetMap.add(originalIndex);
                         if (target == insnList) {
                             updateLocalVar(localVariableArray, localVariableNodes, n, frame);
                         } else {
@@ -1158,6 +1226,7 @@ public class MethodContext {
                     }
                 } else {
                     target.add(insnNode);
+                    targetMap.add(originalIndex);
                     if (target == insnList) {
                         updateLocalVar(localVariableArray, localVariableNodes, insnNode, frame);
                     } else {
@@ -1170,17 +1239,22 @@ public class MethodContext {
         LabelNode reconnectLabel = new LabelNode();
         if (reconnect) {
             insnList.add(0, reconnectLabel);
+            insnListMap.add(mappedIndex);
         }
         Iterator<AbstractInsnNode> preInsnIter = preInsnList.iterator();
+        Iterator<Integer> preInsnMapIter = preInsnListMap.iterator();
         Iterator<BranchAnalyzer.Node<? extends BasicValue>> preFrameIter = preFrames.iterator();
         while (preInsnIter.hasNext()) {
             AbstractInsnNode preInsn = preInsnIter.next();
+            Integer preInsnMap = preInsnMapIter.next();
             BranchAnalyzer.Node<? extends BasicValue> preFrame = preFrameIter.next();
             insnList.add(preInsn);
+            insnListMap.add(preInsnMap);
             updateLocalVar(localVariableArray, localVariableNodes, preInsn, preFrame);
         }
         if (reconnect) {
             insnList.add(new JumpInsnNode(Opcodes.GOTO, reconnectLabel));
+            insnListMap.add(mappedIndex);
         }
         LabelNode endLabel = new LabelNode();
         if (insnList.getLast() instanceof LabelNode) {
@@ -1188,19 +1262,24 @@ public class MethodContext {
             completeLocalVar(localVariableArray, localVariableNodes, null, false);
         } else {
             insnList.add(endLabel);
+            insnListMap.add(mappedIndex);
             completeLocalVar(localVariableArray, localVariableNodes, endLabel, false);
         }
         if (jumpEndNode != null) {
             endLabel = jumpEndNode;
         }
 
-        for (AbstractInsnNode insnNode : insnList) {
-            lambdaNode.instructions.add(insnNode);
+        Iterator<AbstractInsnNode> insnIter = insnList.iterator();
+        Iterator<Integer> insnMapIter = insnListMap.iterator();
+        while (insnIter.hasNext()) {
+            lambdaNode.instructions.add(insnIter.next());
+            lambdaMap.add(insnMapIter.next());
         }
         if (jumpNodes != null) {
             for (AbstractInsnNode jumpNode : jumpNodes) {
                 lambdaNode.instructions.add(jumpNode);
             }
+            addManyMap(lambdaMap, mappedIndex, jumpNodes.size());
         }
         LocalVariableNode thisVarNode = findThisVar(localVariableArray, isStatic);
         if (thisVarNode != null && thisVarNode.start != null) {
@@ -1209,7 +1288,16 @@ public class MethodContext {
         }
         lambdaNode.localVariables = localVariableNodes;
 
-        addLambdaContext(lambdaNode, portalLabel != null);
+        addLambdaContext(lambdaNode, lambdaMap, portalLabel != null);
     }
 
+    private int mapped(int index) {
+        return map != null ? map.get(index) : index;
+    }
+
+    private static void addManyMap(List<Integer> map, int value, int num) {
+        for (int i = 0; i < num; ++i) {
+            map.add(value);
+        }
+    }
 }

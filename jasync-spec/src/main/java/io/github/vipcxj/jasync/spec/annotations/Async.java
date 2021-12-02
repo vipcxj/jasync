@@ -13,7 +13,11 @@ public @interface Async {
     int BYTE_CODE_OPTION_ON = 1;
     int BYTE_CODE_OPTION_FRAME = 2;
     int BYTE_CODE_OPTION_INDEX = 4;
-    int BYTE_CODE_OPTION_FULL_SUPPORT = BYTE_CODE_OPTION_ON | BYTE_CODE_OPTION_FRAME | BYTE_CODE_OPTION_INDEX;
+    int BYTE_CODE_OPTION_MAP = 8;
+    int BYTE_CODE_OPTION_FULL_SUPPORT = BYTE_CODE_OPTION_ON
+            | BYTE_CODE_OPTION_FRAME
+            | BYTE_CODE_OPTION_INDEX
+            | BYTE_CODE_OPTION_MAP;
 
     String debugId() default "";
     boolean disabled() default false;

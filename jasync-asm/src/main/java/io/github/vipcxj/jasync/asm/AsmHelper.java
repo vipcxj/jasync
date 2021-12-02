@@ -89,6 +89,7 @@ public class AsmHelper {
             AbstractInsnNode errorNode,
             List<AbstractInsnNode> insnNodes,
             List<Frame<? extends BasicValue>> frames,
+            List<Integer> map,
             int byteCodeOption
     ) {
         if (!JAsyncInfo.isLogByteCode(byteCodeOption)) {
@@ -105,7 +106,7 @@ public class AsmHelper {
         methodPrinter.print(printWriter);
         printWriter.println("============");
 
-        InsnTextifier textifier = new InsnTextifier(insnNodes, frames);
+        InsnTextifier textifier = new InsnTextifier(insnNodes, frames, map);
         if (JAsyncInfo.isLogByteCodeWithFrame(byteCodeOption)) {
             textifier.getHelper().print(printWriter, true);
         }
@@ -117,11 +118,11 @@ public class AsmHelper {
         printWriter.flush();
     }
 
-    public static void printFrameProblem(String owner, MethodNode methodNode, Frame<? extends BasicValue>[] frames, int byteCodeOption) {
-        printFrameProblem(owner, methodNode, frames, null, byteCodeOption, -1, 1);
+    public static void printFrameProblem(String owner, MethodNode methodNode, Frame<? extends BasicValue>[] frames, List<Integer> map, int byteCodeOption) {
+        printFrameProblem(owner, methodNode, frames, map, null, byteCodeOption, -1, 1);
     }
 
-    public static void printFrameProblem(String owner, MethodNode methodNode, Frame<? extends BasicValue>[] frames, AnalyzerException error, int byteCodeOption, int from, int to) {
+    public static void printFrameProblem(String owner, MethodNode methodNode, Frame<? extends BasicValue>[] frames, List<Integer> map, AnalyzerException error, int byteCodeOption, int from, int to) {
         if (!JAsyncInfo.isLogByteCode(byteCodeOption)) {
             return;
         }
@@ -149,6 +150,7 @@ public class AsmHelper {
                     null,
                     getInsnList(methodNode),
                     Arrays.asList(frames),
+                    map,
                     byteCodeOption
             );
             return;
@@ -168,14 +170,27 @@ public class AsmHelper {
             node = node.getNext();
         }
         List<Frame<? extends BasicValue>> frameList = new ArrayList<>();
+        List<Integer> mapList = new ArrayList<>();
         AbstractInsnNode firstInsn = insnNodes.get(0);
         int firstIndex = methodNode.instructions.indexOf(firstInsn);
         for (i = firstIndex; i < firstIndex + insnNodes.size(); ++i) {
             if (i < frames.length) {
                 frameList.add(frames[i]);
+                if (map != null && i < map.size()) {
+                    mapList.add(map.get(i));
+                }
             }
         }
-        printFrameProblem(printWriter, owner, methodNode, errorNode, insnNodes, frameList, byteCodeOption);
+        printFrameProblem(
+                printWriter,
+                owner,
+                methodNode,
+                errorNode,
+                insnNodes,
+                frameList,
+                map != null ? mapList : null,
+                byteCodeOption
+        );
     }
 
     public static int storeStackToLocal(int validLocals, BranchAnalyzer.Node<? extends BasicValue> frame, List<AbstractInsnNode> results, AbstractInsnNode[] insnNodes) {
@@ -467,25 +482,6 @@ public class AsmHelper {
             return (String) name.get(insnNode);
         } catch (IllegalAccessException | NoSuchFieldException e) {
             return null;
-        }
-    }
-
-    public static void checkInsnList(InsnList insnList) {
-        AbstractInsnNode node = insnList.getFirst();
-        int i = 0;
-        while (node != null) {
-            node = node.getNext();
-            ++i;
-        }
-        if (insnList.size() != i) {
-            System.out.println("The insn list was broken at " + i + ".");
-            List<AbstractInsnNode> insnNodes = new ArrayList<>();
-            for (int j = 0; j < i; ++j) {
-                insnNodes.add(insnList.get(j));
-            }
-            InsnTextifier textifier = new InsnTextifier(insnNodes, Collections.emptyList());
-            PrintWriter printWriter = new PrintWriter(System.out);
-            textifier.print(printWriter, null, JAsyncInfo.BYTE_CODE_OPTION_ON);
         }
     }
 }

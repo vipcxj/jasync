@@ -41,9 +41,10 @@ public class ChainMethodNode extends MethodVisitor {
         this.classContext = classContext;
     }
 
-    private void verifyMethod(MethodNode methodNode) {
+    private void verifyMethod(MethodContext methodContext) {
         BasicVerifier verifier = new MyVerifier();
         Analyzer<BasicValue> analyzer = new BranchAnalyzer(verifier);
+        MethodNode methodNode = methodContext.getMv();
         try {
             analyzer.analyze(classContext.getName(), methodNode);
         } catch (AnalyzerException e) {
@@ -51,6 +52,7 @@ public class ChainMethodNode extends MethodVisitor {
                     classContext.getName(),
                     methodNode,
                     analyzer.getFrames(),
+                    methodContext.getMap(),
                     e,
                     JAsyncInfo.BYTE_CODE_OPTION_FULL_SUPPORT,
                     -12, 12
@@ -67,12 +69,13 @@ public class ChainMethodNode extends MethodVisitor {
     @Override
     public void visitEnd() {
         super.visitEnd();
-        MethodContext methodContext = new MethodContext(classContext, methodNode, false, null);
+        MethodContext methodContext = new MethodContext(classContext, methodNode);
         JAsyncInfo info = methodContext.getInfo();
         AsmHelper.printFrameProblem(
                 classContext.getName(),
                 methodNode,
                 methodContext.getFrames(),
+                null,
                 info.getLogOriginalByteCode()
         );
         methodContext.process();
@@ -80,13 +83,14 @@ public class ChainMethodNode extends MethodVisitor {
                 classContext.getName(),
                 methodNode,
                 null,
+                methodContext.getMap(),
                 info.getLogResultByteCode()
         );
         if (info.isLogResultAsm()) {
             log(methodNode, new ASMifier());
         }
         if (info.isVerify()) {
-            verifyMethod(methodNode);
+            verifyMethod(methodContext);
         }
         if (nextVisitor != null) {
             methodNode.accept(nextVisitor);
@@ -96,13 +100,14 @@ public class ChainMethodNode extends MethodVisitor {
                     classContext.getName(),
                     lambdaContext.getMv(),
                     null,
+                    lambdaContext.getMap(),
                     info.getLogResultByteCode()
             );
             if (info.isLogResultAsm()) {
                 log(lambdaContext.getMv(), new ASMifier());
             }
             if (info.isVerify()) {
-                verifyMethod(lambdaContext.getMv());
+                verifyMethod(lambdaContext);
             }
             if (nextClassVisitor != null) {
                 lambdaContext.getMv().accept(nextClassVisitor);

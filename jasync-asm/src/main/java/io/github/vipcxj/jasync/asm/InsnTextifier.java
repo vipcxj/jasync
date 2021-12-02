@@ -17,22 +17,26 @@ public class InsnTextifier extends Textifier {
 
     private final List<AbstractInsnNode> insnNodes;
     private final List<Frame<? extends BasicValue>> frames;
+    private final List<Integer> map;
     private int index;
     private boolean withFrame;
     private int tab;
     private int numberWidth;
+    private int mapWidth;
     private int offset;
     private final Set<AbstractInsnNode> targets;
     private final VarNameHelper helper;
 
-    public InsnTextifier(List<AbstractInsnNode> insnNodes, List<Frame<? extends BasicValue>> frames) {
+    public InsnTextifier(List<AbstractInsnNode> insnNodes, List<Frame<? extends BasicValue>> frames, List<Integer> map) {
         super(Constants.ASM_VERSION);
         this.insnNodes = insnNodes;
         this.frames = frames;
+        this.map = map;
         this.index = 0;
         this.withFrame = true;
         this.tab = 2;
         this.numberWidth = 0;
+        this.mapWidth = 0;
         this.offset = 0;
         this.helper = new VarNameHelper();
         for (Frame<? extends BasicValue> frame : frames) {
@@ -44,6 +48,9 @@ public class InsnTextifier extends Textifier {
     }
 
     private static int calcNumberWidth(int number) {
+        if (number == 0) {
+            return 0;
+        }
         int res = 1;
         while ((number /= 10) != 0) {
             ++res;
@@ -66,6 +73,7 @@ public class InsnTextifier extends Textifier {
                 if (methodNode.instructions.contains(firstNode)) {
                     this.offset = methodNode.instructions.indexOf(firstNode);
                     this.numberWidth = JAsyncInfo.isLogByteCodeWithIndex(option) ? calcNumberWidth(methodNode.instructions.size()) : 0;
+                    this.mapWidth = (map != null && JAsyncInfo.isLogByteCodeWithMap(option)) ? calcNumberWidth(map.stream().mapToInt(i -> i).max().orElse(0)) : 0;
                     this.tab = Math.max(this.tab, 3);
                     this.withFrame = JAsyncInfo.isLogByteCodeWithFrame(option);
                     return;
@@ -74,6 +82,7 @@ public class InsnTextifier extends Textifier {
         }
         this.offset = 0;
         this.numberWidth = 0;
+        this.mapWidth = 0;
     }
 
     public void print(PrintWriter printWriter, MethodNode methodNode, int option) {
@@ -133,17 +142,24 @@ public class InsnTextifier extends Textifier {
         return sb.toString();
     }
 
-    private static String tabs(int num, int numberWidth, int number) {
+    private static String tabs(int num, int numberWidth, int number, int mapWidth, int map) {
         String tab = String.format("%" + num + "s", " ");
         if (numberWidth > 0) {
-            return String.format("%0" + numberWidth + "d", number) + tab;
-        } else {
-            return tab;
+            if (mapWidth > 0) {
+                if (map >= 0) {
+                    tab = String.format("%0" + numberWidth + "d<-%0" + mapWidth + "d", number, map) + tab;
+                } else {
+                    tab = String.format("%0" + numberWidth + "d%" + mapWidth + "s", number, " ") + tab;
+                }
+            } else {
+                tab = String.format("%0" + numberWidth + "d", number) + tab;
+            }
         }
+        return tab;
     }
 
-    public static String printFrame(Frame<? extends BasicValue> frame, VarNameHelper helper, int tab, int numberWidth, int number) {
-        return tabs(tab, numberWidth, number) +
+    public static String printFrame(Frame<? extends BasicValue> frame, VarNameHelper helper, int tab, int numberWidth, int number, int mapWidth, int map) {
+        return tabs(tab, numberWidth, number, mapWidth, map) +
                 "[" +
                 printFramePart(frame, helper, false) +
                 "] [" +
@@ -154,11 +170,16 @@ public class InsnTextifier extends Textifier {
 
     private String printFrame(int i, VarNameHelper helper) {
         Frame<? extends BasicValue> frame = i < frames.size() ? frames.get(i) : null;
+        int mappedIndex = getMappedIndex(i);
         if (frame != null) {
-            return printFrame(frame, helper, tab, numberWidth, i + offset);
+            return printFrame(frame, helper, tab, numberWidth, i + offset, mapWidth, mappedIndex);
         } else {
             return null;
         }
+    }
+
+    private int getMappedIndex(int i) {
+        return (map != null && i < map.size()) ? map.get(i) : -1;
     }
 
     protected AbstractInsnNode beforeInsn(int opcode) {
@@ -195,9 +216,9 @@ public class InsnTextifier extends Textifier {
             return list;
         } else if (text != null) {
             String strText = text.toString();
-            String number = strText.substring(0, numberWidth);
-            String strTab = strText.substring(numberWidth, numberWidth + tab);
-            String content = strText.substring(numberWidth + tab);
+            String number = strText.substring(0, numberWidth + mapWidth);
+            String strTab = strText.substring(numberWidth + mapWidth, numberWidth + mapWidth + tab);
+            String content = strText.substring(numberWidth + mapWidth + tab);
             if (tab <= 2) {
                 if (numberWidth > 0) {
                     return number + " >" + content;
@@ -421,8 +442,8 @@ public class InsnTextifier extends Textifier {
         return result[0];
     }
 
-    private String adjustTab(String text, int currentTab, int lineNumber) {
-        return tabs(tab, numberWidth, lineNumber) + text.substring(currentTab);
+    private String adjustTab(String text, int currentTab, int index) {
+        return tabs(tab, numberWidth, index + offset, mapWidth, getMappedIndex(index)) + text.substring(currentTab);
     }
 
     protected String join(String[] parts, String by) {
@@ -449,7 +470,7 @@ public class InsnTextifier extends Textifier {
                 boolean endBreak = PT_END_BREAK_LINE.matcher(s).find();
                 String[] lines = s.split(PT_BREAK_LINE.pattern());
                 for (int i = 0; i < lines.length; ++i) {
-                        lines[i] = adjustTab(lines[i], theTab, index + offset);
+                        lines[i] = adjustTab(lines[i], theTab, index);
                 }
                 s = join(lines, System.lineSeparator());
                 if (endBreak) {
