@@ -48,6 +48,16 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
         successor.precursors.add(frame);
     }
 
+    @Override
+    protected boolean newControlFlowExceptionEdge(int insnIndex, TryCatchBlockNode tryCatchBlock) {
+        Node<BasicValue> frame = (Node<BasicValue>) getFrames()[insnIndex];
+        int successorIndex = methodNode.instructions.indexOf(tryCatchBlock.handler);
+        Node<BasicValue> successor = (Node<BasicValue>) getFrames()[successorIndex];
+        frame.handlers.add(tryCatchBlock);
+        frame.tryCatchSuccessors.add(successor);
+        return true;
+    }
+
     public Node<BasicValue>[] getNodes() {
         if (nodes != null) {
             return nodes;
@@ -262,7 +272,9 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
     public static class Node<V extends Value> extends Frame<V> implements Vertex {
 
         private final Set<Node<? extends V>> precursors = new HashSet<>();
-        private final Set< Node<? extends V> > successors = new HashSet<>();
+        private final Set<Node<? extends V>> successors = new HashSet<>();
+        private final List<TryCatchBlockNode> handlers = new ArrayList<>();
+        private final Set<Node<? extends V>> tryCatchSuccessors = new HashSet<>();
         private int index;
         private AbstractInsnNode insnNode;
         private Type needCastTo;
@@ -300,7 +312,7 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
 
         @Override
         public SuccessorsImpl createSuccessors() {
-            return new SuccessorsImpl(successors.iterator());
+            return new SuccessorsImpl();
         }
 
         public Set<Node<? extends V>> getSuccessors() {
@@ -331,16 +343,30 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
         public class SuccessorsImpl implements Successors {
 
             private final Iterator<Node<? extends V>> iterator;
+            private final Iterator<Node<? extends V>> tryCatchIterator;
             private Node<? extends V> current;
 
-            SuccessorsImpl(Iterator<Node<? extends V>> iterator) {
-                this.iterator = iterator;
-                this.current = iterator.hasNext() ? iterator.next() : null;
+            SuccessorsImpl() {
+                this.iterator = successors.iterator();
+                this.tryCatchIterator = tryCatchSuccessors.iterator();
+                this.current = doNext();
+            }
+
+            private Node<? extends V> doNext() {
+                if (iterator.hasNext()) {
+                    return iterator.next();
+                } else {
+                    if (tryCatchIterator.hasNext()) {
+                        return tryCatchIterator.next();
+                    } else {
+                        return null;
+                    }
+                }
             }
 
             @Override
             public void next() {
-                this.current = iterator.hasNext() ? iterator.next() : null;
+                this.current = doNext();
             }
 
             @Override
