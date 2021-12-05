@@ -32,4 +32,13 @@ public class ClassContext {
     public List<MethodContext> getLambdaContexts(MethodContext methodContext) {
         return this.lambdaContexts.computeIfAbsent(methodContext, k -> new ArrayList<>());
     }
+
+    public String findLambdaByHead(MethodContext methodContext, String desc, int head) {
+        for (MethodContext lambdaContext : getLambdaContexts(methodContext)) {
+            if (lambdaContext.getHead() == head && lambdaContext.getMv().desc.equals(desc) && !lambdaContext.isHide()) {
+                return lambdaContext.getMv().name;
+            }
+        }
+        return null;
+    }
 }

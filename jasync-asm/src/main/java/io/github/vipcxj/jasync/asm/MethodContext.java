@@ -17,6 +17,8 @@ public class MethodContext {
     private final List<Integer> localsToUpdate;
     private final List<Integer> stacksToUpdate;
     private final boolean loop;
+    private final int head;
+    private final boolean hide;
     private int index = 0;
     private List<Integer> map;
 
@@ -26,10 +28,10 @@ public class MethodContext {
     private List<Set<Integer>> loops;
 
     public MethodContext(ClassContext classContext, MethodNode mv) {
-        this(classContext, mv, null, false, null);
+        this(classContext, mv, null, false, false, null);
     }
 
-    public MethodContext(ClassContext classContext, MethodNode mv, List<Integer> map, boolean loop, MethodContext parent) {
+    public MethodContext(ClassContext classContext, MethodNode mv, List<Integer> map, boolean loop, boolean hide, MethodContext parent) {
         this.classContext = classContext;
         this.mv = mv;
         this.map = map;
@@ -37,6 +39,8 @@ public class MethodContext {
         this.localsToUpdate = new ArrayList<>();
         this.stacksToUpdate = new ArrayList<>();
         this.loop = loop;
+        this.hide = hide;
+        this.head = mapped(0);
         BranchAnalyzer analyzer = new BranchAnalyzer();
         try {
             analyzer.analyzeAndComputeMaxs(classContext.getName(), mv);
@@ -59,8 +63,8 @@ public class MethodContext {
         insnNodes = new AbstractInsnNode[this.frames.length];
     }
 
-    public MethodContext createChild(MethodNode methodNode, List<Integer> map, boolean loop) {
-        return new MethodContext(classContext, methodNode, map, loop, this);
+    public MethodContext createChild(MethodNode methodNode, List<Integer> map, boolean loop, boolean hide) {
+        return new MethodContext(classContext, methodNode, map, loop, hide, this);
     }
 
     public MethodNode getMv() {
@@ -69,6 +73,14 @@ public class MethodContext {
 
     public List<Integer> getMap() {
         return map;
+    }
+
+    public int getHead() {
+        return head;
+    }
+
+    public boolean isHide() {
+        return hide;
     }
 
     public JAsyncInfo getInfo() {
@@ -120,16 +132,11 @@ public class MethodContext {
         mv.maxStack = Math.max(mv.maxStack, stacksToUpdate.stream().mapToInt(i -> i).max().orElse(0));
     }
 
-    public void addLambdaContext(MethodNode lambdaNode, List<Integer> map, boolean loop) {
-        MethodContext childContext = createChild(lambdaNode, map, loop);
+    public void addLambdaContext(MethodNode lambdaNode, List<Integer> map, boolean loop, boolean hide) {
+        MethodContext childContext = createChild(lambdaNode, map, loop, hide);
         children.add(childContext);
         this.classContext.addLambda(getRootMethodContext(), childContext);
     }
-
-    public void addLambdaContext(MethodNode lambdaNode, List<Integer> map) {
-        addLambdaContext(lambdaNode, map, false);
-    }
-
 
     private void clearInsnList(InsnList insnList) {
         ListIterator<AbstractInsnNode> iterator = insnList.iterator();
@@ -382,6 +389,12 @@ public class MethodContext {
         return insnNodes;
     }
 
+    private String findLambdaName(BranchAnalyzer.Node<? extends BasicValue> node, Arguments arguments) {
+        int mappedIndex = mapped(node.getIndex());
+        String desc = Type.getMethodDescriptor(Constants.JPROMISE_DESC, arguments.argTypes(0));
+        return classContext.findLambdaByHead(getRootMethodContext(), desc, mappedIndex);
+    }
+
     private MethodNode createLambdaNode(Arguments arguments) {
         int access = Opcodes.ACC_PRIVATE | Opcodes.ACC_SYNTHETIC;
         if (isStatic()) {
@@ -399,6 +412,22 @@ public class MethodContext {
         methodNode.maxStack = 0;
         methodNode.maxLocals = isStatic() ? locals : (locals + 1);
         return methodNode;
+    }
+
+    private int calcValidLocals(BranchAnalyzer.Node<? extends BasicValue> node) {
+        int locals = node.getLocals();
+        AsmHelper.LocalReverseIterator iterator = AsmHelper.reverseIterateLocal(node);
+        int i = 0;
+        while (iterator.hasNext()) {
+            Integer index = iterator.next();
+            BasicValue value = node.getLocal(index);
+            if (value == null || value.getType() == null) {
+                ++i;
+            } else {
+                break;
+            }
+        }
+        return locals - i;
     }
 
     private void calcExtraAwaitArgumentsType(int validLocals, BranchAnalyzer.Node<? extends BasicValue> node, Arguments arguments) {
@@ -455,7 +484,7 @@ public class MethodContext {
     private PackageInsnNode processAwaitNode(BranchAnalyzer.Node<? extends BasicValue> node) {
         PackageInsnNode packageInsnNode = new PackageInsnNode();
         List<AbstractInsnNode> insnList = packageInsnNode.getInsnNodes();
-        int locals = node.getLocals();
+        int validLocals = calcValidLocals(node);
         int stackSize = node.getStackSize();
         // stack: promise | locals: this?, x, y, z
         if (stackSize == 1) {
@@ -466,17 +495,17 @@ public class MethodContext {
             }
             // push the previous locals to the stack except this
             // stack: promise, this? | locals: this?, x, y, z -> stack: promise, this?, x, y, z | locals: this?, x, y, z
-            AsmHelper.pushLocalToStack(locals, isStatic(), node, insnList);
+            AsmHelper.pushLocalToStack(validLocals, isStatic(), node, insnList);
         }
         // stack: a, b, promise | locals: this?, x, y, z
         else {
             // store the current stack to the locals (offset by locals). the first one (index of locals) should be the promise
             // stack: a, b, promise | locals: this?, x, y, z -> stack: [] | locals: this?, x, y, z, promise, b, a
-            int maxLocals = AsmHelper.storeStackToLocal(locals, node, insnList, insnNodes);
+            int maxLocals = AsmHelper.storeStackToLocal(validLocals, node, insnList, insnNodes);
             updateLocals(maxLocals);
             // push the target promise to stack
             // stack: [] | locals: this?, x, y, z, promise, b, a -> stack: promise | locals: this?, x, y, z, promise, b, a
-            insnList.add(new VarInsnNode(Opcodes.ALOAD, locals));
+            insnList.add(new VarInsnNode(Opcodes.ALOAD, validLocals));
             if (!isStatic()) {
                 // load this to stack
                 // stack: promise | locals: this, x, y, z, promise, b, a -> stack: promise, this | locals: this, x, y, z, promise, b, a
@@ -484,19 +513,26 @@ public class MethodContext {
             }
             // push the previous locals to the stack except this
             // stack: promise, this? | locals: this?, x, y, z, promise, b, a -> stack: promise, this?, x, y, z | locals: this?, x, y, z, promise, b, a
-            AsmHelper.pushLocalToStack(locals, isStatic(), node, insnList);
+            AsmHelper.pushLocalToStack(validLocals, isStatic(), node, insnList);
             // push the previous stack from locals to the stack, except the previous stack top, which is the promise.
             // stack: promise, this?, x, y, z | locals: this?, x, y, z, promise, b, a -> stack: promise, this?, x, y, z, a, b | locals: this?, x, y, z, promise, b, a
             restoreStack(insnList, node, maxLocals, stackSize - 1);
         }
-        updateStacks(stackSize + locals);
-        Arguments arguments = calcAwaitArgumentsType(locals, node);
-        MethodNode lambdaNode = createLambdaNode(arguments);
-        AsmHelper.updateStack(lambdaNode, getMv().maxStack);
-        AsmHelper.updateLocal(lambdaNode, getMv().maxLocals);
+        updateStacks(stackSize + validLocals);
+        Arguments arguments = calcAwaitArgumentsType(validLocals, node);
+        String lambdaName = findLambdaName(node, arguments);
+        if (lambdaName == null) {
+            MethodNode lambdaNode = createLambdaNode(arguments);
+            AsmHelper.updateStack(lambdaNode, getMv().maxStack);
+            AsmHelper.updateLocal(lambdaNode, getMv().maxLocals);
+            LabelMap labelMap = new LabelMap();
+            AbstractInsnNode[] successors = collectSuccessors(node, (in, n) -> in.clone(labelMap));
+            buildLambda(lambdaNode, arguments, successors, validLocals, node, null);
+            lambdaName = lambdaNode.name;
+        }
         insnList.add(LambdaUtils.invokeJAsyncPromiseFunction0(
                 classType(),
-                lambdaNode.name,
+                lambdaName,
                 Constants.OBJECT_DESC,
                 isStatic(),
                 arguments.argTypes(1)
@@ -509,9 +545,6 @@ public class MethodContext {
         );
         insnList.add(new InsnNode(Opcodes.ARETURN));
         packageInsnNode.complete();
-        LabelMap labelMap = new LabelMap();
-        AbstractInsnNode[] successors = collectSuccessors(node, (in, n) -> in.clone(labelMap));
-        buildLambda(lambdaNode, arguments, successors, locals, node, null);
         return packageInsnNode;
     }
 
@@ -1038,8 +1071,6 @@ public class MethodContext {
         MethodNode outLambda = createLambdaNode(Arguments.EMPTY);
         // (portal) -> JContext.popStack(innerLambda)
         MethodNode midLambda = createLambdaNode(Arguments.of(Constants.JPORTAL_DESC));
-        // (stack) -> ...
-        MethodNode innerLambda = createLambdaNode(Arguments.of(Constants.JPORTAL_DESC, Constants.JSTACK_DESC));
 
         if (!isStatic()) {
             outLambda.visitVarInsn(Opcodes.ALOAD, 0);
@@ -1060,7 +1091,7 @@ public class MethodContext {
         outLambda.visitInsn(Opcodes.ARETURN);
         List<Integer> outLambdaMap = new ArrayList<>();
         addManyMap(outLambdaMap, mapped(node.getIndex()), outLambda.instructions.size());
-        addLambdaContext(outLambda, outLambdaMap);
+        addLambdaContext(outLambda, outLambdaMap, false, true);
 
         if (!isStatic()) {
             // push this to stack
@@ -1072,9 +1103,28 @@ public class MethodContext {
         // stack: this? -> this?, portal
         midLambda.visitVarInsn(Opcodes.ALOAD, isStatic() ? 0 : 1);
         AsmHelper.updateStack(midLambda, isStatic() ? 1 : 2);
+
+        Arguments arguments = Arguments.of(Constants.JPORTAL_DESC, Constants.JSTACK_DESC);
+        String innerLambdaName = findLambdaName(node, arguments);
+        if (innerLambdaName == null) {
+            AbstractInsnNode insnNode = getMv().instructions.get(node.getIndex());
+            if (!(insnNode instanceof LabelNode)) {
+                // 因为这个指令是至少2个指令的后继，只有 LabelNode 可以是多个指令的后继
+                throw new IllegalStateException("This is impossible!");
+            }
+            LabelNode labelNode = (LabelNode) insnNode;
+            // (stack) -> ...
+            MethodNode innerLambda = createLambdaNode(arguments);
+            LabelNode portalLabel = new LabelNode();
+            LabelMap labelMap = new LabelMap();
+            labelMap.put(labelNode, portalLabel);
+            AbstractInsnNode[] successors = collectSuccessors(node, (in, n) -> in.clone(labelMap));
+            buildLambda(innerLambda, null, successors, -1, node, portalLabel);
+            innerLambdaName = innerLambda.name;
+        }
         midLambda.instructions.add(LambdaUtils.invokeJAsyncPromiseFunction0(
                 classType(),
-                innerLambda.name,
+                innerLambdaName,
                 Constants.JSTACK_DESC,
                 isStatic(),
                 Constants.JPORTAL_DESC
@@ -1089,22 +1139,10 @@ public class MethodContext {
         midLambda.visitInsn(Opcodes.ARETURN);
         List<Integer> midLambdaMap = new ArrayList<>();
         addManyMap(midLambdaMap, mapped(node.getIndex()), midLambda.instructions.size());
-        addLambdaContext(midLambda, midLambdaMap);
-
-        AbstractInsnNode insnNode = getMv().instructions.get(node.getIndex());
-        if (!(insnNode instanceof LabelNode)) {
-            // 因为这个指令是至少2个指令的后继，只有 LabelNode 可以是多个指令的后继
-            throw new IllegalStateException("This is impossible!");
-        }
-        LabelNode labelNode = (LabelNode) insnNode;
+        addLambdaContext(midLambda, midLambdaMap, false, true);
         PackageInsnNode packageInsnNode = pushStack(getMv(), loop, node, insnNodes);
         pushThenImmediate(getMv(), packageInsnNode, outLambda);
         packageInsnNode.complete();
-        LabelNode portalLabel = new LabelNode();
-        LabelMap labelMap = new LabelMap();
-        labelMap.put(labelNode, portalLabel);
-        AbstractInsnNode[] successors = collectSuccessors(node, (in, n) -> in.clone(labelMap));
-        buildLambda(innerLambda, null, successors, -1, node, portalLabel);
         return packageInsnNode;
     }
 
@@ -1288,7 +1326,7 @@ public class MethodContext {
         }
         lambdaNode.localVariables = localVariableNodes;
 
-        addLambdaContext(lambdaNode, lambdaMap, portalLabel != null);
+        addLambdaContext(lambdaNode, lambdaMap, portalLabel != null, false);
     }
 
     private int mapped(int index) {
