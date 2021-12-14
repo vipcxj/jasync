@@ -300,7 +300,7 @@ public class LabelTest {
         Assertions.assertEquals(20, whileHasAwait3().block());
     }
 
-    @Async(logResultByteCode = Async.BYTE_CODE_OPTION_FULL_SUPPORT)
+    @Async
     public JPromise2<Integer> whileHasAwait4() {
         int a = 0;
         int i = 0;

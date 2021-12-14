@@ -306,6 +306,10 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
             }
         }
 
+        public List<TryCatchBlockNode> getHandlers() {
+            return handlers;
+        }
+
         public Set<Node<? extends V>> getPrecursors() {
             return precursors;
         }

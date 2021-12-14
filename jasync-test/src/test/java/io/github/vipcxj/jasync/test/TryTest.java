@@ -1,7 +1,6 @@
 package io.github.vipcxj.jasync.test;
 
-import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.JPromise;
+import io.github.vipcxj.jasync.spec.JPromise2;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -11,7 +10,7 @@ import java.io.IOException;
 public class TryTest {
 
     @Async
-    private JPromise<String> tryWithCatch1(JPromise<String> what) {
+    private JPromise2<String> tryWithCatch1(JPromise2<String> what) {
         String message = "hello";
         try {
             if (what.await() != null) {
@@ -22,28 +21,28 @@ public class TryTest {
         } catch (NullPointerException t) {
             message += " nothing";
         }
-        return JAsync.just(message);
+        return JPromise2.just(message);
     }
 
     @Test
     public void testTryWithCatch1() {
-        Assertions.assertEquals("hello world", tryWithCatch1(JAsync.just("world")).block());
-        Assertions.assertEquals("hello nothing", tryWithCatch1(JAsync.just()).block());
+        Assertions.assertEquals("hello world", tryWithCatch1(JPromise2.just("world")).block());
+        Assertions.assertEquals("hello nothing", tryWithCatch1(JPromise2.empty()).block());
     }
 
     @Async
-    private JPromise<String> tryWithCatch2(String what) {
+    private JPromise2<String> tryWithCatch2(String what) {
         String message = "hello";
         try {
             if (what != null) {
-                message += " " + JAsync.just(what).await();
+                message += " " + JPromise2.just(what).await();
             } else {
                 throw new NullPointerException();
             }
         } catch (NullPointerException t) {
-            message += JAsync.just(" nothing").await();
+            message += JPromise2.just(" nothing").await();
         }
-        return JAsync.just(message);
+        return JPromise2.just(message);
     }
 
     @Test
@@ -53,7 +52,7 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<String> tryWithMultiCatch1(String what, int flag) {
+    private JPromise2<String> tryWithMultiCatch1(String what, int flag) {
         String message = "hello";
         try {
             if (what == null) {
@@ -67,19 +66,19 @@ public class TryTest {
             } else if (flag == 4) {
                 throw new Throwable();
             }
-            return JAsync.just(message + " " + what);
+            return JPromise2.just(message + " " + what);
         } catch (NullPointerException t) {
             message += " null";
         } catch (IllegalStateException t) {
-            message += JAsync.just(" illegal state").await();
+            message += JPromise2.just(" illegal state").await();
         } catch (NoSuchFieldException t) {
-            message += JAsync.just(" no such field").await();
+            message += JPromise2.just(" no such field").await();
         } catch (UnsupportedOperationException t) {
             message += " unsupported operation";
         } catch (Throwable t) {
-            message += JAsync.just(" throwable").await();
+            message += JPromise2.just(" throwable").await();
         }
-        return JAsync.just(message);
+        return JPromise2.just(message);
     }
 
     @Test
@@ -94,13 +93,13 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<String> tryWithMultiCatch2() {
+    private JPromise2<String> tryWithMultiCatch2() {
         String message = "";
         try {
             try {
                 throw new NullPointerException();
             } catch (NullPointerException t) {
-                message += JAsync.just("null").await();
+                message += JPromise2.just("null").await();
                 throw new IllegalArgumentException();
             } catch (IllegalArgumentException t) {
                 message += " inner";
@@ -108,7 +107,7 @@ public class TryTest {
         } catch (IllegalArgumentException t) {
             message += " outer";
         }
-        return JAsync.just(message);
+        return JPromise2.just(message);
     }
 
     @Test
@@ -132,11 +131,11 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<Integer> tryFinallyCatchContinue() {
+    private JPromise2<Integer> tryFinallyCatchContinue() {
         int a = 0;
         for (int i = 0; i < 10; ++i) {
             try {
-                if (i % JAsync.just(2).await() == 0) {
+                if (i % JPromise2.just(2).await() == 0) {
                     continue;
                 }
                 ++a;
@@ -144,7 +143,7 @@ public class TryTest {
                 ++a;
             }
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -168,11 +167,11 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<Integer> tryFinallyCatchBreak() {
+    private JPromise2<Integer> tryFinallyCatchBreak() {
         int a = 0;
         for (int i = 0; i < 10; ++i) {
             try {
-                if (i == JAsync.just(5).await()) {
+                if (i == JPromise2.just(5).await()) {
                     break;
                 }
                 ++a;
@@ -180,7 +179,7 @@ public class TryTest {
                 ++a;
             }
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -204,19 +203,19 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<Integer> tryFinallyCatchReturn() {
+    private JPromise2<Integer> tryFinallyCatchReturn() {
         int a = 0;
         for (int i = 0; i < 10; ++i) {
             try {
-                if (i == JAsync.just(5).await()) {
-                    return JAsync.just(a);
+                if (i == JPromise2.just(5).await()) {
+                    return JPromise2.just(a);
                 }
                 ++a;
             } finally {
                 ++a;
             }
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
@@ -235,14 +234,14 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<String> tryFinallyCatchException() {
+    private JPromise2<String> tryFinallyCatchException() {
         String message = "hello";
         try {
-            message += JAsync.just(" world").await();
+            message += JPromise2.just(" world").await();
         } finally {
-            message += JAsync.just(".").await();
+            message += JPromise2.just(".").await();
         }
-        return JAsync.just(message);
+        return JPromise2.just(message);
     }
 
     @Test
@@ -276,7 +275,7 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<Integer> tryCatchAndFinally(int flag) {
+    private JPromise2<Integer> tryCatchAndFinally(int flag) {
         int a = 0;
         try {
             try {
@@ -288,17 +287,17 @@ public class TryTest {
                     case 2:
                         throw new RuntimeException();
                     default:
-                        a -= JAsync.just(1).await();
+                        a -= JPromise2.just(1).await();
                 }
             } catch (NullPointerException t) {
-                a += JAsync.just(1).await();
+                a += JPromise2.just(1).await();
             } catch (IOException t) {
                 a += 2;
             } finally {
-                a += JAsync.just(100).await();
+                a += JPromise2.just(100).await();
             }
         } catch (Throwable ignored) {}
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
