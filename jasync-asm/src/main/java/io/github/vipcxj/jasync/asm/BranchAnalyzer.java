@@ -51,10 +51,12 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
     @Override
     protected boolean newControlFlowExceptionEdge(int insnIndex, TryCatchBlockNode tryCatchBlock) {
         Node<BasicValue> frame = (Node<BasicValue>) getFrames()[insnIndex];
-        int successorIndex = methodNode.instructions.indexOf(tryCatchBlock.handler);
-        Node<BasicValue> successor = (Node<BasicValue>) getFrames()[successorIndex];
         frame.handlers.add(tryCatchBlock);
-        frame.tryCatchSuccessors.add(successor);
+        if (tryCatchBlock.start != tryCatchBlock.handler) {
+            int successorIndex = methodNode.instructions.indexOf(tryCatchBlock.handler);
+            Node<BasicValue> successor = (Node<BasicValue>) getFrames()[successorIndex];
+            frame.tryCatchSuccessors.add(successor);
+        }
         return true;
     }
 
@@ -287,16 +289,7 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
 
         public Node(Frame<? extends V> frame) {
             super(frame);
-            if (frame instanceof Node) {
-                //noinspection unchecked
-                Node<? extends V> other = (Node<? extends V>) frame;
-                this.index = other.index;
-                this.precursors.addAll(other.precursors);
-                this.successors.addAll(other.successors);
-                this.localVars = other.localVars.clone();
-            } else {
-                this.localVars = new LocalVar[frame.getLocals()];
-            }
+            this.localVars = new LocalVar[frame.getLocals()];
         }
 
         @Override
