@@ -13,8 +13,9 @@ public class TryTest {
     private JPromise2<String> tryWithCatch1(JPromise2<String> what) {
         String message = "hello";
         try {
-            if (what.await() != null) {
-                message += " " + what.await();
+            String await = what.await();
+            if (await != null) {
+                message += " " + await;
             } else {
                 throw new NullPointerException();
             }

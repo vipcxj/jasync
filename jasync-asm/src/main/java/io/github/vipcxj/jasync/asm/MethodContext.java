@@ -310,35 +310,42 @@ public class MethodContext {
         // old handler to new handler
         Map<TryCatchBlockNode, TryCatchBlockNode> map = new HashMap<>();
         // new handler to old handler
-        Map<TryCatchBlockNode, TryCatchBlockNode> reverseMap = new HashMap<>();
-        for (TryCatchBlockNode handler : handlers) {
-            LabelNode newHandler = labelMap != null ? labelMap.get(handler.handler) : handler.handler;
-            for (TryCatchBlockNode tryCatchBlockNode : processings) {
-                if (tryCatchBlockNode.handler == newHandler) {
-                    map.put(handler, tryCatchBlockNode);
-                    reverseMap.put(tryCatchBlockNode, handler);
-                    break;
-                }
-            }
-        }
-        // create new node
-        for (TryCatchBlockNode handler : handlers) {
-            if (!map.containsKey(handler)) {
-                TryCatchBlockNode newTryCatchBlockNode = new TryCatchBlockNode(
-                        null, null,
-                        labelMap != null ? labelMap.get(handler.handler) : handler.handler,
-                        handler.type
-                );
-                if (insnNode instanceof LabelNode) {
-                    newTryCatchBlockNode.start = (LabelNode) insnNode;
-                } else {
-                    if (newLabelNode == null) {
-                        newLabelNode = new LabelNode();
+        Map<TryCatchBlockNode, TryCatchBlockNode> reverseMap;
+        if (!handlers.isEmpty()) {
+            reverseMap = new HashMap<>();
+            for (TryCatchBlockNode handler : handlers) {
+                LabelNode newHandler = labelMap != null ? labelMap.get(handler.handler) : handler.handler;
+                for (TryCatchBlockNode tryCatchBlockNode : processings) {
+                    if (tryCatchBlockNode.handler == newHandler) {
+                        map.put(handler, tryCatchBlockNode);
+                        reverseMap.put(tryCatchBlockNode, handler);
+                        break;
                     }
-                    newTryCatchBlockNode.start = newLabelNode;
                 }
-                processings.add(newTryCatchBlockNode);
             }
+            // create new node
+            for (TryCatchBlockNode handler : handlers) {
+                if (!map.containsKey(handler)) {
+                    TryCatchBlockNode newTryCatchBlockNode = new TryCatchBlockNode(
+                            null, null,
+                            labelMap != null ? labelMap.get(handler.handler) : handler.handler,
+                            handler.type
+                    );
+                    if (insnNode instanceof LabelNode) {
+                        newTryCatchBlockNode.start = (LabelNode) insnNode;
+                    } else {
+                        if (newLabelNode == null) {
+                            newLabelNode = new LabelNode();
+                        }
+                        newTryCatchBlockNode.start = newLabelNode;
+                    }
+                    processings.add(newTryCatchBlockNode);
+                    map.put(handler, newTryCatchBlockNode);
+                    reverseMap.put(newTryCatchBlockNode, handler);
+                }
+            }
+        } else {
+            reverseMap = Collections.emptyMap();
         }
         // end node
         ListIterator<TryCatchBlockNode> iterator = processings.listIterator();
