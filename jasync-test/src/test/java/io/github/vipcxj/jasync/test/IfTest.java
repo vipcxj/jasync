@@ -16,7 +16,7 @@ public class IfTest {
     }
 
     @Test
-    public void testIf1() {
+    public void testIf1() throws InterruptedException {
         Assertions.assertEquals("yes", ifTest1(3).block());
         Assertions.assertEquals("no", ifTest1(4).block());
     }
@@ -32,7 +32,7 @@ public class IfTest {
     }
 
     @Test
-    public void testIf2() {
+    public void testIf2() throws InterruptedException {
         Assertions.assertEquals("yes", ifTest2(3).block());
         Assertions.assertEquals("no", ifTest2(4).block());
     }
@@ -47,9 +47,8 @@ public class IfTest {
     }
 
     @Test
-    public void testIf3() {
+    public void testIf3() throws InterruptedException {
         Assertions.assertEquals("hello world", ifTest3("world").block());
-        //noinspection ConstantConditions
         Assertions.assertNull(ifTest3(null).block());
     }
 
@@ -71,7 +70,7 @@ public class IfTest {
     }
 
     @Test
-    public void testIf4() {
+    public void testIf4() throws InterruptedException {
         Assertions.assertEquals("5", ifTest4(-2).block());
         Assertions.assertEquals("5", ifTest4(-1).block());
         Assertions.assertEquals("0", ifTest4(0).block());
@@ -91,7 +90,7 @@ public class IfTest {
     }
 
     @Test
-    public void testIf5() {
+    public void testIf5() throws InterruptedException {
         Assertions.assertEquals(1, ifTest5(0).block());
         Assertions.assertEquals(3, ifTest5(1).block());
         Assertions.assertEquals(0, ifTest5(2).block());

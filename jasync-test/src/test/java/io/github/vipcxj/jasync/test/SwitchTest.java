@@ -101,7 +101,7 @@ public class SwitchTest {
     @ParameterizedTest
     @DisplayName("test return: if i = 1 or 2, return i; if i = 3 or 4, return 2 * i; else return 0")
     @ValueSource(ints = {-1, 0, 1, 2, 3, 4, 5, 6})
-    void test1(int i) {
+    void test1(int i) throws InterruptedException {
         if (i == 1 || i == 2) {
             Assertions.assertEquals(i, testReturn(i).block());
         } else if (i == 3 || i == 4) {
@@ -114,7 +114,7 @@ public class SwitchTest {
     @ParameterizedTest
     @DisplayName("test break: if i = 1 or 2, return i; if i = 3 or 4, return 2 * i; else return 0")
     @ValueSource(ints = {-1, 0, 1, 2, 3, 4, 5, 6})
-    void test2(int i) {
+    void test2(int i) throws InterruptedException {
         if (i == 1 || i == 2) {
             Assertions.assertEquals(i, testBreak(i).block());
         } else if (i == 3 || i == 4) {
@@ -127,14 +127,14 @@ public class SwitchTest {
     @ParameterizedTest
     @DisplayName("test no break 1: always return 0")
     @ValueSource(ints = {-1, 0, 1, 2, 3, 4, 5, 6})
-    void test3(int i) {
+    void test3(int i) throws InterruptedException {
         Assertions.assertEquals(0, testNoBreak1(i).block());
     }
 
     @ParameterizedTest
     @DisplayName("test no break 2: if i = 1 or 2 or 3 or 4, return 2 * i; else return 0")
     @ValueSource(ints = {-1, 0, 1, 2, 3, 4, 5, 6})
-    void test4(int i) {
+    void test4(int i) throws InterruptedException {
         if (i >= 1 && i <= 4) {
             Assertions.assertEquals(2 * i, testNoBreak2(i).block());
         } else {
@@ -145,7 +145,7 @@ public class SwitchTest {
     @ParameterizedTest
     @DisplayName("test no break 3: if i = 3, return -3; if i = 4, return 8; else return 2 * i")
     @ValueSource(ints = {-1, 0, 1, 2, 3, 4, 5, 6})
-    void test5(int i) {
+    void test5(int i) throws InterruptedException {
         if (i == 3) {
             Assertions.assertEquals(-3, testNoBreak3(i).block());
         } else if (i == 4) {

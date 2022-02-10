@@ -57,7 +57,7 @@ public class InnerClassTest {
     }
 
     @Test
-    public void test() {
+    public void test() throws InterruptedException {
         InnerClass innerClass = new InnerClass();
         Assertions.assertEquals("InnerClass", innerClass.fun().block());
         Assertions.assertEquals("InnerClass.NestInnerClass", innerClass.new NestInnerClass().fun().block());

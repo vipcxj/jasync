@@ -44,7 +44,7 @@ public class ATest {
     }
 
     @Test
-    public void testA() {
+    public void testA() throws InterruptedException {
         Assertions.assertEquals(6, a(1).block());
     }
 
@@ -57,7 +57,7 @@ public class ATest {
     }
 
     @Test
-    public void testAAA() {
+    public void testAAA() throws InterruptedException {
         Assertions.assertEquals(3, aaa().block());
     }
 
@@ -69,7 +69,7 @@ public class ATest {
     }
 
     @Test
-    public void testAA() {
+    public void testAA() throws InterruptedException {
         Assertions.assertEquals(3, aa().block());
     }
 

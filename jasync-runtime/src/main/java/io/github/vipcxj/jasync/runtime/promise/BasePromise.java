@@ -22,11 +22,9 @@ public class BasePromise<T> extends AbstractPromise<T> {
     private Throwable error;
     protected final Task<T> task;
     private final JPromise2<?> parent;
-    private List<BasePromise<?>> children;
     private List<BiConsumer<T, JContext>> successHandlers;
     private List<BiConsumer<Throwable, JContext>> errorHandlers;
     private List<Consumer<JContext>> completeHandlers;
-    private List<Runnable> terminalHandlers;
 
     public BasePromise(Task<T> task) {
         this(task, null);
@@ -54,13 +52,6 @@ public class BasePromise<T> extends AbstractPromise<T> {
         return new BasePromise<>(new LazyTask<>(handler), parent);
     }
 
-    private List<BasePromise<?>> getChildren() {
-        if (children == null) {
-            children = new ArrayList<>();
-        }
-        return children;
-    }
-
     private List<BiConsumer<T, JContext>> getSuccessHandlers() {
         if (successHandlers == null) {
             successHandlers = new ArrayList<>();
@@ -80,13 +71,6 @@ public class BasePromise<T> extends AbstractPromise<T> {
             completeHandlers = new ArrayList<>();
         }
         return completeHandlers;
-    }
-
-    public List<Runnable> getTerminalHandlers() {
-        if (terminalHandlers == null) {
-            terminalHandlers = new ArrayList<>();
-        }
-        return terminalHandlers;
     }
 
     private <R> void thenCreator(JThunk<R> thunk, JContext context, JAsyncPromiseFunction1<T, R> mapper) {
@@ -203,20 +187,22 @@ public class BasePromise<T> extends AbstractPromise<T> {
     }
 
     @Override
-    public synchronized T block(JContext context) {
+    public synchronized T block(JContext context) throws InterruptedException {
         async(context);
-        while (!isCompleted()) {
+        while (!isCompleted() && !isDisposed()) {
             try {
                 wait();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                return null;
+                throw e;
             }
         }
         if (isResolved()) {
             return value;
-        } else {
+        } else if (isRejected()) {
             throw new RuntimeException(error);
+        } else {
+            throw new InterruptedException();
         }
     }
 
@@ -228,14 +214,6 @@ public class BasePromise<T> extends AbstractPromise<T> {
             schedule(context);
         }
         return this;
-    }
-
-    private void scheduleNext(JContext context) {
-        if (children != null) {
-            for (BasePromise<?> child : children) {
-                child.schedule(context);
-            }
-        }
     }
 
     private void triggerSuccessHandlers(JContext context) {
@@ -258,14 +236,6 @@ public class BasePromise<T> extends AbstractPromise<T> {
         if (completeHandlers != null) {
             for (Consumer<JContext> completeHandler : completeHandlers) {
                 completeHandler.accept(context);
-            }
-        }
-    }
-
-    private void triggerTerminalHandlers() {
-        if (terminalHandlers != null) {
-            for (Runnable handler : terminalHandlers) {
-                handler.run();
             }
         }
     }
@@ -303,20 +273,6 @@ public class BasePromise<T> extends AbstractPromise<T> {
             }
         } finally {
             scheduleNext(context);
-        }
-    }
-
-    @Override
-    public void dispose() {
-        super.dispose();
-        try {
-            triggerTerminalHandlers();
-        } finally {
-            if (children != null) {
-                for (BasePromise<?> child : children) {
-                    child.dispose();
-                }
-            }
         }
     }
 

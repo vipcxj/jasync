@@ -52,22 +52,22 @@ public class WhileTest {
     }
 
     @Test
-    public void test1() {
+    public void test1() throws InterruptedException {
         Assertions.assertEquals(2000000, sum1(2000000).block());
     }
 
     @Test
-    public void test2() {
+    public void test2() throws InterruptedException {
         Assertions.assertEquals(100000, sum2(100000).block());
     }
 
     @Test
-    public void test3() {
+    public void test3() throws InterruptedException {
         Assertions.assertEquals(123 * 321, multi1(123, 321).block());
     }
 
     @Test
-    public void test4() {
+    public void test4() throws InterruptedException {
         Assertions.assertEquals(123 * 321, multi2(123, 321).block());
     }
 

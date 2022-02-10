@@ -13,7 +13,7 @@ public class BaseTest {
     }
 
     @Test
-    public void testReturnNull() {
+    public void testReturnNull() throws InterruptedException {
         //noinspection ConstantConditions
         Assertions.assertNull(returnNull().block());
     }
@@ -30,7 +30,7 @@ public class BaseTest {
     }
 
     @Test
-    public void testInnerClassReturnNull() {
+    public void testInnerClassReturnNull() throws InterruptedException {
         Assertions.assertNull(asyncMethodInnerClassReturnNull().block());
     }
 }

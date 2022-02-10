@@ -37,7 +37,7 @@ public class WithLombok {
     }
 
     @Test
-    public void test() {
+    public void test() throws InterruptedException {
         Assertions.assertEquals(object.isLombok(), isLombok().block());
         Assertions.assertEquals(6, sum);
     }

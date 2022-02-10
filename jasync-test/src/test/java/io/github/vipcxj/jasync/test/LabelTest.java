@@ -21,7 +21,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testJustBreak() {
+    public void testJustBreak() throws InterruptedException {
         Assertions.assertEquals(1, justBreak().block());
     }
 
@@ -33,7 +33,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testSingleStatementNoAwait() {
+    public void testSingleStatementNoAwait() throws InterruptedException {
         Assertions.assertEquals(2, singleStatementNoAwait().block());
     }
 
@@ -46,7 +46,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testSingleStatementHasAwait() {
+    public void testSingleStatementHasAwait() throws InterruptedException {
         Assertions.assertEquals(2, singleStatementHasAwait().block());
     }
 
@@ -63,7 +63,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testIfNoAwait() {
+    public void testIfNoAwait() throws InterruptedException {
         Assertions.assertEquals(1, ifNoAwait(true).block());
         Assertions.assertEquals(2, ifNoAwait(false).block());
     }
@@ -81,7 +81,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testIfHasAwait1() {
+    public void testIfHasAwait1() throws InterruptedException {
         Assertions.assertEquals(1, ifHasAwait1(true).block());
         Assertions.assertEquals(2, ifHasAwait1(false).block());
     }
@@ -99,7 +99,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testIfHasAwait2() {
+    public void testIfHasAwait2() throws InterruptedException {
         Assertions.assertEquals(1, ifHasAwait2(true).block());
         Assertions.assertEquals(2, ifHasAwait2(false).block());
     }
@@ -117,7 +117,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testIfHasAwait3() {
+    public void testIfHasAwait3() throws InterruptedException {
         Assertions.assertEquals(1, ifHasAwait3(true).block());
         Assertions.assertEquals(2, ifHasAwait3(false).block());
     }
@@ -136,7 +136,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testWhileNoAwait1() {
+    public void testWhileNoAwait1() throws InterruptedException {
         Assertions.assertEquals(2, whileNoAwait1().block());
     }
 
@@ -161,7 +161,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testWhileNoAwait2() {
+    public void testWhileNoAwait2() throws InterruptedException {
         Assertions.assertEquals(20, whileNoAwait2().block());
     }
 
@@ -186,7 +186,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testWhileNoAwait3() {
+    public void testWhileNoAwait3() throws InterruptedException {
         Assertions.assertEquals(20, whileNoAwait3().block());
     }
 
@@ -228,7 +228,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testWhileNoAwait4() {
+    public void testWhileNoAwait4() throws InterruptedException {
         Assertions.assertEquals(45, whileNoAwait4().block());
     }
 
@@ -246,7 +246,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testWhileHasAwait1() {
+    public void testWhileHasAwait1() throws InterruptedException {
         Assertions.assertEquals(2, whileHasAwait1().block());
     }
 
@@ -271,7 +271,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testWhileHasAwait2() {
+    public void testWhileHasAwait2() throws InterruptedException {
         Assertions.assertEquals(20, whileHasAwait2().block());
     }
 
@@ -296,7 +296,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testWhileHasAwait3() {
+    public void testWhileHasAwait3() throws InterruptedException {
         Assertions.assertEquals(20, whileHasAwait3().block());
     }
 
@@ -339,7 +339,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testWhileHasAwait4() {
+    public void testWhileHasAwait4() throws InterruptedException {
         Assertions.assertEquals(45, whileHasAwait4().block());
     }
 
@@ -358,7 +358,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testDoWhileNoAwait1() {
+    public void testDoWhileNoAwait1() throws InterruptedException {
         Assertions.assertEquals(2, doWhileNoAwait1().block());
     }
 
@@ -385,7 +385,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testDoWhileNoAwait2() {
+    public void testDoWhileNoAwait2() throws InterruptedException {
         Assertions.assertEquals(25, doWhileNoAwait2().block());
     }
 
@@ -412,7 +412,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testDoWhileNoAwait3() {
+    public void testDoWhileNoAwait3() throws InterruptedException {
         Assertions.assertEquals(25, doWhileNoAwait3().block());
     }
 
@@ -462,7 +462,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testDoWhileNoAwait4() {
+    public void testDoWhileNoAwait4() throws InterruptedException {
         Assertions.assertEquals(78, doWhileNoAwait4().block());
     }
 
@@ -481,7 +481,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testDoWhileHasAwait1() {
+    public void testDoWhileHasAwait1() throws InterruptedException {
         Assertions.assertEquals(2, doWhileHasAwait1().block());
     }
 
@@ -508,7 +508,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testDoWhileHasAwait2() {
+    public void testDoWhileHasAwait2() throws InterruptedException {
         Assertions.assertEquals(25, doWhileHasAwait2().block());
     }
 
@@ -535,7 +535,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testDoWhileHasAwait3() {
+    public void testDoWhileHasAwait3() throws InterruptedException {
         Assertions.assertEquals(25, doWhileHasAwait3().block());
     }
 
@@ -586,7 +586,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testDoWhileHasAwait4() {
+    public void testDoWhileHasAwait4() throws InterruptedException {
         Assertions.assertEquals(78, doWhileHasAwait4().block());
     }
 
@@ -607,7 +607,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testForNoAwait1() {
+    public void testForNoAwait1() throws InterruptedException {
         for (int i = 0; i < 10; ++i) {
             if (i <= 5) {
                 Assertions.assertEquals(i / 2, forNoAwait1(i).block());
@@ -654,7 +654,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testForNoAwait2() {
+    public void testForNoAwait2() throws InterruptedException {
         for (int i = 0; i < 12; ++i) {
             if (i <= 5) {
                 Assertions.assertEquals(i * (i -1) / 2, forNoAwait2(i).block());
@@ -691,7 +691,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testForHasAwait1() {
+    public void testForHasAwait1() throws InterruptedException {
         for (int i = 0; i < 10; ++i) {
             if (i <= 5) {
                 Assertions.assertEquals(i / 2, forHasAwait1(i).block());
@@ -738,7 +738,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testForHasAwait2() {
+    public void testForHasAwait2() throws InterruptedException {
         for (int i = 0; i < 12; ++i) {
             if (i <= 5) {
                 Assertions.assertEquals(i * (i -1) / 2, forHasAwait2(i).block());
@@ -833,7 +833,7 @@ public class LabelTest {
     }
 
     @Test
-    public void testForeach() {
+    public void testForeach() throws InterruptedException {
         Assertions.assertEquals(foreachContinueNoAwait().block(), foreachContinueHasAwait().block());
     }
 }

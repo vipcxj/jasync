@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 public class PromiseTest {
 
     @Test
-    public void test() {
+    public void test() throws InterruptedException {
         for (int i = 0; i < 1; ++i) {
             JPromise2.sleep(1, TimeUnit.SECONDS)
                     .thenReturn(3)
@@ -47,7 +47,7 @@ public class PromiseTest {
     }
 
     @Test
-    public void test1() {
+    public void test1() throws InterruptedException {
         Integer value = JPromise2.portal((JPortal<Integer> portal, JContext ignored) ->
                 JAsync2.updateContext("index", 0, j -> j + 1)
                         .thenMap(ctx -> ctx.<Integer>get("index"))
@@ -124,7 +124,7 @@ public class PromiseTest {
     }
 
     @Test
-    public void test4() {
+    public void test4() throws InterruptedException {
         int i = 0;
         String msg = "a";
         JPromise2<String> task = push(msg, i).thenImmediate(() -> JPromise2.portal(factory -> JContext.popStack(stack -> {
@@ -151,5 +151,50 @@ public class PromiseTest {
         })));
         String result = task.block();
         Assertions.assertEquals("aaaaaaaaaa", result);
+    }
+
+    @Test
+    public void test5() throws InterruptedException {
+        JPromise2<Integer> one = JPromise2.just(1);
+        Integer two = one.then(v0 -> one.thenMap(v1 -> v0 + v1)).block();
+        Assertions.assertEquals(2, two);
+    }
+
+    @Test
+    public void test6() throws InterruptedException {
+        Assertions.assertEquals(1, JPromise2.just(1).block());
+    }
+
+    @Test
+    public void test7() {
+        Assertions.assertThrows(InterruptedException.class, () -> {
+            JPromise2<Integer> delay = JPromise2.just(1).delay(30, TimeUnit.SECONDS);
+            new Thread(() -> {
+                try {
+                    Thread.sleep(1000);
+                    delay.cancel();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+            delay.block();
+        });
+    }
+
+    @Test
+    public void test8() {
+        Assertions.assertThrows(InterruptedException.class, () -> {
+            JPromise2<Integer> one = JPromise2.just(1);
+            JPromise2<Integer> delay = one.delay(30, TimeUnit.SECONDS);
+            new Thread(() -> {
+                try {
+                    Thread.sleep(1000);
+                    one.cancel();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+            delay.block();
+        });
     }
 }

@@ -13,7 +13,7 @@ public class AllPromisesTask<T> implements Task<List<T>> {
 
     private final List<JPromise2<? extends T>> promises;
     private final int num;
-    private Object[] values;
+    private final Object[] values;
     private volatile int resolvedNum;
     private static final AtomicIntegerFieldUpdater<AllPromisesTask> RESOLVED_NUM_UPDATER = AtomicIntegerFieldUpdater.newUpdater(AllPromisesTask.class, "resolvedNum");
     private volatile boolean rejected;

@@ -236,8 +236,8 @@ public interface JPromise2<T> extends JHandle<T> {
     }
 
     void cancel();
-    T block(JContext context);
-    default T block() {
+    T block(JContext context) throws InterruptedException;
+    default T block() throws InterruptedException {
         return block(JContext.defaultContext());
     }
     JHandle<T> async(JContext context);

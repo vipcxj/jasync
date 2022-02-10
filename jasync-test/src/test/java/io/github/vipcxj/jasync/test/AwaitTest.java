@@ -39,7 +39,7 @@ public class AwaitTest {
     }
 
     @Test
-    public void testSimpleAwait() {
+    public void testSimpleAwait() throws InterruptedException {
         Assertions.assertEquals("hello world", simpleAwait().block());
     }
 
@@ -56,7 +56,7 @@ public class AwaitTest {
     }
 
     @Test
-    public void testNested1() {
+    public void testNested1() throws InterruptedException {
         Assertions.assertEquals(nestedNoAwait1(), nestedAwait1().block());
     }
 
@@ -73,7 +73,7 @@ public class AwaitTest {
     }
 
     @Test
-    public void testNested2() {
+    public void testNested2() throws InterruptedException {
         Assertions.assertEquals(nestedNoAwait2(), nestedAwait2().block());
     }
 }

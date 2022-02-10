@@ -14,7 +14,7 @@ public class StaticTest {
     }
 
     @Test
-    public void testHelloWorld() {
+    public void testHelloWorld() throws InterruptedException {
         Assertions.assertEquals("hello world", helloWorld().block());
     }
 }

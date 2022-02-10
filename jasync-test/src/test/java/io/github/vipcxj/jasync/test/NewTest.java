@@ -73,7 +73,7 @@ public class NewTest {
     }
 
     @Test
-    public void testOneStaticNew() {
+    public void testOneStaticNew() throws InterruptedException {
         Assertions.assertEquals("hello3", oneStaticNew().block());
     }
 
@@ -83,7 +83,7 @@ public class NewTest {
     }
 
     @Test
-    public void testOneInnerNew() {
+    public void testOneInnerNew() throws InterruptedException {
         Assertions.assertEquals("hello3", oneInnerNew().block());
     }
 
@@ -96,7 +96,7 @@ public class NewTest {
     }
 
     @Test
-    public void testNestNews() {
+    public void testNestNews() throws InterruptedException {
         Assertions.assertEquals("hello0", nestNews().block());
     }
 }

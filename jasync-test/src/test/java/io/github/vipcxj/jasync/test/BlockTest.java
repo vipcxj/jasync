@@ -21,7 +21,7 @@ public class BlockTest {
     }
 
     @Test
-    public void testBlock1() {
+    public void testBlock1() throws InterruptedException {
         Assertions.assertEquals(3, block1().block());
     }
 }

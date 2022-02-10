@@ -26,7 +26,7 @@ public class TryTest {
     }
 
     @Test
-    public void testTryWithCatch1() {
+    public void testTryWithCatch1() throws InterruptedException {
         Assertions.assertEquals("hello world", tryWithCatch1(JPromise2.just("world")).block());
         Assertions.assertEquals("hello nothing", tryWithCatch1(JPromise2.empty()).block());
     }
@@ -47,7 +47,7 @@ public class TryTest {
     }
 
     @Test
-    public void testTryWithCatch2() {
+    public void testTryWithCatch2() throws InterruptedException {
         Assertions.assertEquals("hello world", tryWithCatch2("world").block());
         Assertions.assertEquals("hello nothing", tryWithCatch2(null).block());
     }
@@ -83,7 +83,7 @@ public class TryTest {
     }
 
     @Test
-    public void testTryWithMultiCatch1() {
+    public void testTryWithMultiCatch1() throws InterruptedException {
         Assertions.assertEquals("hello world", tryWithMultiCatch1("world", 0).block());
         Assertions.assertEquals("hello null", tryWithMultiCatch1(null, 0).block());
         Assertions.assertEquals("hello illegal state", tryWithMultiCatch1("world", 1).block());
@@ -112,7 +112,7 @@ public class TryTest {
     }
 
     @Test
-    public void testTryWithMultiCatch2() {
+    public void testTryWithMultiCatch2() throws InterruptedException {
         Assertions.assertEquals("null outer", tryWithMultiCatch2().block());
     }
 
@@ -148,7 +148,7 @@ public class TryTest {
     }
 
     @Test
-    public void testTryFinallyCatchContinue() {
+    public void testTryFinallyCatchContinue() throws InterruptedException {
         Assertions.assertEquals(tryFinallyCatchContinueNoAwait(), tryFinallyCatchContinue().block());
     }
 
@@ -184,7 +184,7 @@ public class TryTest {
     }
 
     @Test
-    public void testTryFinallyCatchBreak() {
+    public void testTryFinallyCatchBreak() throws InterruptedException {
         Assertions.assertEquals(tryFinallyCatchBreakNoAwait(), tryFinallyCatchBreak().block());
     }
 
@@ -220,7 +220,7 @@ public class TryTest {
     }
 
     @Test
-    public void testTryFinallyCatchReturn() {
+    public void testTryFinallyCatchReturn() throws InterruptedException {
         Assertions.assertEquals(tryFinallyCatchReturnNoAwait(), tryFinallyCatchReturn().block());
     }
 
@@ -246,7 +246,7 @@ public class TryTest {
     }
 
     @Test
-    public void testTryFinallyCatchException() {
+    public void testTryFinallyCatchException() throws InterruptedException {
         Assertions.assertEquals(tryFinallyCatchExceptionNoAwait(), tryFinallyCatchException().block());
     }
 
@@ -302,7 +302,7 @@ public class TryTest {
     }
 
     @Test
-    public void testTryCatchAndFinally() {
+    public void testTryCatchAndFinally() throws InterruptedException {
         for (int i = 0; i < 5; ++i) {
             Assertions.assertEquals(tryCatchAndFinallyNoAwait(i), tryCatchAndFinally(i).block());
         }
