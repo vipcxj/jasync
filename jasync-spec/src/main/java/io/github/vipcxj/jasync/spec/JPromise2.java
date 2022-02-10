@@ -30,6 +30,25 @@ public interface JPromise2<T> extends JHandle<T> {
         return portal((factory, context) -> task.invoke(factory));
     }
 
+    /**
+     * Create a lazy promise. The handler will be scheduled by the scheduler.
+     * @param handler the promise handler.
+     * @param <T> the promise type.
+     * @return the promise.
+     */
+    static <T> JPromise2<T> create(BiConsumer<JThunk<T>, JContext> handler) {
+        return provider.create(handler);
+    }
+    /**
+     * Create a immediate promise. The handler will be invoked in the current thread just after async or block called.
+     * @param handler the promise handler.
+     * @param <T> the promise type.
+     * @return the promise.
+     */
+    static <T> JPromise2<T> generate(BiConsumer<JThunk<T>, JContext> handler) {
+        return provider.generate(handler);
+    }
+
     default T await() {
         throw new UnsupportedOperationException("The method \"await\" should be called in an async method.");
     }
