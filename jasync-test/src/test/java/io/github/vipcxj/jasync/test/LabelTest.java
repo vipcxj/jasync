@@ -18,6 +18,7 @@ public class LabelTest {
         int a = 1;
         label: break label;
         return JPromise2.just(a);
+        
     }
 
     @Test

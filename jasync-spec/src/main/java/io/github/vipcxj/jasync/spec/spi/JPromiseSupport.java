@@ -16,10 +16,12 @@ public interface JPromiseSupport extends PrioritySupport {
     JPromise2<Void> sleep(long time, TimeUnit unit);
     <T> JPromise2<T> portal(JAsyncPortalTask1<T> task);
     <T> JPromise2<T> any(List<JPromise2<? extends T>> promises);
+    @SuppressWarnings("unchecked")
     default <T> JPromise2<T> any(JPromise2<? extends T>... promises) {
         return any(Arrays.asList(promises));
     }
     <T> JPromise2<List<T>> all(List<JPromise2<? extends T>> promises);
+    @SuppressWarnings("unchecked")
     default <T> JPromise2<List<T>> all(JPromise2<? extends T>... promises) {
         return all(Arrays.asList(promises));
     }

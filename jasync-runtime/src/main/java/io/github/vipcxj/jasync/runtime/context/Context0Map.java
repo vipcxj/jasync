@@ -6,7 +6,7 @@ public class Context0Map implements ContextMap {
 
     public static final ContextMap EMPTY = new Context0Map();
 
-    private Set<Object> keys = new ContextMapKeySet();
+    private final Set<Object> keys = new ContextMapKeySet();
 
     private Context0Map() {}
 

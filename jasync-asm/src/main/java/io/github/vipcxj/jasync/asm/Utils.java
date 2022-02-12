@@ -14,7 +14,7 @@ public class Utils {
     private static final String USE_CLASS_LOADER_PROPERTY = "jasync_use_class_loader";
     private static Set<String> promiseTypes;
     private static Map<String, TypeInfo> typeInfoMap;
-    private static boolean USE_CLASS_LOADER = isUseClassLoader();
+    private static final boolean USE_CLASS_LOADER = isUseClassLoader();
 
     private static boolean isUseClassLoader() {
         try {
@@ -261,36 +261,6 @@ public class Utils {
         return superName;
     }
 
-/*    private static String stepInterfaces(Set<String> ancestors, String typeName) {
-        if (OBJECT_BINARY_NAME.equals(typeName)) {
-            return OBJECT_BINARY_NAME;
-        }
-        String[] interfaces = getInterfaces(typeName);
-        if (interfaces == null) {
-            return null;
-        }
-        boolean unknown = false;
-        List<String> nextInterfaces = new ArrayList<>(Arrays.asList(interfaces));
-        while (!nextInterfaces.isEmpty()) {
-            List<String> newNextInterfaces = new ArrayList<>();
-            for (String anInterface : nextInterfaces) {
-                if (ancestors.contains(anInterface)) {
-                    return anInterface;
-                } else {
-                    ancestors.add(anInterface);
-                }
-                String[] interfacesArray = getInterfaces(anInterface);
-                if (interfacesArray == null) {
-                    unknown = true;
-                } else {
-                    newNextInterfaces.addAll(Arrays.asList(interfacesArray));
-                }
-            }
-            nextInterfaces = newNextInterfaces;
-        }
-        return unknown ? null : OBJECT_BINARY_NAME;
-    }*/
-
     /**
      * Get the nearest common ancestors of the type1 and type2.
      * Only reference type is accept. The primitive type and array type are not accepted.
@@ -320,24 +290,5 @@ public class Utils {
         Set<String> ancestors = new HashSet<>();
         stepSuperName(ancestors, type1);
         return stepSuperName(ancestors, type2);
-//        boolean unknown = false;
-//        if (root == null) {
-//            unknown = true;
-//        } else if (!OBJECT_BINARY_NAME.equals(root)) {
-//            return root;
-//        }
-//        root = stepInterfaces(ancestors, type1);
-//        if (root == null) {
-//            unknown = true;
-//        } else if (!OBJECT_BINARY_NAME.equals(root)) {
-//            return root;
-//        }
-//        root = stepInterfaces(ancestors, type2);
-//        if (root == null) {
-//            unknown = true;
-//        } else if (!OBJECT_BINARY_NAME.equals(root)) {
-//            return root;
-//        }
-//        return unknown ? null : OBJECT_BINARY_NAME;
     }
 }

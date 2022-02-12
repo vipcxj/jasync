@@ -16,9 +16,7 @@ public class PromiseTest {
         for (int i = 0; i < 1; ++i) {
             JPromise2.sleep(1, TimeUnit.SECONDS)
                     .thenReturn(3)
-                    .onSuccess(v -> {
-                        System.out.println(Thread.currentThread().getName() + ": " + v);
-                    })
+                    .onSuccess(v -> System.out.println(Thread.currentThread().getName() + ": " + v))
                     .writeContext("a", 1)
                     .writeContext("b", 2)
                     .delay(1, TimeUnit.SECONDS)
@@ -26,9 +24,7 @@ public class PromiseTest {
                         System.out.println("run here!");
                         return v + 1;
                     })
-                    .onSuccess(v -> {
-                        System.out.println(Thread.currentThread().getName() + ": " + v);
-                    }).delay(1, TimeUnit.SECONDS)
+                    .onSuccess(v -> System.out.println(Thread.currentThread().getName() + ": " + v)).delay(1, TimeUnit.SECONDS)
                     .thenMap((Integer v) -> v + 1)
                     .onSuccess(v -> {
                         System.out.println(Thread.currentThread().getName() + ": " + v);
@@ -132,7 +128,7 @@ public class PromiseTest {
             String msg0 = (String) stack.pop();
             long j = 0;
             if (i0 < 3) {
-                return push(j, msg0, i0).thenImmediate(() -> JPromise2.<String>portal(factory1 -> JContext.popStack(stack1 -> {
+                return push(j, msg0, i0).thenImmediate(() -> JPromise2.portal(factory1 -> JContext.popStack(stack1 -> {
                     int i1 = (Integer) stack1.pop();
                     String msg1 = (String) stack1.pop();
                     long j0 = (Long) stack1.pop();

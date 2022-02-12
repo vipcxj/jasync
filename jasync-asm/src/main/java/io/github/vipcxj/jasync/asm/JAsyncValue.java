@@ -4,11 +4,13 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
-import org.objectweb.asm.tree.analysis.AnalyzerException;
 import org.objectweb.asm.tree.analysis.BasicValue;
 import org.objectweb.asm.tree.analysis.Value;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 public class JAsyncValue extends BasicValue {
 
@@ -63,7 +65,7 @@ public class JAsyncValue extends BasicValue {
         return null;
     }
 
-    public static BasicValue newOperation(AbstractInsnNode insn) throws AnalyzerException {
+    public static BasicValue newOperation(AbstractInsnNode insn) {
         if (insn.getOpcode() == Opcodes.NEW) {
             TypeInsnNode typeInsnNode = (TypeInsnNode) insn;
             JAsyncValue value = new JAsyncValue(Type.getObjectType(typeInsnNode.desc));

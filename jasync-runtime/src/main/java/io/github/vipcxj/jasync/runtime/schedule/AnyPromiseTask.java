@@ -15,9 +15,12 @@ public class AnyPromiseTask<T> implements Task<T> {
 
     private final List<JPromise2<? extends T>> promises;
     private final Map<JPromise2<?>, Throwable> errors;
+    @SuppressWarnings("unused")
     private volatile boolean resolved;
+    @SuppressWarnings("rawtypes")
     private static final AtomicReferenceFieldUpdater<AnyPromiseTask, Boolean> RESOLVED_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AnyPromiseTask.class, Boolean.TYPE, "resolved");
     private volatile int errorNum;
+    @SuppressWarnings("rawtypes")
     private static final AtomicIntegerFieldUpdater<AnyPromiseTask> ERROR_NUM_UPDATER = AtomicIntegerFieldUpdater.newUpdater(AnyPromiseTask.class, "errorNum");
 
     public AnyPromiseTask(List<JPromise2<? extends T>> promises) {

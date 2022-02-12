@@ -15,8 +15,11 @@ public class AllPromisesTask<T> implements Task<List<T>> {
     private final int num;
     private final Object[] values;
     private volatile int resolvedNum;
+    @SuppressWarnings("rawtypes")
     private static final AtomicIntegerFieldUpdater<AllPromisesTask> RESOLVED_NUM_UPDATER = AtomicIntegerFieldUpdater.newUpdater(AllPromisesTask.class, "resolvedNum");
+    @SuppressWarnings("unused")
     private volatile boolean rejected;
+    @SuppressWarnings("rawtypes")
     private static final AtomicReferenceFieldUpdater<AllPromisesTask, Boolean> REJECTED_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AllPromisesTask.class, Boolean.TYPE, "rejected");
 
     public AllPromisesTask(List<JPromise2<? extends T>> promises) {

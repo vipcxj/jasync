@@ -7,12 +7,12 @@ import java.util.List;
 
 public class JAsyncInfo {
 
-    public static int BYTE_CODE_OPTION_OFF = 0;
-    public static int BYTE_CODE_OPTION_ON = 1;
-    public static int BYTE_CODE_OPTION_FRAME = 2;
-    public static int BYTE_CODE_OPTION_INDEX = 4;
-    public static int BYTE_CODE_OPTION_MAP = 8;
-    public static int BYTE_CODE_OPTION_FULL_SUPPORT = BYTE_CODE_OPTION_ON
+    public static final int BYTE_CODE_OPTION_OFF = 0;
+    public static final int BYTE_CODE_OPTION_ON = 1;
+    public static final int BYTE_CODE_OPTION_FRAME = 2;
+    public static final int BYTE_CODE_OPTION_INDEX = 4;
+    public static final int BYTE_CODE_OPTION_MAP = 8;
+    public static final int BYTE_CODE_OPTION_FULL_SUPPORT = BYTE_CODE_OPTION_ON
             | BYTE_CODE_OPTION_FRAME
             | BYTE_CODE_OPTION_INDEX
             | BYTE_CODE_OPTION_MAP;
