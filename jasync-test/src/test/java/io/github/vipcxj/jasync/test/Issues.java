@@ -1,7 +1,6 @@
 package io.github.vipcxj.jasync.test;
 
-import io.github.vipcxj.jasync.spec.JAsync;
-import io.github.vipcxj.jasync.spec.JPromise;
+import io.github.vipcxj.jasync.spec.JPromise2;
 import io.github.vipcxj.jasync.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -14,33 +13,33 @@ import java.util.function.Supplier;
 public class Issues {
 
     @Async
-    public <G> JPromise<G> get(Class<G> format) {
-        Long data = JAsync.just(1L).await();
-        return JAsync.just(format.cast(data));
+    public <G> JPromise2<G> get(Class<G> format) {
+        Long data = JPromise2.just(1L).await();
+        return JPromise2.just(format.cast(data));
     }
 
     @Test
-    public void issue4() {
+    public void issue4() throws InterruptedException {
         Assertions.assertEquals(1L, get(Number.class).block());
     }
 
     @Async
-    public JPromise<Integer> test2(int input1, int input2) {
-        int one = JAsync.just(1).await();
+    public JPromise2<Integer> test2(int input1, int input2) {
+        int one = JPromise2.just(1).await();
         Supplier<Integer> arg = () -> input1;
         Supplier<Integer> sum = () -> one + arg.get() + input2;
-        return JAsync.just(sum.get());
+        return JPromise2.just(sum.get());
     }
 
     @Test
-    public void issue5() {
+    public void issue5() throws InterruptedException {
         Assertions.assertEquals(4, test2(1, 2).block());
         Assertions.assertEquals(3, test2(0, 2).block());
         Assertions.assertEquals(7, test2(3, 3).block());
     }
 
     @Async
-    public JPromise<Long> test3() {
+    public JPromise2<Long> test3() {
         List<Long> list = new ArrayList<>();
         list.add(1L);
         list.add(2L);
@@ -54,14 +53,14 @@ public class Issues {
                 continue;
             }
             // throw io.github.vipcxj.jasync.spec.ContinueException
-            sum += JAsync.just(l).await();
+            sum += JPromise2.just(l).await();
         }
 
-        return JAsync.just(sum);
+        return JPromise2.just(sum);
     }
 
     @Test
-    public void issue6() {
+    public void issue6() throws InterruptedException {
         Assertions.assertEquals(8, test3().block());
     }
 
@@ -71,34 +70,34 @@ public class Issues {
 
     @SuppressWarnings("unused")
     @Async
-    private JPromise<String> testIssue7() {
+    private JPromise2<String> testIssue7() {
         String a = "定义a";
         try {
             a = "修改a";
         } catch (Exception e) {
             for (String l : getA(a)) {
-                JAsync.just().await();
+                JPromise2.empty().await();
             }
         }
-        return JAsync.just(a);
+        return JPromise2.just(a);
     }
 
     @Test
-    public void issue7() {
+    public void issue7() throws InterruptedException {
         Assertions.assertEquals("修改a", testIssue7().block());
     }
 
     @SuppressWarnings({"ParameterCanBeLocal", "SameParameterValue"})
     @Async
-    private static JPromise<String> testIssue8(String command) {
+    private static JPromise2<String> testIssue8(String command) {
         //noinspection UnusedAssignment
         command = "a";
-        command = JAsync.just("b").await();
-        return JAsync.just(command);
+        command = JPromise2.just("b").await();
+        return JPromise2.just(command);
     }
 
     @Test
-    public void issue8() {
+    public void issue8() throws InterruptedException {
         Assertions.assertEquals("b", testIssue8("abc").block());
     }
 }

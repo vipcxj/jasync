@@ -52,7 +52,8 @@ public class JAsyncProcessor extends AbstractProcessor {
 
     private static void installAgent() {
         try {
-            Utils.addOpensFromJdkCompilerModule(AsyncProcessor.class, new String[] {
+            Utils.addOpensFromJdkCompilerModule(JAsyncProcessor.class, new String[] {
+                    "com.sun.tools.javac.processing",
                     "com.sun.tools.javac.jvm",
                     "com.sun.tools.javac.main"
             });
