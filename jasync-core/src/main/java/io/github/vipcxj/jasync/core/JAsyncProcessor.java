@@ -16,7 +16,9 @@ import net.bytebuddy.pool.TypePool;
 import org.objectweb.asm.ClassReader;
 
 import javax.annotation.processing.*;
-import javax.lang.model.element.*;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementVisitor;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementScanner8;
@@ -32,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.security.cert.Certificate;
 import java.util.*;
 import java.util.jar.JarFile;
 
@@ -56,12 +59,41 @@ public class JAsyncProcessor extends AbstractProcessor {
             ByteBuddyAgent.install();
             ClassLoader classLoader = ClassLoader.getSystemClassLoader();
             TypePool typePool = TypePool.Default.of(classLoader);
-            new ByteBuddy()
-                    .redefine(typePool.describe("com.sun.tools.javac.jvm.ClassWriter").resolve(), ClassFileLocator.ForClassLoader.of(classLoader))
-                    .visit(Advice.to(ClassWriterAdvice.class).on(ElementMatchers.named("writeClass").and(ElementMatchers.returns(JavaFileObject.class))))
-                    .make().load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
-            System.out.println("modify ClassWriter");
-            attachAsmJar();
+            Throwable error = null;
+            boolean success = false;
+            try {
+                new ByteBuddy()
+                        .redefine(typePool.describe("com.sun.tools.javac.jvm.ClassWriter").resolve(), ClassFileLocator.ForClassLoader.of(classLoader))
+                        .visit(Advice.to(ClassWriterAdvice.class).on(ElementMatchers.named("writeClass").and(ElementMatchers.returns(JavaFileObject.class))))
+                        .make().load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
+                success = true;
+                System.out.println("Successful to modify Javac ClassWriter");
+            } catch (Throwable t) {
+                error = t;
+                error.printStackTrace();
+                System.out.println("Fail to modify Javac ClassWriter");
+            }
+            try {
+                String classToHack = "org.eclipse.jdt.internal.compiler.ClassFile";
+                Utils.addOpens(JAsyncProcessor.class, "java.base", new String[] {"java.lang"});
+                Certificate[] certs = Utils.unsecureClassloader(classLoader, classToHack);
+                new ByteBuddy()
+                        .redefine(typePool.describe(classToHack).resolve(), ClassFileLocator.ForClassLoader.of(classLoader))
+                        .visit(Advice.to(ClassFileAdvice.class).on(ElementMatchers.named("getBytes").and(ElementMatchers.takesArguments(0)).and(ElementMatchers.returns(byte[].class))))
+                        .make().load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
+                Utils.secureClassloader(classLoader, classToHack, certs);
+                success = true;
+                System.out.println("Successful to modify ECJ ClassFile");
+            } catch (Throwable t) {
+                System.out.println("Fail to modify ECJ ClassFile");
+                error = t;
+                error.printStackTrace();
+            }
+            if (success) {
+                attachAsmJar();
+            } else {
+                error.printStackTrace();
+            }
         } catch (Throwable t) {
             t.printStackTrace();
         }
@@ -354,6 +386,29 @@ public class JAsyncProcessor extends AbstractProcessor {
                     Class<?> transformerClass = Class.forName("io.github.vipcxj.jasync.asm.Transformer");
                     Method transform = transformerClass.getMethod("transform", Object.class);
                     transform.invoke(null, fileObject);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    static class ClassFileAdvice {
+
+        @Advice.OnMethodEnter
+        public static boolean enter(@Advice.FieldValue("bytes") Object bytes) {
+            return bytes == null;
+        }
+
+        @SuppressWarnings("UnusedAssignment")
+        @Advice.OnMethodExit
+        public static void exit(@Advice.Enter boolean init, @Advice.FieldValue(value = "bytes", readOnly = false) byte[] bytes) {
+            if (init && bytes != null) {
+                try {
+                    Class<?> transformerClass = Class.forName("io.github.vipcxj.jasync.asm.JAsyncTransformer");
+                    Method transform = transformerClass.getMethod("transform", byte[].class);
+                    //noinspection PrimitiveArrayArgumentToVarargsMethod
+                    bytes = (byte[]) transform.invoke(null, bytes);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }

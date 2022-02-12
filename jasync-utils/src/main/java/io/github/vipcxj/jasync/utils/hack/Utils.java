@@ -6,10 +6,10 @@ import sun.misc.Unsafe;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.tools.Diagnostic;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
+import java.lang.reflect.*;
+import java.security.cert.Certificate;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /*
  * Copyright (C) 2009-2020 The Project Lombok Authors.
@@ -65,6 +65,10 @@ public class Utils {
 
     public static void addOpensFromJdkCompilerModule(Class<?> type, String[] packages) {
         addOpens(getOwnModule(type), getModule("jdk.compiler"), packages);
+    }
+
+    public static void addOpens(Class<?> ownClass, String moduleName, String[] packages) {
+        addOpens(getOwnModule(ownClass), getModule(moduleName), packages);
     }
 
     /** Useful from jdk9 and up; required from jdk16 and up. This code is supposed to gracefully do nothing on jdk8 and below, as this operation isn't needed there. */
@@ -163,6 +167,47 @@ public class Utils {
             return Permit.getField(handler.getClass(), "val$delegateTo").get(handler);
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    public static Field unsafeGetField(Class<?> targetClass, String name) {
+        try {
+            Method getDeclaredFields0 = Class.class.getDeclaredMethod("getDeclaredFields0", boolean.class);
+            getDeclaredFields0.setAccessible(true);
+            Field[] unfilteredFields = (Field[]) getDeclaredFields0.invoke(targetClass, false);
+            return Arrays.stream(unfilteredFields).filter(f -> Objects.equals(f.getName(), name)).findAny().orElse(null);
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private static Map<String, Certificate[]> getCertsMap(ClassLoader classLoader) throws NoSuchFieldException, IllegalAccessException {
+        Field package2certs = unsafeGetField(ClassLoader.class, "package2certs");
+        if (package2certs == null) {
+            throw new NoSuchFieldException("No such field named package2certs in class ClassLoader.");
+        }
+        package2certs.setAccessible(true);
+        //noinspection unchecked
+        return  (Map<String, Certificate[]>) package2certs.get(classLoader);
+    }
+
+    public static Certificate[] unsecureClassloader(ClassLoader classLoader, String className) throws NoSuchFieldException, IllegalAccessException {
+        Map<String, Certificate[]> certsMap = getCertsMap(classLoader);
+        if (certsMap != null) {
+            int i = className.lastIndexOf('.');
+            String packageName = (i == -1) ? "" : className.substring(0, i);
+            return certsMap.put(packageName, new Certificate[0]);
+        }
+        return null;
+    }
+
+    public static void secureClassloader(ClassLoader classLoader, String className, Certificate[] certs) throws NoSuchFieldException, IllegalAccessException {
+        Map<String, Certificate[]> certsMap = getCertsMap(classLoader);
+        if (certsMap != null) {
+            int i = className.lastIndexOf('.');
+            String packageName = (i == -1) ? "" : className.substring(0, i);
+            certsMap.put(packageName, certs);
         }
     }
 
