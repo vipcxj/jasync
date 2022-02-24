@@ -19,7 +19,7 @@ public class JAsyncTransformer {
                 return input;
             }
         } catch (Throwable t) {
-            t.printStackTrace();
+            Logger.error(t);
             return input;
         }
     }

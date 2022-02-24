@@ -38,11 +38,6 @@
         </developer>
     </developers>
 
-    <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>io.github.vipcxj</groupId>
@@ -53,6 +48,7 @@
             <groupId>com.google.auto.service</groupId>
             <artifactId>auto-service-annotations</artifactId>
             <version>${auto-service.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -66,7 +62,24 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>compile-java-9</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <release>9</release>
+                            <compileSourceRoots>
+                                <compileSourceRoot>${project.basedir}/src/main/java9</compileSourceRoot>
+                            </compileSourceRoots>
+                            <multiReleaseOutput>true</multiReleaseOutput>
+                        </configuration>
+                    </execution>
+                </executions>
                 <configuration>
+                    <release>8</release>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>com.google.auto.service</groupId>

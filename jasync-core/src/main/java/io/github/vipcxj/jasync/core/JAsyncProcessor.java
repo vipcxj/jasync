@@ -1,10 +1,9 @@
 package io.github.vipcxj.jasync.core;
 
 import com.google.auto.service.AutoService;
+import io.github.vipcxj.jasync.core.asm.ECJClassWriterEnhancer;
 import io.github.vipcxj.jasync.core.asm.TypeInfo;
-import io.github.vipcxj.jasync.core.asm.TypeScanner;
 import io.github.vipcxj.jasync.spec.JPromise2;
-import io.github.vipcxj.jasync.utils.hack.Permit;
 import io.github.vipcxj.jasync.utils.hack.Utils;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.ByteBuddyAgent;
@@ -13,44 +12,39 @@ import net.bytebuddy.dynamic.ClassFileLocator;
 import net.bytebuddy.dynamic.loading.ClassReloadingStrategy;
 import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.pool.TypePool;
-import org.objectweb.asm.ClassReader;
 
 import javax.annotation.processing.*;
+import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementVisitor;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementScanner8;
-import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
-import javax.tools.StandardLocation;
 import java.io.*;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.cert.Certificate;
 import java.util.*;
 import java.util.jar.JarFile;
 
 @SupportedAnnotationTypes("*")
+@SupportedSourceVersion(SourceVersion.RELEASE_8)
 @AutoService(Processor.class)
 public class JAsyncProcessor extends AbstractProcessor {
 
-    static {
-        System.out.println("install agent.");
-        installAgent();
-    }
-
-    private static final String PROMISE_TYPES_FILE_PROPERTY = "jasync_promise_types_file";
     private static final String FULL_TYPES_FILE_PROPERTY = "jasync_full_types_file";
+    private static volatile boolean agent = false;
 
-    private static void installAgent() {
+    private synchronized static void installAgent(ClassLoader classLoader) {
+        if (agent) {
+            return;
+        }
         try {
             Utils.addOpensFromJdkCompilerModule(JAsyncProcessor.class, new String[] {
                     "com.sun.tools.javac.processing",
@@ -58,46 +52,108 @@ public class JAsyncProcessor extends AbstractProcessor {
                     "com.sun.tools.javac.main"
             });
             ByteBuddyAgent.install();
-            ClassLoader classLoader = ClassLoader.getSystemClassLoader();
-            TypePool typePool = TypePool.Default.of(classLoader);
-            Throwable error = null;
+            TypePool typePool;
             boolean success = false;
             try {
-                new ByteBuddy()
-                        .redefine(typePool.describe("com.sun.tools.javac.jvm.ClassWriter").resolve(), ClassFileLocator.ForClassLoader.of(classLoader))
-                        .visit(Advice.to(ClassWriterAdvice.class).on(ElementMatchers.named("writeClass").and(ElementMatchers.returns(JavaFileObject.class))))
-                        .make().load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
-                success = true;
-                System.out.println("Successful to modify Javac ClassWriter");
+                String classToHack = "com.sun.tools.javac.jvm.ClassWriter";
+                ClassLoader currentClassLoader = findClassLoader(classLoader, classToHack);
+                if (currentClassLoader != null) {
+                    typePool = TypePool.Default.of(currentClassLoader);
+                    new ByteBuddy()
+                            .redefine(typePool.describe("com.sun.tools.javac.jvm.ClassWriter").resolve(), ClassFileLocator.ForClassLoader.of(classLoader))
+                            .visit(Advice.to(ClassWriterAdvice.class).on(ElementMatchers.named("writeClass").and(ElementMatchers.returns(JavaFileObject.class))))
+                            .make().load(currentClassLoader, ClassReloadingStrategy.fromInstalledAgent());
+                    success = true;
+                    Logger.info("Successful to modify Javac ClassWriter");
+                } else {
+                    Logger.info("Fail to modify Javac ClassWriter");
+                }
             } catch (Throwable t) {
-                error = t;
-                error.printStackTrace();
-                System.out.println("Fail to modify Javac ClassWriter");
+                t.printStackTrace();
+               Logger.info("Fail to modify Javac ClassWriter");
             }
             try {
                 String classToHack = "org.eclipse.jdt.internal.compiler.ClassFile";
-                Utils.addOpens(JAsyncProcessor.class, "java.base", new String[] {"java.lang"});
-                Certificate[] certs = Utils.unsecureClassloader(classLoader, classToHack);
-                new ByteBuddy()
-                        .redefine(typePool.describe(classToHack).resolve(), ClassFileLocator.ForClassLoader.of(classLoader))
-                        .visit(Advice.to(ClassFileAdvice.class).on(ElementMatchers.named("getBytes").and(ElementMatchers.takesArguments(0)).and(ElementMatchers.returns(byte[].class))))
-                        .make().load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
-                Utils.secureClassloader(classLoader, classToHack, certs);
-                success = true;
-                System.out.println("Successful to modify ECJ ClassFile");
+                ClassLoader currentClassLoader = findClassLoader(classLoader, classToHack);
+                if (currentClassLoader != null) {
+                    typePool = TypePool.Default.of(currentClassLoader);
+                    Utils.addOpens(JAsyncProcessor.class, "java.base", new String[] {"java.lang"});
+                    Certificate[] certs = Utils.unsecureClassloader(currentClassLoader, classToHack);
+                    new ByteBuddy()
+                            .redefine(typePool.describe(classToHack).resolve(), ClassFileLocator.ForClassLoader.of(classLoader))
+                            .visit(Advice.to(ClassFileAdvice.class).on(ElementMatchers.named("getBytes").and(ElementMatchers.takesArguments(0)).and(ElementMatchers.returns(byte[].class))))
+                            .make().load(currentClassLoader, ClassReloadingStrategy.fromInstalledAgent());
+                    Utils.secureClassloader(currentClassLoader, classToHack, certs);
+                    Logger.info("Successful to modify ECJ ClassFile");
+                    try {
+                        classToHack = "org.eclipse.jdt.internal.compiler.tool.EclipseCompilerImpl";
+                        currentClassLoader = findClassLoader(classLoader, classToHack);
+                        if (currentClassLoader != null) {
+                            typePool = TypePool.Default.of(currentClassLoader);
+                            certs = Utils.unsecureClassloader(currentClassLoader, classToHack);
+                            new ByteBuddy()
+                                    .redefine(typePool.describe(classToHack).resolve(), ClassFileLocator.ForClassLoader.of(classLoader))
+                                    .visit(new ECJClassWriterEnhancer("outputClassFiles"))
+                                    .make().load(currentClassLoader, ClassReloadingStrategy.fromInstalledAgent());
+                            Utils.secureClassloader(currentClassLoader, classToHack, certs);
+                            success = true;
+                            Logger.info("Successful to modify ECJ EclipseCompilerImpl");
+                        } else {
+                            Logger.warn("Fail to modify ECJ EclipseCompilerImpl");
+                        }
+                    } catch (Throwable t) {
+                        Logger.warn("Fail to modify ECJ EclipseCompilerImpl");
+                        Logger.error(t);
+                    }
+                    try {
+                        classToHack = "org.eclipse.jdt.internal.compiler.util.Util";
+                        currentClassLoader = findClassLoader(classLoader, classToHack);
+                        if (currentClassLoader != null) {
+                            typePool = TypePool.Default.of(currentClassLoader);
+                            certs = Utils.unsecureClassloader(currentClassLoader, classToHack);
+                            new ByteBuddy()
+                                    .redefine(typePool.describe(classToHack).resolve(), ClassFileLocator.ForClassLoader.of(classLoader))
+                                    .visit(new ECJClassWriterEnhancer("writeToDisk"))
+                                    .make().load(currentClassLoader, ClassReloadingStrategy.fromInstalledAgent());
+                            Utils.secureClassloader(currentClassLoader, classToHack, certs);
+                            success = true;
+                            Logger.info("Successful to modify ECJ Util");
+                        } else {
+                            Logger.warn("Fail to modify ECJ Util");
+                        }
+                    } catch (Throwable t) {
+                        Logger.warn("Fail to modify ECJ Util");
+                        Logger.error(t);
+                    }
+                }
             } catch (Throwable t) {
-                System.out.println("Fail to modify ECJ ClassFile");
-                error = t;
-                error.printStackTrace();
+                Logger.info("Fail to modify ECJ ClassFile");
+                Logger.error(t);
+                t.printStackTrace();
             }
             if (success) {
                 attachAsmJar();
-            } else {
-                error.printStackTrace();
             }
         } catch (Throwable t) {
-            t.printStackTrace();
+            Logger.error(t);
         }
+        agent = true;
+    }
+
+    private static ClassLoader findClassLoader(ClassLoader classLoader, String className) {
+        try {
+            if (classLoader == null) {
+                classLoader = JAsyncProcessor.class.getClassLoader();
+            }
+            if (classLoader == null) {
+                classLoader = ClassLoader.getSystemClassLoader();
+            }
+            classLoader.loadClass(className);
+            Logger.info("Success to load the class " + className + ", so use the class loader " + classLoader);
+            return classLoader;
+        } catch (ClassNotFoundException ignored) {}
+        Logger.info("Unable to find the class loader of " + className + ".");
+        return null;
     }
 
     private static void attachAsmJar() {
@@ -125,18 +181,33 @@ public class JAsyncProcessor extends AbstractProcessor {
     }
 
     private final Map<String, TypeInfo> typeInfoMap = new HashMap<>();
-    private final List<String> promiseTypes = new ArrayList<>();
+    private final Set<String> promiseTypes = new HashSet<>();
     private final List<String> fullTypes = new ArrayList<>();
-    private Path promiseTypesPath;
     private Path fullTypesPath;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        collectTypes();
+        Logger.info("install agent.");
+        installAgent(processingEnv.getClass().getClassLoader());
+        Logger.info(Paths.get("").toAbsolutePath().toString());
+        Logger.info("init jasync processor.");
+        Logger.info("processingEnv type: " + processingEnv.getClass());
+        createFullTypesFile();
     }
 
-    public static Object tryGetProxyDelegateToField(Object instance) {
+    private void createFullTypesFile() {
+        try {
+            fullTypesPath = Files.createTempFile("full-types", ".txt");
+            System.setProperty(FULL_TYPES_FILE_PROPERTY, fullTypesPath.toString());
+            deleteOnExit(fullTypesPath);
+        } catch (Throwable t) {
+            Logger.error("Unable to create the full-types file.");
+            Logger.error(t);
+        }
+    }
+
+/*    public static Object tryGetProxyDelegateToField(Object instance) {
         try {
             InvocationHandler handler = Proxy.getInvocationHandler(instance);
             return Permit.getField(handler.getClass(), "val$delegateTo").get(handler);
@@ -173,6 +244,7 @@ public class JAsyncProcessor extends AbstractProcessor {
         try {
             Object fileManagerObject = fileManagerField.get(filer);
             if (fileManagerObject instanceof JavaFileManager) {
+                Logger.info("Find the file manager: " + fileManagerObject.getClass());
                 return (JavaFileManager) fileManagerObject;
             } else {
                 String errorMessage = "Unable to get the java file manager from the filer object.";
@@ -186,7 +258,7 @@ public class JAsyncProcessor extends AbstractProcessor {
             String errorMessage = "Unable to get the java file manager from the filer object.";
             throw new IllegalStateException(errorMessage + " " + e.getMessage(), e);
         }
-    }
+    }*/
 
     private void deleteOnExit(Path path) {
         try {
@@ -196,18 +268,8 @@ public class JAsyncProcessor extends AbstractProcessor {
         }
     }
 
-    private void writeFile(int promiseFrom, int promiseTo, int fullFrom, int fullTo) {
+    private void writeFile(int fullFrom, int fullTo) {
         try {
-            if (promiseTo > promiseFrom) {
-                Files.write(
-                        promiseTypesPath,
-                        promiseTypes.subList(promiseFrom, promiseTo),
-                        StandardCharsets.UTF_8,
-                        StandardOpenOption.CREATE,
-                        StandardOpenOption.WRITE,
-                        StandardOpenOption.APPEND
-                );
-            }
             if (fullTo > fullFrom) {
                 Files.write(
                         fullTypesPath,
@@ -223,64 +285,7 @@ public class JAsyncProcessor extends AbstractProcessor {
         }
     }
 
-    private void collectTypes() {
-        try {
-            JavaFileManager fileManager = getFileManager(processingEnv.getFiler());
-            try {
-                promiseTypesPath = Files.createTempFile("promise-types", ".txt");
-                System.setProperty(PROMISE_TYPES_FILE_PROPERTY, promiseTypesPath.toString());
-                deleteOnExit(promiseTypesPath);
-                fullTypesPath = Files.createTempFile("full-types", ".txt");
-                System.setProperty(FULL_TYPES_FILE_PROPERTY, fullTypesPath.toString());
-                deleteOnExit(fullTypesPath);
-                typeInfoMap.clear();
-                Iterable<JavaFileObject> fileObjects = fileManager.list(StandardLocation.CLASS_PATH, "", Collections.singleton(JavaFileObject.Kind.CLASS), true);
-                for (JavaFileObject fileObject : fileObjects) {
-                    try (InputStream is = fileObject.openInputStream()) {
-                        ClassReader classReader = new ClassReader(is);
-                        TypeScanner typeScanner = new TypeScanner(null);
-                        classReader.accept(typeScanner, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG);
-                        typeInfoMap.put(typeScanner.getName(), new TypeInfo(typeScanner.getSuperName(), typeScanner.getInterfaces()));
-                    }
-                }
-                for (Map.Entry<String, TypeInfo> entry : typeInfoMap.entrySet()) {
-                    String name = entry.getKey();
-                    TypeInfo typeInfo = entry.getValue();
-                    if (isPromise(typeInfoMap, name)) {
-                        promiseTypes.add(name);
-                    }
-                    fullTypes.add(typeInfo.print(name));
-                }
-                writeFile(0, promiseTypes.size(), 0, fullTypes.size());
-            } catch (IOException e) {
-                throw new IllegalStateException("Unable to collect types.", e);
-            }
-        } catch (Throwable t) {
-            t.printStackTrace();
-        }
-    }
-
     private static final String promiseTypeName = JPromise2.class.getName();
-    private boolean isPromise(Map<String, TypeInfo> typeInfoMap, String name) {
-        if (promiseTypeName.equals(name)) {
-            return true;
-        }
-        TypeInfo typeInfo = typeInfoMap.get(name);
-        if (typeInfo == null) {
-            return false;
-        }
-        String superName = typeInfo.getSuperName();
-        if (superName != null && isPromise(typeInfoMap, superName)) {
-            return true;
-        }
-        String[] interfaces = typeInfo.getInterfaces();
-        for (String anInterface : interfaces) {
-            if (isPromise(typeInfoMap, anInterface)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     private String getBinaryName(TypeElement typeElement) {
         return processingEnv.getElementUtils().getBinaryName(typeElement).toString();
@@ -354,8 +359,8 @@ public class JAsyncProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+        Logger.info("processing...");
         try {
-            int curPromiseSize = promiseTypes.size();
             int curFullSize = fullTypes.size();
             ElementScanner8<Void, Void> elementScanner = new ElementScanner8<Void, Void>() {
                 @Override
@@ -369,11 +374,10 @@ public class JAsyncProcessor extends AbstractProcessor {
                     visitElement((TypeElement) rootElement, elementScanner);
                 }
             }
-            int afterPromiseSize = promiseTypes.size();
             int afterFullSize = fullTypes.size();
-            writeFile(curPromiseSize, afterPromiseSize, curFullSize, afterFullSize);
+            writeFile(curFullSize, afterFullSize);
         } catch (Throwable t) {
-            t.printStackTrace();
+            Logger.error(t);
         }
         return true;
     }
@@ -381,14 +385,14 @@ public class JAsyncProcessor extends AbstractProcessor {
     static class ClassWriterAdvice {
 
         @Advice.OnMethodExit
-        public static void exit(@Advice.Return Object fileObject) {
+        public static void exit(@Advice.FieldValue("fileManager") Object fileManager, @Advice.Return Object fileObject) {
             if (fileObject != null) {
                 try {
                     Class<?> transformerClass = Class.forName("io.github.vipcxj.jasync.asm.Transformer");
-                    Method transform = transformerClass.getMethod("transform", Object.class);
-                    transform.invoke(null, fileObject);
+                    Method transform = transformerClass.getMethod("transform", Object.class, Object.class);
+                    transform.invoke(null, fileManager, fileObject);
                 } catch (Throwable e) {
-                    e.printStackTrace();
+                    Logger.error(e);
                 }
             }
         }
@@ -403,15 +407,16 @@ public class JAsyncProcessor extends AbstractProcessor {
 
         @SuppressWarnings("UnusedAssignment")
         @Advice.OnMethodExit
-        public static void exit(@Advice.Enter boolean init, @Advice.FieldValue(value = "bytes", readOnly = false) byte[] bytes) {
+        public static void exit(@Advice.Enter boolean init, @Advice.FieldValue(value = "bytes", readOnly = false) byte[] bytes, @Advice.Return(readOnly = false) byte[] out) {
             if (init && bytes != null) {
                 try {
                     Class<?> transformerClass = Class.forName("io.github.vipcxj.jasync.asm.JAsyncTransformer");
                     Method transform = transformerClass.getMethod("transform", byte[].class);
                     //noinspection PrimitiveArrayArgumentToVarargsMethod
                     bytes = (byte[]) transform.invoke(null, bytes);
+                    out = bytes;
                 } catch (Throwable e) {
-                    e.printStackTrace();
+                    Logger.error(e);
                 }
             }
         }

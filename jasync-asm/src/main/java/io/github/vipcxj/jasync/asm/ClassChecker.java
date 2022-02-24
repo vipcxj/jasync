@@ -42,8 +42,12 @@ public class ClassChecker extends ClassVisitor {
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
         MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
         methods.add(name);
-        String returnType = Type.getReturnType(descriptor).getClassName();
-        if (Utils.isJPromise(returnType)) {
+        Type returnType = Type.getReturnType(descriptor);
+        if (returnType.getSort() != Type.OBJECT) {
+            return mv;
+        }
+        String returnTypeName = returnType.getClassName();
+        if (Utils.isJPromise(returnTypeName)) {
             return new MethodChecker(name, descriptor, mv);
         } else {
             return mv;
@@ -69,7 +73,7 @@ public class ClassChecker extends ClassVisitor {
                 if (AsmHelper.isAwait(opcode, owner, name, descriptor)) {
                     useAwait = true;
                     String key = this.name + this.descriptor;
-                    System.out.println("Find async method " + key + " in class " + className);
+                    Logger.info("Find async method " + key + " in class " + className);
                     asyncMethods.add(key);
                 }
             }

@@ -48,6 +48,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>io.github.vipcxj</groupId>
+            <artifactId>jasync-utils</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm</artifactId>
             <version>9.2</version>
@@ -98,6 +103,7 @@
                 <configuration>
                     <artifactSet>
                         <includes>
+                            <include>io.github.vipcxj:jasync-utils</include>
                             <include>org.ow2.asm:asm</include>
                             <include>org.ow2.asm:asm-tree</include>
                             <include>org.ow2.asm:asm-analysis</include>
@@ -108,6 +114,10 @@
                         <relocation>
                             <pattern>org.objectweb.</pattern>
                             <shadedPattern>io.github.vipcxj.jasync.asm.shaded.org.objectweb.</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>io.github.vipcxj.jasync.utils.hack</pattern>
+                            <shadedPattern>io.github.vipcxj.jasync.asm.shaded.utils.hack</shadedPattern>
                         </relocation>
                     </relocations>
                 </configuration>

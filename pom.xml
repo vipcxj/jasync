@@ -59,16 +59,6 @@
             <version>4.2.0</version>
             <scope>provided</scope>
         </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-api</artifactId>
-            <version>2.17.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-core</artifactId>
-            <version>2.17.1</version>
-        </dependency>
     </dependencies>
     <build>
         <pluginManagement>
@@ -76,12 +66,19 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.8.1</version>
+                    <version>3.9.0</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
                     <version>3.2.0</version>
+                    <configuration>
+                        <archive>
+                            <manifestEntries>
+                                <Multi-Release>true</Multi-Release>
+                            </manifestEntries>
+                        </archive>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -165,6 +162,37 @@
             <properties>
                 <javadoc.opts>-Xdoclint:none</javadoc.opts>
             </properties>
+        </profile>
+        <profile>
+            <id>ecj</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <compilerId>eclipse</compilerId>
+                            <!-- Passing arguments is a trainwreck, see https://issues.apache.org/jira/browse/MCOMPILER-123 -->
+<!--                            <compilerArguments>
+                                <properties>${project.basedir}/.settings/org.eclipse.jdt.core.prefs</properties>
+                            </compilerArguments>-->
+                            <showWarnings>true</showWarnings>
+                            <showDeprecation>true</showDeprecation>
+                            <compilerArguments>
+                                <XprintProcessorInfo/>
+                                <verbose/>
+                                <replaceProcessorPathWithProcessorModulePath/>
+                            </compilerArguments>
+                        </configuration>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.codehaus.plexus</groupId>
+                                <artifactId>plexus-compiler-eclipse</artifactId>
+                                <version>2.10.1-SNAPSHOT</version>
+                            </dependency>
+                        </dependencies>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <profile>
             <id>deploy</id>

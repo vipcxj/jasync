@@ -51,22 +51,7 @@
         </dependency>
         <dependency>
             <groupId>io.github.vipcxj</groupId>
-            <artifactId>jasync-runtime</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.github.vipcxj</groupId>
             <artifactId>jasync-utils</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.github.vipcxj</groupId>
-            <artifactId>jasync-core-java9</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.github.vipcxj</groupId>
-            <artifactId>jasync-core-java17</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -81,14 +66,19 @@
             <version>9.2</version>
         </dependency>
         <dependency>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm-tree</artifactId>
+            <version>9.2</version>
+        </dependency>
+        <dependency>
             <groupId>net.bytebuddy</groupId>
-            <artifactId>byte-buddy</artifactId>
-            <version>1.11.19</version>
+            <artifactId>byte-buddy-dep</artifactId>
+            <version>1.12.8</version>
         </dependency>
         <dependency>
             <groupId>net.bytebuddy</groupId>
             <artifactId>byte-buddy-agent</artifactId>
-            <version>1.11.19</version>
+            <version>1.12.8</version>
         </dependency>
         <dependency>
             <groupId>com.google.auto.service</groupId>
@@ -114,7 +104,7 @@
                 <configuration>
                     <toolchains>
                         <jdk>
-                            <version>1.8</version>
+                            <version>11</version>
                         </jdk>
                     </toolchains>
                 </configuration>
@@ -135,7 +125,24 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>compile-java-9</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <release>9</release>
+                            <compileSourceRoots>
+                                <compileSourceRoot>${project.basedir}/src/main/java9</compileSourceRoot>
+                            </compileSourceRoots>
+                            <multiReleaseOutput>true</multiReleaseOutput>
+                        </configuration>
+                    </execution>
+                </executions>
                 <configuration>
+                    <release>8</release>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>com.google.auto.service</groupId>
@@ -186,13 +193,14 @@
                 <configuration>
                     <artifactSet>
                         <includes>
-                            <include>org.ow2.asm:asm</include>
+                            <include>net.bytebuddy:byte-buddy-dep</include>
+                            <include>org.ow2.asm:*</include>
                         </includes>
                     </artifactSet>
                     <relocations>
                         <relocation>
-                            <pattern>org.objectweb.</pattern>
-                            <shadedPattern>io.github.vipcxj.jasync.core.shaded.org.objectweb.</shadedPattern>
+                            <pattern>org.objectweb.asm.</pattern>
+                            <shadedPattern>io.github.vipcxj.jasync.core.shaded.org.objectweb.asm.</shadedPattern>
                         </relocation>
                     </relocations>
                 </configuration>

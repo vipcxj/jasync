@@ -1,15 +1,13 @@
 package io.github.vipcxj.jasync.utils.hack;
 
-import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import io.github.vipcxj.jasync.utils.hack.dummy.Parent;
 import sun.misc.Unsafe;
 
-import javax.annotation.processing.ProcessingEnvironment;
-import javax.tools.Diagnostic;
 import java.lang.reflect.*;
 import java.security.cert.Certificate;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Objects;
 
 /*
  * Copyright (C) 2009-2020 The Project Lombok Authors.
@@ -118,7 +116,7 @@ public class Utils {
         }
     }
 
-    public static JavacProcessingEnvironment getJavacProcessingEnvironment(Object procEnv, ProcessingEnvironment originalProcEnv) {
+/*    public static JavacProcessingEnvironment getJavacProcessingEnvironment(Object procEnv, ProcessingEnvironment originalProcEnv) {
         if (procEnv instanceof JavacProcessingEnvironment) return (JavacProcessingEnvironment) procEnv;
 
         // try to find a "delegate" field in the object, and use this to try to obtain a JavacProcessingEnvironment
@@ -134,11 +132,11 @@ public class Utils {
         originalProcEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
                 "Can't get the delegate of the gradle IncrementalProcessingEnvironment. JAsync won't work.");
         throw new IllegalArgumentException(errMessage);
-    }
+    }*/
 
-    /**
+/*    *//**
      * Gradle incremental processing
-     */
+     *//*
     private static Object tryGetDelegateField(Class<?> delegateClass, Object instance) {
         try {
             return Permit.getField(delegateClass, "delegate").get(instance);
@@ -147,9 +145,9 @@ public class Utils {
         }
     }
 
-    /**
+    *//**
      * Kotlin incremental processing
-     */
+     *//*
     private static Object tryGetProcessingEnvField(Class<?> delegateClass, Object instance) {
         try {
             return Permit.getField(delegateClass, "processingEnv").get(instance);
@@ -158,10 +156,10 @@ public class Utils {
         }
     }
 
-    /**
+    *//**
      * IntelliJ IDEA >= 2020.3
      */
-    public static Object tryGetProxyDelegateToField(Class<?> delegateClass, Object instance) {
+    public static Object tryGetProxyDelegateToField(Object instance) {
         try {
             InvocationHandler handler = Proxy.getInvocationHandler(instance);
             return Permit.getField(handler.getClass(), "val$delegateTo").get(handler);

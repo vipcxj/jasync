@@ -41,6 +41,29 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>compile-java-9</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <release>9</release>
+                            <compileSourceRoots>
+                                <compileSourceRoot>${project.basedir}/src/main/java9</compileSourceRoot>
+                            </compileSourceRoots>
+                            <multiReleaseOutput>true</multiReleaseOutput>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <release>8</release>
+                </configuration>
+            </plugin>
+            <plugin>
                 <artifactId>maven-javadoc-plugin</artifactId>
             </plugin>
             <plugin>

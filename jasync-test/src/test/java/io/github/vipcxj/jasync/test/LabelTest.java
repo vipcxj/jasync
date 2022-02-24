@@ -12,7 +12,7 @@ import java.util.Set;
 
 @SuppressWarnings({"UnusedLabel", "ConstantConditions"})
 public class LabelTest {
-
+ 
     @Async
     public JPromise2<Integer> justBreak() {
         int a = 1;

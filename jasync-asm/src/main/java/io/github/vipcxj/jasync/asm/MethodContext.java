@@ -890,8 +890,7 @@ public class MethodContext {
         }
     }
 
-    private PackageInsnNode pushStack(MethodNode methodNode, boolean loop, BranchAnalyzer.Node<? extends BasicValue> node, AbstractInsnNode[] insnArray) {
-        PackageInsnNode packageInsnNode = new PackageInsnNode();
+    private void pushStack(PackageInsnNode packageInsnNode, MethodNode methodNode, boolean loop, BranchAnalyzer.Node<? extends BasicValue> node, AbstractInsnNode[] insnArray) {
         List<AbstractInsnNode> insnNodes = packageInsnNode.getInsnNodes();
         // stack: ... -> ..., pusher
         insnNodes.add(new MethodInsnNode(
@@ -989,7 +988,6 @@ public class MethodContext {
                 Constants.JPUSH_CONTEXT_COMPLETE_DESC.getDescriptor(),
                 true
         ));
-        return packageInsnNode;
     }
 
     private void pushThenImmediate(MethodNode methodNode, PackageInsnNode packageInsnNode, MethodNode lambdaNode) {
@@ -1141,7 +1139,7 @@ public class MethodContext {
                 // stack: ..., new type -> ..., new type, JStack
                 lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
                 lambdaMap.add(mappedIndex);
-                System.out.println("An uninitialized this object lost.");
+                Logger.warn("An uninitialized this object lost.");
             }
             // stack: ..., JStack -> ..., T
             pop(lambdaNode);
@@ -1163,7 +1161,7 @@ public class MethodContext {
             // stack: ..., new type -> ..., new type, JStack
             lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
             lambdaMap.add(mappedIndex);
-            System.out.println("An uninitialized this object lost.");
+            Logger.warn("An uninitialized this object lost.");
         }
         // stack: ..., JStack -> ...
         lambdaNode.visitInsn(Opcodes.POP);
@@ -1246,7 +1244,9 @@ public class MethodContext {
         List<Integer> midLambdaMap = new ArrayList<>();
         addManyMap(midLambdaMap, mapped(node.getIndex()), midLambda.instructions.size());
         addLambdaContext(midLambda, midLambdaMap, false, true);
-        PackageInsnNode packageInsnNode = pushStack(getMv(), loop, node, insnNodes);
+        PackageInsnNode packageInsnNode = new PackageInsnNode();
+        packageInsnNode.getInsnNodes().add(node.getInsnNode());
+        pushStack(packageInsnNode, getMv(), loop, node, insnNodes);
         pushThenImmediate(getMv(), packageInsnNode, outLambda);
         packageInsnNode.complete();
         return packageInsnNode;
@@ -1313,7 +1313,8 @@ public class MethodContext {
         if (portalLabel != null) {
             jumpNodes = new ArrayList<>();
             jumpNodes.add(portalLabel);
-            PackageInsnNode packageInsnNode = pushStack(lambdaNode, loop, node, insnArray);
+            PackageInsnNode packageInsnNode = new PackageInsnNode();
+            pushStack(packageInsnNode, lambdaNode, loop, node, insnArray);
             jumpNodes.addAll(packageInsnNode.getInsnNodes());
             // push portal to stack
             jumpNodes.add(new VarInsnNode(Opcodes.ALOAD, portalSlot));
