@@ -16,7 +16,14 @@ public class Logger {
     private static final Path path = getLogFile();
 
     private static Path getLogFile() {
-        Path path = Paths.get("C:\\Users\\vipcx\\IdeaProjects\\jasync-test-standalone\\jasync.log");
+        String os = System.getProperty("os.name").toLowerCase();
+        Path path;
+        if (os.contains("win")) {
+            String home = System.getenv("userprofile");
+            path = Paths.get(home + "\\jasync.log");
+        } else {
+            path = Paths.get("~/jasync.log");
+        }
         if (Files.notExists(path)) {
             try {
                 return Files.createFile(path);
