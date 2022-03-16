@@ -54,7 +54,7 @@ public class Logger {
             System.out.print(lines.stream().collect(Collectors.joining(System.lineSeparator())));
             System.out.println();
             if (path != null) {
-                Files.write(path, lines, StandardOpenOption.APPEND);
+                Files.write(path, lines, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
             }
         } catch (IOException e) {
             e.printStackTrace();
