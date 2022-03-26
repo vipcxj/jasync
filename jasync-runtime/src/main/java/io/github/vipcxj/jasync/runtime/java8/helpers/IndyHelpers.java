@@ -4,8 +4,8 @@ import io.github.vipcxj.jasync.spec.JPromise;
 import io.github.vipcxj.jasync.spec.functional.*;
 
 import java.lang.invoke.*;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class IndyHelpers {
 
@@ -16,7 +16,7 @@ public class IndyHelpers {
     public IndyHelpers(MethodHandles.Lookup lookup) {
         this.callerClass = lookup.lookupClass();
         this.lookup = lookup;
-        this.callSites = new HashMap<>();
+        this.callSites = new ConcurrentHashMap<>();
     }
 
     public IndyHelper instance(Object thisObj) {
