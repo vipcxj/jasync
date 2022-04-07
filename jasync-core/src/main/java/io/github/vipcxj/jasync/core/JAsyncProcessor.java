@@ -20,7 +20,6 @@ import org.objectweb.asm.ClassReader;
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementVisitor;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -195,9 +194,6 @@ public class JAsyncProcessor extends AbstractProcessor {
     }
 
     private final Map<String, TypeInfo> typeInfoMap = new HashMap<>();
-    {
-        typeInfoMapThreadLocal.set(typeInfoMap);
-    }
     private final List<String> promiseTypes = new ArrayList<>();
     private final List<String> fullTypes = new ArrayList<>();
     private Path promiseTypesPath;
@@ -329,7 +325,7 @@ public class JAsyncProcessor extends AbstractProcessor {
                 typeInfoMap.clear();
                 Iterable<JavaFileObject> fileObjects = fileManager.list(StandardLocation.CLASS_PATH, "", Collections.singleton(JavaFileObject.Kind.CLASS), true);
                 for (JavaFileObject fileObject : fileObjects) {
-                    Logger.info("Class in class path: " + fileObject.toUri());
+                    // Logger.info("Class in class path: " + fileObject.toUri());
                     try (InputStream is = fileObject.openInputStream()) {
                         ClassReader classReader = new ClassReader(is);
                         TypeScanner typeScanner = new TypeScanner(null);
@@ -441,15 +437,6 @@ public class JAsyncProcessor extends AbstractProcessor {
         return false;
     }
 
-    private void visitElement(TypeElement element, ElementVisitor<Void, Void> visitor) {
-        element.accept(visitor, null);
-        for (Element enclosedElement : element.getEnclosedElements()) {
-            if (enclosedElement instanceof TypeElement) {
-                visitElement((TypeElement) enclosedElement, visitor);
-            }
-        }
-    }
-
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         Logger.info("processing...");
@@ -457,15 +444,19 @@ public class JAsyncProcessor extends AbstractProcessor {
             int curPromiseSize = promiseTypes.size();
             int curFullSize = fullTypes.size();
             ElementScanner8<Void, Void> elementScanner = new ElementScanner8<Void, Void>() {
+
                 @Override
-                public Void visitType(TypeElement e, Void unused) {
-                    collectTypes(e);
-                    return null;
+                public Void scan(Element e, Void unused) {
+                    Logger.info("Find " + e.getKind() + " element: " + e.getSimpleName() + " with type " + e.asType());
+                    if (e instanceof TypeElement) {
+                        collectTypes((TypeElement) e);
+                    }
+                    return super.scan(e, unused);
                 }
             };
             for (Element rootElement : roundEnv.getRootElements()) {
                 if (rootElement instanceof TypeElement) {
-                    visitElement((TypeElement) rootElement, elementScanner);
+                    elementScanner.scan(rootElement);
                 }
             }
             int afterPromiseSize = promiseTypes.size();
