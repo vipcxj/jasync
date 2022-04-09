@@ -113,11 +113,11 @@
                     <relocations>
                         <relocation>
                             <pattern>org.objectweb.</pattern>
-                            <shadedPattern>io.github.vipcxj.jasync.asm.shaded.org.objectweb.</shadedPattern>
+                            <shadedPattern>io.github.vipcxj.jasync.ng.asm.shaded.org.objectweb.</shadedPattern>
                         </relocation>
                         <relocation>
-                            <pattern>io.github.vipcxj.jasync.utils.hack</pattern>
-                            <shadedPattern>io.github.vipcxj.jasync.asm.shaded.utils.hack</shadedPattern>
+                            <pattern>io.github.vipcxj.jasync.ng.utils</pattern>
+                            <shadedPattern>io.github.vipcxj.jasync.ng.asm.shaded.utils</shadedPattern>
                         </relocation>
                     </relocations>
                 </configuration>

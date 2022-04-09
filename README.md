@@ -101,7 +101,7 @@ First, select a implementation library to the Maven dependency. Currently, only 
 ```
 This implementation uses the famous library **Reactor**. The `JPromise` object is a wrapper of `Mono` object.
 So the `JPromise` object can be created from a `Mono` object using static method `io.github.vipcxj.jasync.reactive.Promises.from(reactor.core.publisher.Mono<T>)`.
-And the `JPromise` object can be converted back to the `Mono` object using instance method `io.github.vipcxj.jasync.spec.JPromise.unwrap`.
+And the `JPromise` object can be converted back to the `Mono` object using instance method `JPromise.unwrap`.
 
 Then add the core library to the Maven dependency.
 ```xml

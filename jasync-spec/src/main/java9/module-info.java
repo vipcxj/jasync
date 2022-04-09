@@ -1,8 +1,8 @@
 module jasync.spec {
 
-    exports io.github.vipcxj.jasync.spec;
-    exports io.github.vipcxj.jasync.spec.annotations;
-    exports io.github.vipcxj.jasync.spec.exceptions;
-    exports io.github.vipcxj.jasync.spec.functional;
-    exports io.github.vipcxj.jasync.spec.spi;
+    exports io.github.vipcxj.jasync.ng.spec;
+    exports io.github.vipcxj.jasync.ng.spec.annotations;
+    exports io.github.vipcxj.jasync.ng.spec.exceptions;
+    exports io.github.vipcxj.jasync.ng.spec.functional;
+    exports io.github.vipcxj.jasync.ng.spec.spi;
 }

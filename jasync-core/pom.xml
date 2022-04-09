@@ -218,7 +218,7 @@
                     <relocations>
                         <relocation>
                             <pattern>org.objectweb.asm.</pattern>
-                            <shadedPattern>io.github.vipcxj.jasync.core.shaded.org.objectweb.asm.</shadedPattern>
+                            <shadedPattern>io.github.vipcxj.jasync.ng.core.shaded.org.objectweb.asm.</shadedPattern>
                         </relocation>
                     </relocations>
                 </configuration>

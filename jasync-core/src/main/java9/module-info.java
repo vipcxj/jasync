@@ -1,4 +1,4 @@
-import io.github.vipcxj.jasync.core.JAsyncProcessor;
+import io.github.vipcxj.jasync.ng.core.JAsyncProcessor;
 
 import javax.annotation.processing.Processor;
 

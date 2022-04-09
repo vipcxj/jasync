@@ -9,10 +9,10 @@
         </File>
     </Appenders>
     <Loggers>
-        <Logger name="io.github.vipcxj.jasync.core.AsyncProcessor" level="trace" additivity="false">
+        <Logger name="io.github.vipcxj.jasync.ng.core.AsyncProcessor" level="trace" additivity="false">
             <AppenderRef ref="File"/>
         </Logger>
-        <Logger name="io.github.vipcxj.jasync.core.javac.patch.java8.SymbolHelperImpl" level="trace" additivity="false">
+        <Logger name="io.github.vipcxj.jasync.ng.core.javac.patch.java8.SymbolHelperImpl" level="trace" additivity="false">
             <AppenderRef ref="File"/>
         </Logger>
         <Root level="warn">

@@ -102,7 +102,7 @@ public class MyRestController {
 ```
 这个实现库是基于著名的响应式框架 **Reactor** 的。在这个实现中，`JPromise` 对象是 `Mono` 对象的封装。
 所以 `JPromise` 可以使用静态方法 `io.github.vipcxj.jasync.reactive.Promises.from(reactor.core.publisher.Mono<T>)` 来通过`Mono` 构造。 
-并且 `JPromise` 也可以使用实例方法 `io.github.vipcxj.jasync.spec.JPromise.unwrap` 转换回 `Mono`。
+并且 `JPromise` 也可以使用实例方法 `JPromise.unwrap` 转换回 `Mono`。
 
 然后将核心库添加到maven依赖中。核心库用于语法树的转换。
 ```xml
