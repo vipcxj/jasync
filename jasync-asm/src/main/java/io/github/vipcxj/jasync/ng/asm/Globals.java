@@ -37,6 +37,19 @@ public class Globals {
         }
         return GLOBAL_THREAD_LOCAL_KEY;
     }
+    private static String getKeyFromGlobalThreadLocal(ThreadLocal<?> threadLocal) throws NoSuchFieldException, IllegalAccessException {
+        try {
+            Field keyField = getGlobalThreadLocalKeyField(threadLocal.getClass());
+            // Because unknown reason, Field.get may throw IllegalArgumentException. It seems that the class of Field is from another classloader.
+            // So just reset cached field and try again.
+            return  (String) keyField.get(threadLocal);
+        } catch (IllegalArgumentException e) {
+            Logger.warn("Unable to get key of the GlobalThreadLocal. Clear the cache of field and try again.");
+            GLOBAL_THREAD_LOCAL_KEY = null;
+            Field keyField = getGlobalThreadLocalKeyField(threadLocal.getClass());
+            return  (String) keyField.get(threadLocal);
+        }
+    }
     private static Object getGlobalObject(String key) {
         try {
             Method getMap = getThreadLocalGetMapMethod();
@@ -53,8 +66,7 @@ public class Globals {
                     if (reference != null) {
                         ThreadLocal<?> threadLocal = reference.get();
                         if (threadLocal != null && threadLocal.getClass().getName().equals(GLOBAL_THREAD_LOCAL_CLASS_NAME)) {
-                            Field keyField = getGlobalThreadLocalKeyField(threadLocal.getClass());
-                            String theKey = (String) keyField.get(threadLocal);
+                            String theKey = getKeyFromGlobalThreadLocal(threadLocal);
                             if (Objects.equals(key, theKey)) {
                                 return threadLocal.get();
                             }

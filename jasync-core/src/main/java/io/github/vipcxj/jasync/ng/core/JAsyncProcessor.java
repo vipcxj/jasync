@@ -193,9 +193,9 @@ public class JAsyncProcessor extends AbstractProcessor {
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         Logger.info(processingEnv.getClass().toString());
-        Logger.info("install agent.");
+        Logger.info("Install agent.");
         installAgent(processingEnv.getClass().getClassLoader());
-        Logger.info("get javaFileManager.");
+        Logger.info("Get JavaFileManager.");
         getFileManager(processingEnv.getFiler());
         Logger.info(Paths.get("").toAbsolutePath().toString());
     }

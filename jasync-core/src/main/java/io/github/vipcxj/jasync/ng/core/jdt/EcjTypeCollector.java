@@ -4,8 +4,6 @@ import io.github.vipcxj.jasync.ng.core.ReflectHelper;
 import io.github.vipcxj.jasync.ng.utils.Logger;
 
 import javax.tools.JavaFileManager;
-import javax.tools.JavaFileObject;
-import javax.tools.StandardLocation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -13,8 +11,6 @@ import java.nio.charset.Charset;
 import java.util.*;
 
 public class EcjTypeCollector {
-
-//    private static JavaFileManager FILE_MANAGER;
 
     private static Object getJavaProject(Object ecjObject) {
         try {
@@ -60,8 +56,8 @@ public class EcjTypeCollector {
                 }
             } catch (ClassNotFoundException e) {
                 Class<?> aptConfigClass = ClassLoaderHelper.loadClass("io.github.vipcxj.jasync.ng.core.jdt.AptConfig", projectClass);
-                Logger.info("class loader of AptConfig: " + aptConfigClass.getClassLoader().getClass());
-                Logger.info("current context class loader: " + (Thread.currentThread().getContextClassLoader() != null ? Thread.currentThread().getContextClassLoader().getClass() : null));
+                Logger.trace("Class loader of AptConfig: " + aptConfigClass.getClassLoader().getClass());
+                Logger.trace("Current context class loader: " + (Thread.currentThread().getContextClassLoader() != null ? Thread.currentThread().getContextClassLoader().getClass() : null));
                 Method getProcessorOptions = aptConfigClass.getMethod("getProcessorOptions", javaProjectClass);
                 return (Map<String, String>) getProcessorOptions.invoke(null, project);
             }
@@ -90,21 +86,17 @@ public class EcjTypeCollector {
                 optionList.add(entry.getKey());
                 optionList.add(entry.getValue());
             }
-            Logger.info(String.join(" ", optionList));
+            Logger.trace("" +
+                    "Options: " + String.join(" ", optionList));
             Iterator<String> iterator = optionList.iterator();
             while (iterator.hasNext()) {
                 String next = iterator.next();
                 if (fileManager.handleOption(next, iterator)) {
-                    Logger.info("file manager has handled " + next);
+                    Logger.trace("File manager has handled " + next);
                 } else {
-                    Logger.info("file manager unable to handle " + next);
+                    Logger.trace("File manager unable to handle " + next);
                 }
             }
-            Iterable<JavaFileObject> fileObjects = fileManager.list(StandardLocation.CLASS_PATH, "", new HashSet<>(Collections.singletonList(JavaFileObject.Kind.CLASS)), true);
-            for (JavaFileObject fileObject : fileObjects) {
-                Logger.info(fileObject.toUri().getPath());
-            }
-//            FILE_MANAGER = fileManager;
             return fileManager;
         } catch (Throwable t) {
             Logger.error(t);

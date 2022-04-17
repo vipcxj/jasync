@@ -16,11 +16,13 @@ import java.util.stream.Collectors;
 
 public class Logger {
 
-    private static final Path path = getLogFile();
-
+    private static final Path LOG_PATH = getLogFile();
     private static Path getLogFile() {
-        String logPath = System.getenv("JASYNC_LOG");
-        Path path = null;
+        String logPath = System.getProperty("jasync.log.path");
+        if (logPath == null) {
+            logPath = System.getenv("JASYNC_LOG_PATH");
+        }
+        Path path;
         if (logPath != null) {
             path = Paths.get(logPath);
             try {
@@ -28,12 +30,33 @@ public class Logger {
                     path = path.resolve("jasync.log");
                 }
             } catch (SecurityException ignored) { }
+        } else {
+            path = Paths.get(System.getProperty("user.home"), "jasync.log");
         }
         System.out.println("The log path: " + path);
         return path;
     }
 
-    private static void writeLog(String msg, String level) {
+    private static final LEVEL LOG_LEVEL = getLogLevel();
+    private static LEVEL getLogLevel() {
+        String logPath = System.getProperty("jasync.log.level");
+        if (logPath == null) {
+            logPath = System.getenv("JASYNC_LOG_LEVEL");
+        }
+        if (logPath == null) {
+            return LEVEL.INFO;
+        }
+        try {
+            return LEVEL.valueOf(logPath.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return LEVEL.INFO;
+        }
+    }
+
+    private static void writeLog(String msg, LEVEL level) {
+        if (level.ordinal() < LOG_LEVEL.ordinal()) {
+            return;
+        }
         if (msg == null || msg.length() == 0) {
             return;
         }
@@ -50,8 +73,8 @@ public class Logger {
             try {
                 System.out.print(lines.stream().collect(Collectors.joining(System.lineSeparator())));
                 System.out.println();
-                if (path != null) {
-                    Files.write(path, lines, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+                if (LOG_PATH != null) {
+                    Files.write(LOG_PATH, lines, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -59,22 +82,33 @@ public class Logger {
         }
     }
 
+    public static void trace(String msg) {
+        writeLog(msg, LEVEL.TRACE);
+    }
+
     public static void info(String msg) {
-        writeLog(msg, "INFO");
+        writeLog(msg, LEVEL.INFO);
     }
 
     public static void warn(String msg) {
-        writeLog(msg, "ERROR");
+        writeLog(msg, LEVEL.WARN);
     }
 
     public static void error(String msg) {
-        writeLog(msg, "ERROR");
+        writeLog(msg, LEVEL.ERROR);
     }
 
     public static void error(Throwable t) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         t.printStackTrace(pw);
-        writeLog(sw.toString(), "ERROR");
+        writeLog(sw.toString(), LEVEL.ERROR);
+    }
+
+    enum LEVEL {
+        TRACE,
+        INFO,
+        WARN,
+        ERROR
     }
 }

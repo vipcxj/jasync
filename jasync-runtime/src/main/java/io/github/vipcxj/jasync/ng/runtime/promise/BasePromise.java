@@ -21,6 +21,7 @@ public class BasePromise<T> extends AbstractPromise<T> {
     private T value;
     private Throwable error;
     protected final Task<T> task;
+    private JContext context;
     private final JPromise<?> parent;
     private List<BiConsumer<T, JContext>> successHandlers;
     private List<BiConsumer<Throwable, JContext>> errorHandlers;
@@ -96,6 +97,9 @@ public class BasePromise<T> extends AbstractPromise<T> {
                 ? generate((jThunk, context) -> thenCreator(jThunk, context, mapper), this)
                 : create((jThunk, context) -> thenCreator(jThunk, context, mapper), delay, timeUnit, this);
         getChildren().add(nextPromise);
+        if (isCompleted()) {
+            nextPromise.schedule(context);
+        }
         return nextPromise;
     }
 
@@ -132,6 +136,9 @@ public class BasePromise<T> extends AbstractPromise<T> {
                 ? generate((jThunk, context) -> catchCreator(jThunk, context, catcher), this)
                 : create((jThunk, context) -> catchCreator(jThunk, context, catcher), this);
         getChildren().add(nextPromise);
+        if (isCompleted()) {
+            nextPromise.schedule(context);
+        }
         return nextPromise;
     }
 
@@ -158,31 +165,50 @@ public class BasePromise<T> extends AbstractPromise<T> {
                 ? generate((thunk, context) -> finallyCreator(thunk, context, supplier), this)
                 : create((thunk, context) -> finallyCreator(thunk, context, supplier), this);
         getChildren().add(nextPromise);
+        if (isCompleted()) {
+            nextPromise.schedule(context);
+        }
         return nextPromise;
     }
 
 
     @Override
-    public JPromise<T> onSuccess(BiConsumer<T, JContext> resolver) {
-        getSuccessHandlers().add(resolver);
+    public synchronized JPromise<T> onSuccess(BiConsumer<T, JContext> resolver) {
+        if (resolved) {
+            resolver.accept(value, context);
+        } else {
+            getSuccessHandlers().add(resolver);
+        }
         return this;
     }
 
     @Override
-    public JPromise<T> onError(BiConsumer<Throwable, JContext> reject) {
-        getErrorHandlers().add(reject);
+    public synchronized JPromise<T> onError(BiConsumer<Throwable, JContext> reject) {
+        if (rejected) {
+            reject.accept(error, context);
+        } else {
+            getErrorHandlers().add(reject);
+        }
         return this;
     }
 
     @Override
-    public JPromise<T> onFinally(Consumer<JContext> consumer) {
-        getCompleteHandlers().add(consumer);
+    public synchronized JPromise<T> onFinally(Consumer<JContext> consumer) {
+        if (resolved || rejected) {
+            consumer.accept(context);
+        } else {
+            getCompleteHandlers().add(consumer);
+        }
         return this;
     }
 
     @Override
     public JPromise<T> onDispose(Runnable runnable) {
-        getTerminalHandlers().add(runnable);
+        if (disposed) {
+            runnable.run();
+        } else {
+            getTerminalHandlers().add(runnable);
+        }
         return this;
     }
 
@@ -246,6 +272,7 @@ public class BasePromise<T> extends AbstractPromise<T> {
             return;
         }
         this.value = result;
+        this.context = context;
         markResolved();
         try {
             try {
@@ -264,6 +291,7 @@ public class BasePromise<T> extends AbstractPromise<T> {
             return;
         }
         this.error = error;
+        this.context = context;
         markRejected();
         try {
             try {

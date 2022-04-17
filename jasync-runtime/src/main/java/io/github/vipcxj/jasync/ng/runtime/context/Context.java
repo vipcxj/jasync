@@ -1,13 +1,12 @@
 package io.github.vipcxj.jasync.ng.runtime.context;
 
-import io.github.vipcxj.jasync.ng.runtime.promise.ContextPromise;
 import io.github.vipcxj.jasync.ng.runtime.schedule.ExecutorServiceScheduler;
 import io.github.vipcxj.jasync.ng.spec.JContext;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.JScheduler;
 import io.github.vipcxj.jasync.ng.spec.JStack;
 
-import java.util.*;
+import java.util.Set;
 import java.util.concurrent.Executors;
 
 public class Context implements JContext {
@@ -16,6 +15,10 @@ public class Context implements JContext {
     private final ContextMap contextMap;
     private final JScheduler scheduler;
     public final static JContext DEFAULTS = new Context(Context0Map.EMPTY, new ExecutorServiceScheduler(Executors.newWorkStealingPool()), null);
+
+    public Context(JScheduler scheduler) {
+        this(Context0Map.EMPTY, scheduler, null);
+    }
 
     public Context(ContextMap contextMap, JScheduler scheduler, JStack[] stacks) {
         this.contextMap = contextMap;
@@ -44,22 +47,22 @@ public class Context implements JContext {
     }
 
     @Override
-    public JPromise<JContext> put(Object key, Object value) {
+    public JContext set(Object key, Object value) {
         ContextMap newContextMap = contextMap.put(key, value);
         if (newContextMap != contextMap) {
-            return new ContextPromise(new Context(newContextMap, scheduler, stacks));
+            return new Context(newContextMap, scheduler, stacks);
         } else {
-            return new ContextPromise(this);
+            return this;
         }
     }
 
     @Override
-    public JPromise<JContext> remove(Object key) {
+    public JContext remove(Object key) {
         ContextMap newContextMap = contextMap.remove(key);
         if (newContextMap != contextMap) {
-            return new ContextPromise(new Context(newContextMap, scheduler, stacks));
+            return new Context(newContextMap, scheduler, stacks);
         } else {
-            return new ContextPromise(this);
+            return this;
         }
     }
 
@@ -69,16 +72,16 @@ public class Context implements JContext {
     }
 
     @Override
-    public JPromise<JContext> setScheduler(JScheduler scheduler) {
+    public JContext setScheduler(JScheduler scheduler) {
         if (this.scheduler != scheduler) {
-            return new ContextPromise(new Context(contextMap, scheduler, stacks));
+            return new Context(contextMap, scheduler, stacks);
         } else {
-            return new ContextPromise(this);
+            return this;
         }
     }
 
     @Override
-    public JPromise<JContext> pushStack(JStack stack) {
+    public JContext pushStack(JStack stack) {
         JStack[] newStacks;
         if (stacks == null) {
             newStacks = new JStack[] { stack };
@@ -87,7 +90,7 @@ public class Context implements JContext {
             System.arraycopy(stacks, 0, newStacks, 0, stacks.length);
             newStacks[stacks.length] = stack;
         }
-        return new ContextPromise(new Context(contextMap, scheduler, newStacks));
+        return new Context(contextMap, scheduler, newStacks);
     }
 
     @Override
@@ -102,6 +105,7 @@ public class Context implements JContext {
             newStacks = new JStack[stacks.length - 1];
             System.arraycopy(stacks, 0, newStacks, 0, stacks.length - 1);
         }
-        return new ContextPromise(new Context(contextMap, scheduler, newStacks)).thenReturn(stacks[stacks.length - 1]);
+        Context newContext = new Context(contextMap, scheduler, newStacks);
+        return JPromise.withContext(newContext).thenReturn(stacks[stacks.length - 1]);
     }
 }

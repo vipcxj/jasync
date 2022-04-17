@@ -7,12 +7,13 @@ import io.github.vipcxj.jasync.ng.spec.JThunk;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
-    protected boolean started;
-    protected boolean resolved;
-    protected boolean rejected;
-    protected boolean disposed;
+    protected volatile boolean started;
+    protected volatile boolean resolved;
+    protected volatile boolean rejected;
+    protected volatile boolean disposed;
     protected List<JPromise<?>> children;
     protected List<Runnable> terminalHandlers;
 

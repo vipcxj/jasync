@@ -20,6 +20,6 @@ public class JPushContextImpl implements JPushContext {
 
     @Override
     public JPromise<JContext> complete() {
-        return JContext.current().thenImmediate(ctx -> ctx.pushStack(stack));
+        return JPromise.updateContext(ctx -> ctx.pushStack(stack));
     }
 }

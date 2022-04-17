@@ -17,8 +17,8 @@ public class PromiseTest {
             JPromise.sleep(1, TimeUnit.SECONDS)
                     .thenReturn(3)
                     .onSuccess(v -> System.out.println(Thread.currentThread().getName() + ": " + v))
-                    .writeContext("a", 1)
-                    .writeContext("b", 2)
+                    .withSetContextValue("a", 1)
+                    .withSetContextValue("b", 2)
                     .delay(1, TimeUnit.SECONDS)
                     .thenMap((Integer v) -> {
                         System.out.println("run here!");
@@ -29,10 +29,10 @@ public class PromiseTest {
                     .onSuccess(v -> {
                         System.out.println(Thread.currentThread().getName() + ": " + v);
                     })
-                    .then(() -> JAsync.context().onSuccess(ctx -> {
+                    .withContext(ctx -> {
                         System.out.println("a:" + ctx.get("a"));
                         System.out.println("b:" + ctx.get("b"));
-                    }))
+                    })
                     .block();
         }
         try {
@@ -45,8 +45,8 @@ public class PromiseTest {
     @Test
     public void test1() throws InterruptedException {
         Integer value = JPromise.portal((JPortal<Integer> portal, JContext ignored) ->
-                JAsync.updateContext("index", 0, j -> j + 1)
-                        .thenMap(ctx -> ctx.<Integer>get("index"))
+                JPromise.updateContextValue("index", j -> j + 1, 0)
+                        .thenMapWithContextImmediate(ctx -> ctx.<Integer>get("index"))
                         .onSuccess(v -> {
                             if (v % 100000 == 0) {
                                 System.out.println(Thread.currentThread().getName() + ": " + v);
@@ -192,5 +192,36 @@ public class PromiseTest {
             }).start();
             delay.block();
         });
+    }
+
+    @Test
+    public void testOrder() {
+        JPromise<Void> sleep3 = JPromise.create((jThunk, context) -> {
+            sleep(3000, jThunk, context);
+            System.out.println("Sleep 3000");
+        });
+        JPromise<Void> sleep1 = JPromise.create((thunk, context) -> {
+            sleep(1000, thunk, context);
+            System.out.println("Sleep 1000");
+        });
+        sleep3.async();
+        sleep1.async();
+        try {
+            sleep3.then(() -> sleep1).then(() -> {
+                System.out.println("After sleep 1000");
+                return JPromise.empty();
+            }).block();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sleep(long time, JThunk<Void> thunk, JContext context) {
+        try {
+            Thread.sleep(time);
+            thunk.resolve(null, context);
+        } catch (InterruptedException e) {
+            thunk.reject(e, context);
+        }
     }
 }

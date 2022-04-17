@@ -3,6 +3,8 @@ package io.github.vipcxj.jasync.ng.spec;
 import io.github.vipcxj.jasync.ng.spec.functional.*;
 import io.github.vipcxj.jasync.ng.spec.spi.JPromiseSupport;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -29,6 +31,20 @@ public interface JPromise<T> extends JHandle<T> {
     static <T> JPromise<T> portal(JAsyncPortalTask0<T> task) {
         return portal((factory, context) -> task.invoke(factory));
     }
+    @SafeVarargs
+    static  <T> JPromise<T> any(JPromise<? extends T>... promises) {
+        return provider.any(promises);
+    }
+    static  <T> JPromise<T> any(List<JPromise<? extends T>> promises) {
+        return provider.any(promises);
+    }
+    static <T> JPromise<List<T>> all(List<JPromise<? extends T>> promises) {
+        return provider.all(promises);
+    }
+    @SafeVarargs
+    static  <T> JPromise<List<T>> all(JPromise<? extends T>... promises) {
+        return provider.all(promises);
+    }
 
     /**
      * Create a lazy promise. The handler will be scheduled by the scheduler.
@@ -47,6 +63,141 @@ public interface JPromise<T> extends JHandle<T> {
      */
     static <T> JPromise<T> generate(BiConsumer<JThunk<T>, JContext> handler) {
         return provider.generate(handler);
+    }
+
+    static JPromise<JContext> context() {
+        return JPromise.generate(Functions.PROMISE_HANDLER_EXTRACT_CONTEXT);
+    }
+
+    static JPromise<JContext> withContext(JContext context) {
+        return JPromise.generate((thunk, oldContext) -> {
+            thunk.resolve(oldContext, context);
+        });
+    }
+
+    static <T> JPromise<T> wrapContext(JPromise<T> promise, JContext context) {
+        return withContext(context).thenImmediate(promise::withUpdateContext);
+    }
+
+    static <T> JPromise<T> wrapContext(JAsyncPromiseFunction0<JContext, T> function, JContext context) {
+        return withContext(context).thenWithContextImmediate((oldContext, newContext) -> function.apply(newContext).withUpdateContext(oldContext));
+    }
+
+    static <T> JPromise<T> wrapContext(JAsyncPromiseSupplier0<T> function, JContext context) {
+        return withContext(context).thenImmediate((oldContext) -> function.get().withUpdateContext(oldContext));
+    }
+
+    static JPromise<JScheduler> withScheduler(JScheduler scheduler) {
+        return JPromise.generate((thunk, context) -> {
+            JScheduler oldScheduler = context.getScheduler();
+            JContext newContext = context.setScheduler(scheduler);
+            thunk.resolve(oldScheduler, newContext);
+        });
+    }
+
+    static <T> JPromise<T> wrapScheduler(JPromise<T> promise, JScheduler scheduler) {
+        return withScheduler(scheduler).thenImmediate(promise::withUpdateScheduler);
+    }
+
+    static <T> JPromise<T> wrapScheduler(JAsyncPromiseSupplier0<T> function, JScheduler scheduler) {
+        return withScheduler(scheduler).thenImmediate((oldScheduler) -> function.get().withUpdateScheduler(oldScheduler));
+    }
+
+    static JPromise<Boolean> hasContextValue(Object key) {
+        return JPromise.generate((thunk, context) -> {
+            thunk.resolve(context.hasKey(key), context);
+        });
+    }
+
+    static <T> JPromise<T> getContextValue(Object key) {
+        return JPromise.generate((thunk, context) -> {
+            thunk.resolve(context.get(key), context);
+        });
+    }
+
+    static <T> JPromise<T> getContextValue(Object key, T defaultValue) {
+        return JPromise.generate((thunk, context) -> {
+            thunk.resolve(context.getOrDefault(key, defaultValue), context);
+        });
+    }
+
+    static <T> JPromise<Optional<T>> getContextValueOrEmpty(Object key) {
+        return JPromise.generate((thunk, context) -> {
+            thunk.resolve(context.getOrEmpty(key), context);
+        });
+    }
+
+    static JPromise<JScheduler> getScheduler() {
+        return JPromise.generate(Functions.PROMISE_HANDLER_EXTRACT_SCHEDULER);
+    }
+
+    static JPromise<JContext> updateContext(Function<JContext, JContext> contextUpdater) {
+        return JPromise.generate((thunk, context) -> {
+            JContext newContext = contextUpdater.apply(context);
+            thunk.resolve(context, newContext);
+        });
+    }
+
+    static <T> JPromise<T> setContextValue(Object key, Object newValue) {
+        return JPromise.generate((thunk, context) -> {
+            Object old = context.get(key);
+            JContext newContext = context.set(key, newValue);
+            //noinspection unchecked
+            thunk.resolve((T) old, newContext);
+        });
+    }
+
+    static JPromise<Void> updateContextValue(Object key, Function<Object, Object> valueUpdater) {
+        return JPromise.generate((thunk, context) -> {
+            Object value = context.get(key);
+            JContext newContext = context.set(key, valueUpdater.apply(value));
+            thunk.resolve(null, newContext);
+        });
+    }
+
+    static <E> JPromise<Void> updateContextValue(Object key, Function<E, E> valueUpdater, E emptyValue) {
+        return JPromise.generate((thunk, context) -> {
+            if (context.hasKey(key)) {
+                E value = context.get(key);
+                JContext newContext = context.set(key, valueUpdater.apply(value));
+                thunk.resolve(null, newContext);
+            } else {
+                JContext newContext = context.set(key, emptyValue);
+                thunk.resolve(null, newContext);
+            }
+        });
+    }
+
+    static JPromise<Boolean> setContextValueIfExists(Object key, Object newValue) {
+        return JPromise.generate((thunk, context) -> {
+            if (context.hasKey(key)) {
+                JContext newContext = context.set(key, newValue);
+                thunk.resolve(true, newContext);
+            } else {
+                thunk.resolve(false, context);
+            }
+        });
+    }
+
+    static JPromise<Void> updateContextValueIfExists(Object key, Function<Object, Object> valueUpdater) {
+        return JPromise.generate((thunk, context) -> {
+            if (context.hasKey(key)) {
+                Object value = context.get(key);
+                JContext newContext = context.set(key, valueUpdater.apply(value));
+                thunk.resolve(null, newContext);
+            } else {
+                thunk.resolve(null, context);
+            }
+        });
+    }
+
+    static <T> JPromise<T> removeContextValue(Object key) {
+        return JPromise.generate((thunk, context) -> {
+            Object old = context.get(key);
+            JContext newContext = context.remove(key);
+            //noinspection unchecked
+            thunk.resolve((T) old, newContext);
+        });
     }
 
     default T await() {
@@ -174,17 +325,36 @@ public interface JPromise<T> extends JHandle<T> {
         return thenMapImmediate(() -> next);
     }
 
-    default JPromise<T> writeContext(Object key, Object value) {
-        return thenWithImmediate(() -> JAsync.writeContext(key, value));
+    default <R> JPromise<R> thenPromise(JPromise<R> nextPromise) {
+        return thenImmediate(() -> nextPromise);
     }
-    default JPromise<T> pruneContext(Object key) {
-        return thenWithImmediate(() -> JAsync.pruneContext(key));
+
+    default JPromise<T> withContext(Consumer<JContext> consumer) {
+        return thenWithWithContextImmediate((JContext context) -> {
+            consumer.accept(context);
+            return JPromise.empty();
+        });
     }
-    default JPromise<T> updateContext(Object key, T initial, Function<T, T> updater) {
-        return thenWithImmediate(() -> JAsync.updateContext(key, initial, updater));
+    default JPromise<T> withUpdateContext(JContext context) {
+        return thenWithImmediate(() -> updateContext(ctx -> context));
     }
-    default JPromise<T> updateContextIfExists(Object key, Function<T, T> updater) {
-        return thenWithImmediate(() -> JAsync.updateContextIfExists(key, updater));
+    default JPromise<T> withUpdateContext(Function<JContext, JContext> contextUpdater) {
+        return thenWithImmediate(() -> updateContext(contextUpdater));
+    }
+    default JPromise<T> withSetContextValue(Object key, Object value) {
+        return thenWithImmediate(() -> setContextValue(key, value));
+    }
+    default JPromise<T> withRemoveContextValue(Object key) {
+        return thenWithImmediate(() -> removeContextValue(key));
+    }
+    default JPromise<T> withUpdateContextValue(Object key, Function<Object, Object> updater, Object emptyValue) {
+        return thenWithImmediate(() -> updateContextValue(key, updater, emptyValue));
+    }
+    default JPromise<T> withUpdateContextValueIfExists(Object key, Function<Object, Object> updater) {
+        return thenWithImmediate(() -> updateContextValueIfExists(key, updater));
+    }
+    default JPromise<T> withUpdateScheduler(JScheduler scheduler) {
+        return thenWithImmediate(() -> withScheduler(scheduler));
     }
 
     default JPromise<T> delay(long timeout, TimeUnit unit) {
