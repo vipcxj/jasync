@@ -412,6 +412,11 @@ public interface JPromise<T> extends JHandle<T> {
     @Override
     JPromise<T> onFinally(Consumer<JContext> consumer);
     @Override
+    default JPromise<T> onFinally(Runnable runnable) {
+        return onFinally(ctx -> runnable.run());
+    }
+
+    @Override
     JPromise<T> onDispose(Runnable runnable);
 
     void schedule(JContext context);
