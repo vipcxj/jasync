@@ -14,6 +14,7 @@ public class Constants {
     public static final String SERIALIZABLE_NAME = "java/lang/Serializable";
     public static final Type SERIALIZABLE_DESC = Type.getObjectType(SERIALIZABLE_NAME);
     public static final String THROWABLE_NAME = "java/lang/Throwable";
+    public static final Type THROWABLE_DESC = Type.getObjectType(THROWABLE_NAME);
     public static final String JPROMISE_NAME = "io/github/vipcxj/jasync/ng/spec/JPromise";
     public static final Type JPROMISE_DESC = Type.getObjectType(JPROMISE_NAME);
     public static final String JCONTEXT_NAME = "io/github/vipcxj/jasync/ng/spec/JContext";

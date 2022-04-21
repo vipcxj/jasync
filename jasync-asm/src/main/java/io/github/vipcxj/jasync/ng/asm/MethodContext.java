@@ -17,9 +17,8 @@ public class MethodContext {
     private final BranchAnalyzer.Node<BasicValue>[] frames;
     private final List<Integer> localsToUpdate;
     private final List<Integer> stacksToUpdate;
-    private final boolean loop;
+    private final MethodType type;
     private final int head;
-    private final boolean hide;
     private int index = 0;
     private List<Integer> map;
 
@@ -29,18 +28,17 @@ public class MethodContext {
     private List<Set<Integer>> loops;
 
     public MethodContext(ClassContext classContext, MethodNode mv) {
-        this(classContext, mv, null, false, false, null);
+        this(classContext, mv, null, MethodType.TOP, null);
     }
 
-    public MethodContext(ClassContext classContext, MethodNode mv, List<Integer> map, boolean loop, boolean hide, MethodContext parent) {
+    public MethodContext(ClassContext classContext, MethodNode mv, List<Integer> map, MethodType type, MethodContext parent) {
         this.classContext = classContext;
         this.mv = mv;
         this.map = map;
         this.info = parent != null ? parent.getInfo() : JAsyncInfo.of(mv);
         this.localsToUpdate = new ArrayList<>();
         this.stacksToUpdate = new ArrayList<>();
-        this.loop = loop;
-        this.hide = hide;
+        this.type = type;
         this.head = mapped(0);
         BranchAnalyzer analyzer = new BranchAnalyzer();
         try {
@@ -64,8 +62,8 @@ public class MethodContext {
         insnNodes = new AbstractInsnNode[this.frames.length];
     }
 
-    public MethodContext createChild(MethodNode methodNode, List<Integer> map, boolean loop, boolean hide) {
-        return new MethodContext(classContext, methodNode, map, loop, hide, this);
+    public MethodContext createChild(MethodNode methodNode, List<Integer> map, MethodType type) {
+        return new MethodContext(classContext, methodNode, map, type, this);
     }
 
     public MethodNode getMv() {
@@ -76,12 +74,12 @@ public class MethodContext {
         return map;
     }
 
-    public int getHead() {
-        return head;
+    public MethodType getType() {
+        return type;
     }
 
-    public boolean isHide() {
-        return hide;
+    public int getHead() {
+        return head;
     }
 
     public JAsyncInfo getInfo() {
@@ -133,8 +131,8 @@ public class MethodContext {
         mv.maxStack = Math.max(mv.maxStack, stacksToUpdate.stream().mapToInt(i -> i).max().orElse(0));
     }
 
-    public void addLambdaContext(MethodNode lambdaNode, List<Integer> map, boolean loop, boolean hide) {
-        MethodContext childContext = createChild(lambdaNode, map, loop, hide);
+    public void addLambdaContext(MethodNode lambdaNode, List<Integer> map, MethodType type) {
+        MethodContext childContext = createChild(lambdaNode, map, type);
         children.add(childContext);
         this.classContext.addLambda(getRootMethodContext(), childContext);
     }
@@ -317,7 +315,7 @@ public class MethodContext {
             for (TryCatchBlockNode handler : handlers) {
                 LabelNode newHandler = labelMap != null ? labelMap.get(handler.handler) : handler.handler;
                 for (TryCatchBlockNode tryCatchBlockNode : processings) {
-                    if (tryCatchBlockNode.handler == newHandler) {
+                    if (tryCatchBlockNode.handler == newHandler && Objects.equals(tryCatchBlockNode.type, handler.type)) {
                         map.put(handler, tryCatchBlockNode);
                         reverseMap.put(tryCatchBlockNode, handler);
                         break;
@@ -496,10 +494,10 @@ public class MethodContext {
         return insnNodes;
     }
 
-    private String findLambdaName(BranchAnalyzer.Node<? extends BasicValue> node, Arguments arguments) {
+    private String findLambdaName(BranchAnalyzer.Node<? extends BasicValue> node, Arguments arguments, MethodType type) {
         int mappedIndex = mapped(node.getIndex());
         String desc = Type.getMethodDescriptor(Constants.JPROMISE_DESC, arguments.argTypes(0));
-        return classContext.findLambdaByHead(getRootMethodContext(), desc, mappedIndex);
+        return classContext.findLambdaByHead(getRootMethodContext(), desc, mappedIndex, type);
     }
 
     private MethodNode createLambdaNode(Arguments arguments) {
@@ -537,7 +535,7 @@ public class MethodContext {
         return locals - i;
     }
 
-    private void calcExtraAwaitArgumentsType(int validLocals, BranchAnalyzer.Node<? extends BasicValue> node, Arguments arguments) {
+    private void localsToArguments(int validLocals, BranchAnalyzer.Node<? extends BasicValue> node, Arguments arguments) {
         // locals: this?, x, y, z.
         // x, y, z -> arguments
         int start = isStatic() ? 0 : 1;
@@ -552,6 +550,10 @@ public class MethodContext {
                 ++i;
             }
         }
+    }
+
+    private void calcExtraAwaitArgumentsType(int validLocals, BranchAnalyzer.Node<? extends BasicValue> node, Arguments arguments) {
+        localsToArguments(validLocals, node, arguments);
         int stackSize = node.getStackSize();
         int iMax = stackSize - 1;
         // stack: a, b -> arguments
@@ -627,14 +629,14 @@ public class MethodContext {
         }
         updateStacks(stackSize + validLocals);
         Arguments arguments = calcAwaitArgumentsType(validLocals, node);
-        String lambdaName = findLambdaName(node, arguments);
+        String lambdaName = findLambdaName(node, arguments, MethodType.AWAIT_BODY);
         if (lambdaName == null) {
             MethodNode lambdaNode = createLambdaNode(arguments);
             AsmHelper.updateStack(lambdaNode, getMv().maxStack);
             AsmHelper.updateLocal(lambdaNode, getMv().maxLocals);
             LabelMap labelMap = new LabelMap();
             AbstractInsnNode[] successors = collectSuccessors(node, (in, n) -> in.clone(labelMap));
-            buildLambda(lambdaNode, arguments, successors, validLocals, node, null, labelMap);
+            buildLambda(lambdaNode, MethodType.AWAIT_BODY, arguments, successors, validLocals, node, null, labelMap);
             lambdaName = lambdaNode.name;
         }
         insnList.add(LambdaUtils.invokeJAsyncPromiseFunction0(
@@ -891,7 +893,7 @@ public class MethodContext {
         }
     }
 
-    private void pushStack(PackageInsnNode packageInsnNode, MethodNode methodNode, boolean loop, BranchAnalyzer.Node<? extends BasicValue> node, AbstractInsnNode[] insnArray) {
+    private void pushStack(PackageInsnNode packageInsnNode, MethodNode methodNode, BranchAnalyzer.Node<? extends BasicValue> node, AbstractInsnNode[] insnArray) {
         List<AbstractInsnNode> insnNodes = packageInsnNode.getInsnNodes();
         // stack: ... -> ..., pusher
         insnNodes.add(new MethodInsnNode(
@@ -956,7 +958,7 @@ public class MethodContext {
                 if (first) {
                     first = false;
                     // The last local var in loop method is stack, it need not be push.
-                    if (loop) {
+                    if (type == MethodType.LOOP_BODY) {
                         continue;
                     }
                 }
@@ -1020,12 +1022,12 @@ public class MethodContext {
         insnNodes.add(new InsnNode(Opcodes.ARETURN));
     }
 
-    private int popStack(BranchAnalyzer.Node<? extends BasicValue> node, List<Integer> lambdaMap, boolean loop, MethodNode lambdaNode) {
+    private int popStack(BranchAnalyzer.Node<? extends BasicValue> node, List<Integer> lambdaMap, MethodNode lambdaNode) {
         int mappedIndex = mapped(node.getIndex());
         // local: this?, JPortal, JStack
         int locals = node.getLocals();
         // The last local var is stack in the loop method.
-        int usedLocals = loop ? locals - 1 : locals;
+        int usedLocals = type == MethodType.LOOP_BODY ? locals - 1 : locals;
         int portalSlot = isStatic() ? 0 : 1;
         int stackSlot = portalSlot + 1;
         if (usedLocals > 0) {
@@ -1068,7 +1070,7 @@ public class MethodContext {
                 nextPos = i + 1;
             }
             // The last local var in loop method is stack, it is not pushed, so can not be popped.
-            if (nextPos >= locals && loop) {
+            if (nextPos >= locals && type == MethodType.LOOP_BODY) {
                 break;
             }
             // stack: JStack -> JStack, JStack
@@ -1172,6 +1174,11 @@ public class MethodContext {
     }
 
     private PackageInsnNode processLoopNode(BranchAnalyzer.Node<? extends BasicValue> node) {
+        // JContext.createStackPusher()
+        //   .push(var0).push(var1)....push(varN)
+        //   .complete()
+        //   .thenImmediate(outLambda)
+
         // () -> JPromise.portal(midLambda)
         MethodNode outLambda = createLambdaNode(Arguments.EMPTY);
         // (portal) -> JContext.popStack(innerLambda)
@@ -1196,7 +1203,7 @@ public class MethodContext {
         outLambda.visitInsn(Opcodes.ARETURN);
         List<Integer> outLambdaMap = new ArrayList<>();
         addManyMap(outLambdaMap, mapped(node.getIndex()), outLambda.instructions.size());
-        addLambdaContext(outLambda, outLambdaMap, false, true);
+        addLambdaContext(outLambda, outLambdaMap, MethodType.LOOP_OUT);
 
         if (!isStatic()) {
             // push this to stack
@@ -1210,7 +1217,7 @@ public class MethodContext {
         AsmHelper.updateStack(midLambda, isStatic() ? 1 : 2);
 
         Arguments arguments = Arguments.of(Constants.JPORTAL_DESC, Constants.JSTACK_DESC);
-        String innerLambdaName = findLambdaName(node, arguments);
+        String innerLambdaName = findLambdaName(node, arguments, MethodType.LOOP_BODY);
         if (innerLambdaName == null) {
             AbstractInsnNode insnNode = getMv().instructions.get(node.getIndex());
             if (!(insnNode instanceof LabelNode)) {
@@ -1224,7 +1231,7 @@ public class MethodContext {
             LabelMap labelMap = new LabelMap();
             labelMap.put(labelNode, portalLabel);
             AbstractInsnNode[] successors = collectSuccessors(node, (in, n) -> in.clone(labelMap));
-            buildLambda(innerLambda, null, successors, -1, node, portalLabel, labelMap);
+            buildLambda(innerLambda, MethodType.LOOP_BODY, null, successors, -1, node, portalLabel, labelMap);
             innerLambdaName = innerLambda.name;
         }
         midLambda.instructions.add(LambdaUtils.invokeJAsyncPromiseFunction0(
@@ -1244,16 +1251,25 @@ public class MethodContext {
         midLambda.visitInsn(Opcodes.ARETURN);
         List<Integer> midLambdaMap = new ArrayList<>();
         addManyMap(midLambdaMap, mapped(node.getIndex()), midLambda.instructions.size());
-        addLambdaContext(midLambda, midLambdaMap, false, true);
+        addLambdaContext(midLambda, midLambdaMap, MethodType.LOOP_MIDDLE);
         PackageInsnNode packageInsnNode = new PackageInsnNode();
         packageInsnNode.getInsnNodes().add(node.getInsnNode());
-        pushStack(packageInsnNode, getMv(), loop, node, insnNodes);
+        pushStack(packageInsnNode, getMv(), node, insnNodes);
         pushThenImmediate(getMv(), packageInsnNode, outLambda);
         packageInsnNode.complete();
         return packageInsnNode;
     }
 
-    private void buildLambda(MethodNode lambdaNode, Arguments arguments, AbstractInsnNode[] insnArray, int locals, BranchAnalyzer.Node<? extends BasicValue> node, LabelNode portalLabel, LabelMap labelMap) {
+    private void buildLambda(
+            MethodNode lambdaNode,
+            MethodType methodType,
+            Arguments arguments,
+            AbstractInsnNode[] insnArray,
+            int locals,
+            BranchAnalyzer.Node<? extends BasicValue> node,
+            LabelNode portalLabel,
+            LabelMap labelMap
+    ) {
         List<Integer> lambdaMap = new ArrayList<>();
         int index = node.getIndex();
         int mappedIndex = mapped(index);
@@ -1301,7 +1317,7 @@ public class MethodContext {
             }
             AsmHelper.updateStack(lambdaNode, stacks);
         } else {
-            portalSlot = popStack(node, lambdaMap, loop, lambdaNode);
+            portalSlot = popStack(node, lambdaMap, lambdaNode);
         }
         if (lambdaNode.instructions.size() > 1) {
             LabelNode restoreLabelNode = new LabelNode();
@@ -1315,7 +1331,7 @@ public class MethodContext {
             jumpNodes = new ArrayList<>();
             jumpNodes.add(portalLabel);
             PackageInsnNode packageInsnNode = new PackageInsnNode();
-            pushStack(packageInsnNode, lambdaNode, loop, node, insnArray);
+            pushStack(packageInsnNode, lambdaNode, node, insnArray);
             jumpNodes.addAll(packageInsnNode.getInsnNodes());
             // push portal to stack
             jumpNodes.add(new VarInsnNode(Opcodes.ALOAD, portalSlot));
@@ -1366,10 +1382,24 @@ public class MethodContext {
                     if (insnNode instanceof PackageInsnNode) {
                         PackageInsnNode packageInsnNode = (PackageInsnNode) insnNode;
                         for (AbstractInsnNode n : packageInsnNode.getInsnNodes()) {
-                            processLambdaNode(labelMap, localVariableNodes, localVariableArray, processingTcbNode, completedTcbNode, insnList, preFrames, target, targetMap, frame, originalIndex, n);
+                            processLambdaNode(
+                                    labelMap,
+                                    localVariableNodes, localVariableArray,
+                                    processingTcbNode, completedTcbNode,
+                                    insnList, preFrames,
+                                    target, targetMap,
+                                    frame, originalIndex, n
+                            );
                         }
                     } else {
-                        processLambdaNode(labelMap, localVariableNodes, localVariableArray, processingTcbNode, completedTcbNode, insnList, preFrames, target, targetMap, frame, originalIndex, insnNode);
+                        processLambdaNode(
+                                labelMap,
+                                localVariableNodes, localVariableArray,
+                                processingTcbNode, completedTcbNode,
+                                insnList, preFrames,
+                                target, targetMap,
+                                frame, originalIndex, insnNode
+                        );
                     }
                 } else {
                     LabelNode endNode = completeTryCatchBlockNodes(processingTcbNode, completedTcbNode, null);
@@ -1437,10 +1467,23 @@ public class MethodContext {
         }
         lambdaNode.localVariables = localVariableNodes;
 
-        addLambdaContext(lambdaNode, lambdaMap, portalLabel != null, false);
+        addLambdaContext(lambdaNode, lambdaMap, methodType);
     }
 
-    private void processLambdaNode(LabelMap labelMap, List<LocalVariableNode> localVariableNodes, LocalVariableNode[] localVariableArray, List<TryCatchBlockNode> processingTcbNode, List<TryCatchBlockNode> completedTcbNode, LinkedList<AbstractInsnNode> insnList, List<BranchAnalyzer.Node<? extends BasicValue>> preFrames, List<AbstractInsnNode> target, List<Integer> targetMap, BranchAnalyzer.Node<BasicValue> frame, int originalIndex, AbstractInsnNode n) {
+    private void processLambdaNode(
+            LabelMap labelMap,
+            List<LocalVariableNode> localVariableNodes,
+            LocalVariableNode[] localVariableArray,
+            List<TryCatchBlockNode> processingTcbNode,
+            List<TryCatchBlockNode> completedTcbNode,
+            LinkedList<AbstractInsnNode> insnList,
+            List<BranchAnalyzer.Node<? extends BasicValue>> preFrames,
+            List<AbstractInsnNode> target,
+            List<Integer> targetMap,
+            BranchAnalyzer.Node<BasicValue> frame,
+            int originalIndex,
+            AbstractInsnNode n
+    ) {
         LabelNode tcStart = updateTryCatchBlockNodes(processingTcbNode, completedTcbNode, n, frame, labelMap);
         if (tcStart != null) {
             target.add(tcStart);
@@ -1463,5 +1506,13 @@ public class MethodContext {
         for (int i = 0; i < num; ++i) {
             map.add(value);
         }
+    }
+
+    public enum MethodType {
+        TOP,
+        AWAIT_BODY,
+        LOOP_BODY,
+        LOOP_OUT,
+        LOOP_MIDDLE,
     }
 }

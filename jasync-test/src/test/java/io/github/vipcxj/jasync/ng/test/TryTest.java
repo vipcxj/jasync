@@ -52,6 +52,82 @@ public class TryTest {
         Assertions.assertEquals("hello nothing", tryWithCatch2(null).block());
     }
 
+/*    private JPromise<Void> throwError(Throwable t) {
+        return JPromise.error(t);
+    }
+
+    private JPromise<Boolean> tryWithCatch3() {
+        boolean res;
+        try {
+            throwError(new IllegalStateException()).await();
+            res = true;
+        } catch (IllegalStateException e) {
+            res = false;
+        }
+        return JPromise.just(res);
+    }
+
+    @Test
+    public void testTryWithCatch3() throws InterruptedException {
+        Assertions.assertFalse(tryWithCatch3().block());
+    }
+
+    private JPromise<Boolean> tryWithCatch4() {
+        boolean res;
+        try {
+            throwError(new IllegalStateException()).await();
+            res = JPromise.just(true).await();
+        } catch (IllegalStateException e) {
+            res = false;
+        }
+        return JPromise.just(res);
+    }
+
+    @Test
+    public void testTryWithCatch4() throws InterruptedException {
+        Assertions.assertFalse(tryWithCatch4().block());
+    }
+
+    private JPromise<Boolean> tryWithCatch5() {
+        boolean res;
+        try {
+            throwError(new IllegalStateException()).await();
+            res = true;
+        } catch (IllegalStateException e) {
+            res = false;
+        }
+        res = JPromise.just(res).await();
+        return JPromise.just(res);
+    }
+
+    @Test
+    public void testTryWithCatch5() throws InterruptedException {
+        Assertions.assertFalse(tryWithCatch5().block());
+    }*/
+
+    private JPromise<String> tryWithMultiTypeCatch(String what) {
+        String message = "hello ";
+        try {
+            if (what == null) {
+                throw new NullPointerException();
+            } else if ("error".equals(what)) {
+                throw new IllegalArgumentException();
+            } else {
+                message += JPromise.just(what).await();
+            }
+        } catch (NullPointerException | IllegalArgumentException e) {
+            message += "null";
+        }
+        return JPromise.just(message);
+    }
+
+    @Test
+    public void testTryWithMultiTypeCatch() throws InterruptedException {
+        Assertions.assertEquals("hello world", tryWithMultiTypeCatch("world").block());
+        Assertions.assertEquals("hello null", tryWithMultiTypeCatch(null).block());
+        Assertions.assertEquals("hello null", tryWithMultiTypeCatch("error").block());
+    }
+
     @Async
     private JPromise<String> tryWithMultiCatch1(String what, int flag) {
         String message = "hello";
@@ -307,6 +383,4 @@ public class TryTest {
             Assertions.assertEquals(tryCatchAndFinallyNoAwait(i), tryCatchAndFinally(i).block());
         }
     }
-
-
 }

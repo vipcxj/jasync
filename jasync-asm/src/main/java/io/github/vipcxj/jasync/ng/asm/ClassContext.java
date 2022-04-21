@@ -33,9 +33,9 @@ public class ClassContext {
         return this.lambdaContexts.computeIfAbsent(methodContext, k -> new ArrayList<>());
     }
 
-    public String findLambdaByHead(MethodContext methodContext, String desc, int head) {
+    public String findLambdaByHead(MethodContext methodContext, String desc, int head, MethodContext.MethodType type) {
         for (MethodContext lambdaContext : getLambdaContexts(methodContext)) {
-            if (lambdaContext.getHead() == head && lambdaContext.getMv().desc.equals(desc) && !lambdaContext.isHide()) {
+            if (lambdaContext.getHead() == head && lambdaContext.getMv().desc.equals(desc) && lambdaContext.getType() == type) {
                 return lambdaContext.getMv().name;
             }
         }

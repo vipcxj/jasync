@@ -9,6 +9,7 @@ import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.JThunk;
 import io.github.vipcxj.jasync.ng.spec.functional.JAsyncCatchFunction1;
 import io.github.vipcxj.jasync.ng.spec.functional.JAsyncPromiseFunction1;
+import io.github.vipcxj.jasync.ng.spec.functional.JAsyncPromiseFunction3;
 import io.github.vipcxj.jasync.ng.spec.functional.JAsyncPromiseSupplier1;
 
 import java.util.ArrayList;
@@ -135,6 +136,34 @@ public class BasePromise<T> extends AbstractPromise<T> {
         BasePromise<T> nextPromise = immediate
                 ? generate((jThunk, context) -> catchCreator(jThunk, context, catcher), this)
                 : create((jThunk, context) -> catchCreator(jThunk, context, catcher), this);
+        getChildren().add(nextPromise);
+        if (isCompleted()) {
+            nextPromise.schedule(context);
+        }
+        return nextPromise;
+    }
+
+    private <R> void thenOrCatchCreator(JThunk<R> thunk, JContext context, JAsyncPromiseFunction3<T, R> handler) {
+        T v = isResolved() ? value : null;
+        Throwable t = isRejected() ? error : null;
+        try {
+            JPromise<R> next = handler.apply(v, t, context);
+            next = next != null ? next : JPromise.empty();
+            next.onError(thunk::reject)
+                    .onSuccess(thunk::resolve).async(context);
+        } catch (Throwable throwable) {
+            thunk.reject(throwable, context);
+        }
+    }
+
+    @Override
+    public <R> JPromise<R> thenOrCatchWithContext(JAsyncPromiseFunction3<T, R> handler, boolean immediate) {
+        if (handler == null) {
+            throw new NullPointerException();
+        }
+        BasePromise<R> nextPromise = immediate
+                ? generate((jThunk, context) -> thenOrCatchCreator(jThunk, context, handler), this)
+                : create((jThunk, context) -> thenOrCatchCreator(jThunk, context, handler), this);
         getChildren().add(nextPromise);
         if (isCompleted()) {
             nextPromise.schedule(context);

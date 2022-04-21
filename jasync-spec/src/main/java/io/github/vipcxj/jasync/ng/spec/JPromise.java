@@ -31,6 +31,12 @@ public interface JPromise<T> extends JHandle<T> {
     static <T> JPromise<T> portal(JAsyncPortalTask0<T> task) {
         return portal((factory, context) -> task.invoke(factory));
     }
+    static <T> JPromise<T> wrap(JAsyncPromiseSupplier0<T> supplier) {
+        return JPromise.empty().thenImmediate(supplier);
+    }
+    static <T> JPromise<T> wrap(JAsyncPromiseSupplier1<T> supplier) {
+        return JPromise.empty().thenWithContextImmediate(supplier);
+    }
     @SafeVarargs
     static  <T> JPromise<T> any(JPromise<? extends T>... promises) {
         return provider.any(promises);
@@ -377,6 +383,20 @@ public interface JPromise<T> extends JHandle<T> {
     }
     default JPromise<T> doCatchImmediate(JAsyncCatchFunction0<Throwable, T> catcher) {
         return doCatch(catcher, true);
+    }
+
+    <R> JPromise<R> thenOrCatchWithContext(JAsyncPromiseFunction3<T, R> handler, boolean immediate);
+    default <R> JPromise<R> thenOrCatchWithContext(JAsyncPromiseFunction3<T, R> handler) {
+        return thenOrCatchWithContext(handler, false);
+    }
+    default <R> JPromise<R> thenOrCatchWithContextImmediate(JAsyncPromiseFunction3<T, R> handler) {
+        return thenOrCatchWithContext(handler, true);
+    }
+    default <R> JPromise<R> thenOrCatch(JAsyncPromiseFunction2<T, R> handler) {
+        return thenOrCatchWithContext((t, throwable, context) -> handler.apply(t, throwable));
+    }
+    default <R> JPromise<R> thenOrCatchImmediate(JAsyncPromiseFunction2<T, R> handler) {
+        return thenOrCatchWithContext((t, throwable, context) -> handler.apply(t, throwable), true);
     }
 
     <R> JPromise<T> doFinallyWithContext(JAsyncPromiseSupplier1<R> supplier, boolean immediate);

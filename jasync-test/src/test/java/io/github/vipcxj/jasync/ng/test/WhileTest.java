@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 
 public class WhileTest {
 
-    @Async
     public JPromise<Integer> sum1(int to) {
         int sum = 0;
         while (sum < to) {
