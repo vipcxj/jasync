@@ -1,6 +1,7 @@
 package io.github.vipcxj.jasync.ng.asm;
 
 import io.github.vipcxj.jasync.ng.utils.Logger;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
@@ -250,7 +251,11 @@ public class MethodContext {
         localVariableArray[i] = null;
     }
 
-    private void updateLocalVar(LocalVariableNode[] localVariableArray, List<LocalVariableNode> localVariableList, AbstractInsnNode insnNode, BranchAnalyzer.Node<? extends BasicValue> frame) {
+    private void updateLocalVar(
+            LocalVariableNode[] localVariableArray,
+            List<LocalVariableNode> localVariableList,
+            AbstractInsnNode insnNode, BranchAnalyzer.Node<? extends BasicValue> frame
+    ) {
         LocalVar[] localVars = frame.getLocalVars();
         int size = Math.min(localVariableArray.length, localVars.length);
         for (int i = 0; i < size; ++i) {
@@ -303,7 +308,12 @@ public class MethodContext {
         return null;
     }
 
-    private LabelNode updateTryCatchBlockNodes(List<TryCatchBlockNode> processings, List<TryCatchBlockNode> completes, AbstractInsnNode insnNode, BranchAnalyzer.Node<? extends BasicValue> frame, LabelMap labelMap) {
+    private LabelNode updateTryCatchBlockNodes(
+            List<TryCatchBlockNode> processings,
+            List<TryCatchBlockNode> completes,
+            AbstractInsnNode insnNode, BranchAnalyzer.Node<? extends BasicValue> frame,
+            LabelMap labelMap
+    ) {
         List<TryCatchBlockNode> handlers = frame.getHandlers();
         LabelNode newLabelNode = null;
         // old handler to new handler
@@ -366,6 +376,7 @@ public class MethodContext {
         return newLabelNode;
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     private LabelNode completeTryCatchBlockNodes(List<TryCatchBlockNode> processing, List<TryCatchBlockNode> completes, LabelNode endNode) {
         if (processing.isEmpty()) {
             return null;
@@ -567,9 +578,10 @@ public class MethodContext {
         // stack: a, b, promise | locals: this?, x, y, z
         Arguments arguments = new Arguments();
         calcExtraAwaitArgumentsType(validLocals, frame, arguments);
-        // await type -> arguments
+        // await type, throwable type -> arguments
         arguments.addArgument(Constants.OBJECT_DESC);
-        // x, y, z, a, b, await type
+        arguments.addArgument(Constants.THROWABLE_DESC);
+        // x, y, z, a, b, await type, throwable type
         return arguments;
     }
 
@@ -628,6 +640,7 @@ public class MethodContext {
             restoreStack(insnList, node, maxLocals, stackSize - 1);
         }
         updateStacks(stackSize + validLocals);
+        // thenOrCatchLambda: JAsyncPromiseFunction2 = (x, y, z, a, b, Object, throwable) -> JPromise
         Arguments arguments = calcAwaitArgumentsType(validLocals, node);
         String lambdaName = findLambdaName(node, arguments, MethodType.AWAIT_BODY);
         if (lambdaName == null) {
@@ -639,18 +652,18 @@ public class MethodContext {
             buildLambda(lambdaNode, MethodType.AWAIT_BODY, arguments, successors, validLocals, node, null, labelMap);
             lambdaName = lambdaNode.name;
         }
-        insnList.add(LambdaUtils.invokeJAsyncPromiseFunction0(
+        insnList.add(LambdaUtils.invokeJAsyncPromiseFunction2(
                 classType(),
                 lambdaName,
                 Constants.OBJECT_DESC,
                 isStatic(),
-                arguments.argTypes(1)
+                arguments.argTypes(2)
         ));
         insnList.add(new MethodInsnNode(
                 Opcodes.INVOKEINTERFACE,
                 Constants.JPROMISE_NAME,
-                Constants.JPROMISE_THEN_NAME,
-                Constants.JPROMISE_THEN1_DESC.getDescriptor())
+                Constants.JPROMISE_THEN_OR_CATCH_NAME,
+                Constants.JPROMISE_THEN_OR_CATCH1_DESC.getDescriptor())
         );
         insnList.add(new InsnNode(Opcodes.ARETURN));
         packageInsnNode.complete();
@@ -957,8 +970,9 @@ public class MethodContext {
             if (isStatic() || pos > 0) {
                 if (first) {
                     first = false;
-                    // The last local var in loop method is stack, it need not be push.
-                    if (type == MethodType.LOOP_BODY) {
+                    // The last local var in loop method is stack, it need not be pushed.
+                    // The last local var in await method is error, it need not be pushed as well.
+                    if (type == MethodType.LOOP_BODY || type == MethodType.AWAIT_BODY) {
                         continue;
                     }
                 }
@@ -1026,8 +1040,9 @@ public class MethodContext {
         int mappedIndex = mapped(node.getIndex());
         // local: this?, JPortal, JStack
         int locals = node.getLocals();
-        // The last local var is stack in the loop method.
-        int usedLocals = type == MethodType.LOOP_BODY ? locals - 1 : locals;
+        // The last local var is stack in the loop lambda body. It is not pushed.
+        // The last local var is error in the await lambda body. It is not pushed as well.
+        int usedLocals = (type == MethodType.LOOP_BODY || type == MethodType.AWAIT_BODY) ? locals - 1 : locals;
         int portalSlot = isStatic() ? 0 : 1;
         int stackSlot = portalSlot + 1;
         if (usedLocals > 0) {
@@ -1069,8 +1084,9 @@ public class MethodContext {
             } else {
                 nextPos = i + 1;
             }
-            // The last local var in loop method is stack, it is not pushed, so can not be popped.
-            if (nextPos >= locals && type == MethodType.LOOP_BODY) {
+            // The last local var in loop lambda body is stack, it is not pushed, so can not be popped.
+            // The last local var in await lambda body is error, it is not pushed, so can not be popped as well.
+            if (nextPos >= locals && (type == MethodType.LOOP_BODY || type == MethodType.AWAIT_BODY)) {
                 break;
             }
             // stack: JStack -> JStack, JStack
@@ -1274,28 +1290,56 @@ public class MethodContext {
         int index = node.getIndex();
         int mappedIndex = mapped(index);
         lambdaNode.visitCode();
+        List<LocalVariableNode> localVariableNodes = new ArrayList<>();
+        LocalVariableNode[] localVariableArray = new LocalVariableNode[getMv().maxLocals];
+        List<TryCatchBlockNode> processingTcbNode = new ArrayList<>();
+        List<TryCatchBlockNode> completedTcbNode = new ArrayList<>();
         LabelNode startLabelNode = new LabelNode();
         lambdaNode.instructions.add(startLabelNode);
         lambdaMap.add(mappedIndex);
-        List<LocalVariableNode> localVariableNodes = new ArrayList<>();
-        LocalVariableNode[] localVariableArray = new LocalVariableNode[getMv().maxLocals];
-        updateLocalVar(localVariableArray, localVariableNodes, startLabelNode, node);
-        List<TryCatchBlockNode> processingTcbNode = new ArrayList<>();
-        List<TryCatchBlockNode> completedTcbNode = new ArrayList<>();
+        updateTcbAndLocal(
+                labelMap,
+                localVariableNodes, localVariableArray,
+                processingTcbNode, completedTcbNode,
+                startLabelNode, node
+        );
         // todo update try catch blocks.
         boolean isStatic = isStatic();
         int offset = isStatic ? 0 : 1;
         int portalSlot = -1;
 
+        // methodType == AWAIT_BODY
         if (portalLabel == null) {
-            // arguments: x, y, z, a, b, await type -> stack: a, b, await result
-            // locals: this?, x, y, z, a, b, await type
-            int stacks = node.getStackSize();
+            // arguments: x, y, z, a, b, await result, await error
+            int errorOffset = arguments.argumentLocalOffset(isStatic, -1);
+            Label errorRethrowEndLabel = new Label();
+            // load error to stack
+            lambdaNode.visitVarInsn(Opcodes.ALOAD, errorOffset);
+            lambdaMap.add(mappedIndex);
+            // consume error from stack and jump if null
+            lambdaNode.visitJumpInsn(Opcodes.IFNULL, errorRethrowEndLabel);
+            lambdaMap.add(mappedIndex);
+            // if error non-null, so step here, load error to stack again
+            lambdaNode.visitVarInsn(Opcodes.ALOAD, errorOffset);
+            lambdaMap.add(mappedIndex);
+            // rethrow the error
+            lambdaNode.visitInsn(Opcodes.ATHROW);
+            lambdaMap.add(mappedIndex);
+            // insert the label which jump to if error is null
+            lambdaNode.visitLabel(errorRethrowEndLabel);
+            lambdaMap.add(mappedIndex);
+
+            // arguments: x, y, z, a, b, await result, await error -> stack: a, b, await result
+            // locals: this?, x, y, z, a, b, await type, error type
             int j = offset;
             for (Arguments.ExtendType extendType : arguments.getTypes()) {
                 // arguments 的构成恰好同构于 locals + stack，
                 // 虽然最后一位, arguments 中是 await 的结果，而 frame 中是 Promise. 但它们都是 Object, 可以做相同处理.
                 if (j >= locals) {
+                    // error not push to stack.
+                    if (j == errorOffset) {
+                        break;
+                    }
                     if (extendType.isInitialized()) {
                         lambdaNode.visitVarInsn(extendType.getOpcode(Opcodes.ILOAD), j);
                         lambdaMap.add(mappedIndex);
@@ -1315,7 +1359,7 @@ public class MethodContext {
                     j += extendType.getSize();
                 }
             }
-            AsmHelper.updateStack(lambdaNode, stacks);
+            AsmHelper.updateStack(lambdaNode, node.getStackSize());
         } else {
             portalSlot = popStack(node, lambdaMap, lambdaNode);
         }
@@ -1401,13 +1445,6 @@ public class MethodContext {
                                 frame, originalIndex, insnNode
                         );
                     }
-                } else {
-                    LabelNode endNode = completeTryCatchBlockNodes(processingTcbNode, completedTcbNode, null);
-                    if (endNode != null) {
-                        insnList.add(endNode);
-                        int originalIndex = mapped(i);
-                        insnListMap.add(originalIndex);
-                    }
                 }
             }
             ++i;
@@ -1424,9 +1461,14 @@ public class MethodContext {
             AbstractInsnNode preInsn = preInsnIter.next();
             Integer preInsnMap = preInsnMapIter.next();
             BranchAnalyzer.Node<? extends BasicValue> preFrame = preFrameIter.next();
-            insnList.add(preInsn);
-            insnListMap.add(preInsnMap);
-            updateLocalVar(localVariableArray, localVariableNodes, preInsn, preFrame);
+            processLambdaNode(
+                    labelMap,
+                    localVariableNodes, localVariableArray,
+                    processingTcbNode, completedTcbNode,
+                    insnList, preFrames,
+                    insnList, insnListMap,
+                    preFrame, preInsnMap, preInsn
+            );
         }
         if (reconnect) {
             insnList.add(new JumpInsnNode(Opcodes.GOTO, reconnectLabel));
@@ -1470,6 +1512,20 @@ public class MethodContext {
         addLambdaContext(lambdaNode, lambdaMap, methodType);
     }
 
+    private LabelNode updateTcbAndLocal(
+            LabelMap labelMap,
+            List<LocalVariableNode> localVariableNodes,
+            LocalVariableNode[] localVariableArray,
+            List<TryCatchBlockNode> processingTcbNode,
+            List<TryCatchBlockNode> completedTcbNode,
+            AbstractInsnNode n,
+            BranchAnalyzer.Node<? extends BasicValue> frame
+    ) {
+        LabelNode tcStart = updateTryCatchBlockNodes(processingTcbNode, completedTcbNode, n, frame, labelMap);
+        updateLocalVar(localVariableArray, localVariableNodes, n, frame);
+        return tcStart;
+    }
+
     private void processLambdaNode(
             LabelMap labelMap,
             List<LocalVariableNode> localVariableNodes,
@@ -1480,22 +1536,21 @@ public class MethodContext {
             List<BranchAnalyzer.Node<? extends BasicValue>> preFrames,
             List<AbstractInsnNode> target,
             List<Integer> targetMap,
-            BranchAnalyzer.Node<BasicValue> frame,
+            BranchAnalyzer.Node<? extends BasicValue> frame,
             int originalIndex,
             AbstractInsnNode n
     ) {
-        LabelNode tcStart = updateTryCatchBlockNodes(processingTcbNode, completedTcbNode, n, frame, labelMap);
-        if (tcStart != null) {
-            target.add(tcStart);
-            targetMap.add(originalIndex);
-        }
-        target.add(n);
-        targetMap.add(originalIndex);
         if (target == insnList) {
-            updateLocalVar(localVariableArray, localVariableNodes, n, frame);
+            LabelNode tcStart = updateTcbAndLocal(labelMap, localVariableNodes, localVariableArray, processingTcbNode, completedTcbNode, n, frame);
+            if (tcStart != null) {
+                target.add(tcStart);
+                targetMap.add(originalIndex);
+            }
         } else {
             preFrames.add(frame);
         }
+        target.add(n);
+        targetMap.add(originalIndex);
     }
 
     private int mapped(int index) {

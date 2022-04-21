@@ -112,6 +112,10 @@ public class JAsyncValue extends BasicValue {
         this.newInsnNode = newInsnNode;
     }
 
+    /**
+     * The insn nodes which copy current value (when current value is uninitialized)
+     * @return copyInsnNodes
+     */
     public Set<AbstractInsnNode> getCopyInsnNodes() {
         return copyInsnNodes != null ? copyInsnNodes : Collections.emptySet();
     }

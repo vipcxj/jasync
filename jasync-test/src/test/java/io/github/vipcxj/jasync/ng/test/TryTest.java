@@ -52,7 +52,7 @@ public class TryTest {
         Assertions.assertEquals("hello nothing", tryWithCatch2(null).block());
     }
 
-/*    private JPromise<Void> throwError(Throwable t) {
+    private JPromise<Void> throwError(Throwable t) {
         return JPromise.error(t);
     }
 
@@ -103,7 +103,7 @@ public class TryTest {
     @Test
     public void testTryWithCatch5() throws InterruptedException {
         Assertions.assertFalse(tryWithCatch5().block());
-    }*/
+    }
 
     private JPromise<String> tryWithMultiTypeCatch(String what) {
         String message = "hello ";

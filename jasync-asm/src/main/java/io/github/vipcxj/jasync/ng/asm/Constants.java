@@ -35,6 +35,11 @@ public class Constants {
     public static final String JASYNC_PROMISE_FUNCTION0_METHOD_NAME = "apply";
     public static final Type JASYNC_PROMISE_FUNCTION0_METHOD_DESC = Type.getMethodType(JPROMISE_DESC, OBJECT_DESC);
 
+    public static final String JASYNC_PROMISE_FUNCTION2_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncPromiseFunction2";
+    public static final Type JASYNC_PROMISE_FUNCTION2_DESC = Type.getObjectType(JASYNC_PROMISE_FUNCTION2_NAME);
+    public static final String JASYNC_PROMISE_FUNCTION2_METHOD_NAME = "apply";
+    public static final Type JASYNC_PROMISE_FUNCTION2_METHOD_DESC = Type.getMethodType(JPROMISE_DESC, OBJECT_DESC, THROWABLE_DESC);
+
     public static final String JCONTEXT_CREATE_STACK_PUSHER_NAME = "createStackPusher";
     public static final Type JCONTEXT_CREATE_STACK_PUSHER_DESC = Type.getMethodType(JPUSH_CONTEXT_DESC);
     public static final String JPUSH_CONTEXT_PUSH_NAME = "push";
@@ -54,8 +59,8 @@ public class Constants {
     public static final String JPROMISE_PORTAL_NAME = "portal";
     public static final Type JPROMISE_PORTAL0_DESC = Type.getMethodType(JPROMISE_DESC, JPORTAL_TASK0_DESC);
 
-    public static final String JPROMISE_THEN_NAME = "then";
-    public static final Type JPROMISE_THEN1_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_FUNCTION0_DESC);
+    public static final String JPROMISE_THEN_OR_CATCH_NAME = "thenOrCatch";
+    public static final Type JPROMISE_THEN_OR_CATCH1_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_FUNCTION2_DESC);
 
     public static final String JPROMISE_THEN_IMMEDIATE_NAME = "thenImmediate";
     public static final Type JPROMISE_THEN_IMMEDIATE0_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_SUPPLIER0_DESC);

@@ -71,6 +71,23 @@ public class Arguments {
         return size;
     }
 
+    public int argumentLocalOffset(boolean isStatic, int i) {
+        int offset = isStatic ? 0 : 1;
+        int index = i >= 0 ? i : (types.size() - uninitializedNum + i);
+        int localOffset = 0;
+        int j = 0;
+        for (ExtendType type : types) {
+            if (type.isInitialized()) {
+                if (j++ == index) {
+                    return localOffset + offset;
+                } else {
+                    localOffset += type.getType().getSize();
+                }
+            }
+        }
+        throw new IllegalArgumentException("Invalid index: " + i);
+    }
+
     public Type[] argTypes(int strip) {
         Type[] results = new Type[types.size() - uninitializedNum - strip];
         int i = 0;
@@ -113,6 +130,11 @@ public class Arguments {
             return !uninitialized;
         }
 
+        /**
+         * 引用对象在堆栈的偏移。
+         * 例如 NEW 指令后，堆栈压入一个未初始化对象，因为是刚 new 的，所以在这之前堆栈内不存在其他引用，所以
+         * @return offset
+         */
         public int getOffset() {
             return offset;
         }

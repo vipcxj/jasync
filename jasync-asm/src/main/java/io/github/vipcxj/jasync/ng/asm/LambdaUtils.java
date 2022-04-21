@@ -92,6 +92,25 @@ public class LambdaUtils {
         );
     }
 
+    public static InvokeDynamicInsnNode invokeJAsyncPromiseFunction2(
+            Type ownerClass,
+            String implMethodName,
+            Type typeT,
+            boolean isStatic,
+            Type... extraArgs
+    ) {
+        return invokeLambda(
+                JASYNC_PROMISE_FUNCTION2_METHOD_NAME,
+                JASYNC_PROMISE_FUNCTION2_DESC,
+                JASYNC_PROMISE_FUNCTION2_METHOD_DESC,
+                Type.getMethodType(JPROMISE_DESC, typeT, THROWABLE_DESC),
+                ownerClass,
+                implMethodName,
+                isStatic,
+                extraArgs
+        );
+    }
+
     public static InvokeDynamicInsnNode invokeJAsyncPromiseSupplier0(
             Type ownerClass,
             String implMethodName,
