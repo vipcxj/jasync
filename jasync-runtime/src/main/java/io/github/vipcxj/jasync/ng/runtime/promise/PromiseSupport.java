@@ -43,6 +43,11 @@ public class PromiseSupport implements JPromiseSupport {
     }
 
     @Override
+    public <T> JPromise<T> race(List<JPromise<? extends T>> promises) {
+        return new RacePromise<>(promises);
+    }
+
+    @Override
     public <T> JPromise<List<T>> all(List<JPromise<? extends T>> promises) {
         return new AllPromise<>(promises);
     }

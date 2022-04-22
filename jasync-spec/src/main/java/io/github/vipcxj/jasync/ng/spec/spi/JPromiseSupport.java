@@ -20,6 +20,11 @@ public interface JPromiseSupport extends PrioritySupport {
     default <T> JPromise<T> any(JPromise<? extends T>... promises) {
         return any(Arrays.asList(promises));
     }
+    <T> JPromise<T> race(List<JPromise<? extends T>> promises);
+    @SuppressWarnings("unchecked")
+    default <T> JPromise<T> race(JPromise<? extends T>... promises) {
+        return race(Arrays.asList(promises));
+    }
     <T> JPromise<List<T>> all(List<JPromise<? extends T>> promises);
     @SuppressWarnings("unchecked")
     default <T> JPromise<List<T>> all(JPromise<? extends T>... promises) {
