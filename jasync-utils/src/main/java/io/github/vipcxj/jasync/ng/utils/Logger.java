@@ -94,15 +94,23 @@ public class Logger {
         writeLog(msg, LEVEL.WARN);
     }
 
+    public static void warn(Throwable t) {
+        throwable(t, LEVEL.WARN);
+    }
+
     public static void error(String msg) {
         writeLog(msg, LEVEL.ERROR);
     }
 
     public static void error(Throwable t) {
+        throwable(t, LEVEL.ERROR);
+    }
+
+    public static void throwable(Throwable t, LEVEL level) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         t.printStackTrace(pw);
-        writeLog(sw.toString(), LEVEL.ERROR);
+        writeLog(sw.toString(), level);
     }
 
     enum LEVEL {

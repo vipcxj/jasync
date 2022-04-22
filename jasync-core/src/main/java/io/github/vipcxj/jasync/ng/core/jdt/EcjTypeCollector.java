@@ -1,6 +1,7 @@
 package io.github.vipcxj.jasync.ng.core.jdt;
 
 import io.github.vipcxj.jasync.ng.core.ReflectHelper;
+import io.github.vipcxj.jasync.ng.core.WrappedJavaFileManager;
 import io.github.vipcxj.jasync.ng.utils.Logger;
 
 import javax.tools.JavaFileManager;
@@ -79,7 +80,7 @@ public class EcjTypeCollector {
             }
             Class<?> fileManagerClass = ClassLoaderHelper.loadClass("io.github.vipcxj.jasync.ng.core.jdt.EclipseFileManager", project.getClass());
             Constructor<?> constructor = fileManagerClass.getConstructor(Locale.class, Charset.class);
-            JavaFileManager fileManager = (JavaFileManager) constructor.newInstance(null, null);
+            JavaFileManager fileManager = new WrappedJavaFileManager((JavaFileManager) constructor.newInstance(null, null));
             Map<String, String> options = getOptions(project);
             List<String> optionList = new ArrayList<>();
             for (Map.Entry<String, String> entry : options.entrySet()) {

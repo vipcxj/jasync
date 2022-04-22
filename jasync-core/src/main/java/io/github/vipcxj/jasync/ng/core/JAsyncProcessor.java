@@ -220,9 +220,14 @@ public class JAsyncProcessor extends AbstractProcessor {
     }
 
     private static void getFileManager(Filer filer) {
-        JavaFileManager fileManager = _getFileManager(filer);
-        Logger.info("Find JavaFileManager " + fileManager.getClass());
-        fileManagerThreadLocal.set(fileManager);
+        try {
+            JavaFileManager fileManager = _getFileManager(filer);
+            Logger.info("Find JavaFileManager " + fileManager.getClass());
+            fileManagerThreadLocal.set(fileManager);
+        } catch (Throwable t) {
+            Logger.error("Unable to get the file manager.");
+            Logger.error(t);
+        }
     }
 
     private static JavaFileManager _getFileManager(Filer filer) {
