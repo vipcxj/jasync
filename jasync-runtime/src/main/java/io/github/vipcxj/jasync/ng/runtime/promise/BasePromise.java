@@ -7,10 +7,7 @@ import io.github.vipcxj.jasync.ng.spec.JContext;
 import io.github.vipcxj.jasync.ng.spec.JHandle;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.JThunk;
-import io.github.vipcxj.jasync.ng.spec.functional.JAsyncCatchFunction1;
-import io.github.vipcxj.jasync.ng.spec.functional.JAsyncPromiseFunction1;
-import io.github.vipcxj.jasync.ng.spec.functional.JAsyncPromiseFunction3;
-import io.github.vipcxj.jasync.ng.spec.functional.JAsyncPromiseSupplier1;
+import io.github.vipcxj.jasync.ng.spec.functional.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -141,6 +138,45 @@ public class BasePromise<T> extends AbstractPromise<T> {
             nextPromise.schedule(context);
         }
         return nextPromise;
+    }
+
+    private final static String MULTI_CATCH_ARGS_ERROR = "The arguments exceptionTypeAndCatches composed with throwable class and JPromiseCatchFunction0 or JPromiseCatchFunction1 pairs.";
+
+    @Override
+    public JPromise<T> doMultiCatches(boolean immediate, Object... exceptionTypeAndCatches) {
+        if ((exceptionTypeAndCatches.length & 1) == 1) {
+            throw new IllegalArgumentException("The number of arguments exceptionTypeAndCatches must be even.");
+        }
+        for (int i = 0; i < exceptionTypeAndCatches.length;) {
+            Object arg = exceptionTypeAndCatches[i++];
+            if (!(arg instanceof Class)) {
+                throw new IllegalArgumentException(MULTI_CATCH_ARGS_ERROR);
+            }
+            Class<?> exceptionType = (Class<?>) arg;
+            if (!Throwable.class.isAssignableFrom(exceptionType)) {
+                throw new IllegalArgumentException(MULTI_CATCH_ARGS_ERROR);
+            }
+            arg = exceptionTypeAndCatches[i++];
+            if (!(arg instanceof JAsyncCatchFunction0) && !(arg instanceof JAsyncCatchFunction1)) {
+                throw new IllegalArgumentException(MULTI_CATCH_ARGS_ERROR);
+            }
+        }
+        return doCatchWithContext((e, ctx) -> {
+            for (int i = 0; i < exceptionTypeAndCatches.length;) {
+                Class<?> exceptionType = (Class<?>) exceptionTypeAndCatches[i++];
+                Object closure = exceptionTypeAndCatches[i++];
+                if (exceptionType.isInstance(e)) {
+                    if (closure instanceof JAsyncCatchFunction0) {
+                        //noinspection unchecked
+                        return ((JAsyncCatchFunction0<Throwable, T>) closure).apply(e);
+                    } else {
+                        //noinspection unchecked
+                        return ((JAsyncCatchFunction1<Throwable, T>) closure).apply(e, ctx);
+                    }
+                }
+            }
+            throw e;
+        }, immediate);
     }
 
     private <R> void thenOrCatchCreator(JThunk<R> thunk, JContext context, JAsyncPromiseFunction3<T, R> handler) {

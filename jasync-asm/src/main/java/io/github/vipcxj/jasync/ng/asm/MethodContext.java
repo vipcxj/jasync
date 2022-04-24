@@ -1,7 +1,5 @@
 package io.github.vipcxj.jasync.ng.asm;
 
-import io.github.vipcxj.jasync.ng.utils.Logger;
-import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
@@ -10,6 +8,10 @@ import org.objectweb.asm.tree.analysis.BasicValue;
 
 import java.util.*;
 import java.util.function.BiFunction;
+
+import static io.github.vipcxj.jasync.ng.asm.AsmHelper.primitiveToObject;
+import static io.github.vipcxj.jasync.ng.asm.Constants.THROWABLE_DESC;
+import static io.github.vipcxj.jasync.ng.asm.Utils.addManyMap;
 
 public class MethodContext {
     private final ClassContext classContext;
@@ -251,7 +253,7 @@ public class MethodContext {
         localVariableArray[i] = null;
     }
 
-    private void updateLocalVar(
+    void updateLocalVar(
             LocalVariableNode[] localVariableArray,
             List<LocalVariableNode> localVariableList,
             AbstractInsnNode insnNode, BranchAnalyzer.Node<? extends BasicValue> frame
@@ -288,7 +290,7 @@ public class MethodContext {
         }
     }
 
-    private void completeLocalVar(LocalVariableNode[] localVariableArray, List<LocalVariableNode> localVariableList, LabelNode endNode, boolean includeThis) {
+    void completeLocalVar(LocalVariableNode[] localVariableArray, List<LocalVariableNode> localVariableList, LabelNode endNode, boolean includeThis) {
         for (int i = 0; i < localVariableArray.length; ++i) {
             LocalVariableNode localVariableNode = localVariableArray[i];
             if (localVariableNode != null && (includeThis || isStatic() || localVariableNode.index != 0)) {
@@ -297,18 +299,7 @@ public class MethodContext {
         }
     }
 
-    private LocalVariableNode findThisVar(LocalVariableNode[] localVariableArray, boolean isStatic) {
-        if (isStatic)
-            return null;
-        for (LocalVariableNode localVariableNode : localVariableArray) {
-            if (localVariableNode != null && localVariableNode.index == 0) {
-                return localVariableNode;
-            }
-        }
-        return null;
-    }
-
-    private LabelNode updateTryCatchBlockNodes(
+    LabelNode updateTryCatchBlockNodes(
             List<TryCatchBlockNode> processings,
             List<TryCatchBlockNode> completes,
             AbstractInsnNode insnNode, BranchAnalyzer.Node<? extends BasicValue> frame,
@@ -377,7 +368,7 @@ public class MethodContext {
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    private LabelNode completeTryCatchBlockNodes(List<TryCatchBlockNode> processing, List<TryCatchBlockNode> completes, LabelNode endNode) {
+    LabelNode completeTryCatchBlockNodes(List<TryCatchBlockNode> processing, List<TryCatchBlockNode> completes, LabelNode endNode) {
         if (processing.isEmpty()) {
             return null;
         }
@@ -425,6 +416,21 @@ public class MethodContext {
         return false;
     }
 
+    private boolean isReturn(BranchAnalyzer.Node<? extends BasicValue> node) {
+        if (node.getSuccessors().size() != 1) {
+            return false;
+        }
+        BranchAnalyzer.Node<? extends BasicValue> next = node.getSuccessors().iterator().next();
+        AbstractInsnNode insnNode = next.getInsnNode();
+        if (insnNode.getOpcode() == Opcodes.ARETURN) {
+            return true;
+        } else if (insnNode instanceof LabelNode || insnNode instanceof LineNumberNode) {
+            return isReturn(next);
+        } else {
+            return false;
+        }
+    }
+
     private void pushSuccessors(BranchAnalyzer.Node<? extends BasicValue> node, Deque<WithFlag<BranchAnalyzer.Node<? extends BasicValue>>> stack) {
         BranchAnalyzer.Node<? extends BasicValue>.SuccessorsImpl successors = node.createSuccessors();
         BranchAnalyzer.Node<? extends BasicValue> successor = successors.current();
@@ -432,6 +438,22 @@ public class MethodContext {
             stack.push(WithFlag.of(successor, false));
             successors.next();
             successor = successors.current();
+        }
+    }
+
+    private void pushSscSuccessors(Set<Integer> scc, Deque<WithFlag<BranchAnalyzer.Node<? extends BasicValue>>> stack) {
+        for (Integer idx : scc) {
+            BranchAnalyzer.Node<BasicValue> frame = frames[idx];
+            for (BranchAnalyzer.Node<? extends BasicValue> successor : frame.getSuccessors()) {
+                if (!scc.contains(successor.getIndex())) {
+                    stack.push(WithFlag.of(successor, false));
+                }
+            }
+            for (BranchAnalyzer.Node<? extends BasicValue> successor : frame.getTryCatchSuccessors()) {
+                if (!scc.contains(successor.getIndex())) {
+                    stack.push(WithFlag.of(successor, false));
+                }
+            }
         }
     }
 
@@ -445,34 +467,48 @@ public class MethodContext {
             AbstractInsnNode insnNode = getMv().instructions.get(index);
             Set<Integer> scc = selectScc(index);
             int label;
-            if (scc != null && isAwait(scc)) {
-                label = 2;
+            if (scc != null) {
+                if (isAwait(scc)) {
+                    label = 1;
+                } else {
+                    label = 2;
+                }
             } else if (AsmHelper.isAwait(insnNode)) {
-                label = 1;
+                label = 3;
+            } else if (isReturn(root) && !root.getHandlers().isEmpty()) {
+                label = 4;
             } else {
                 label = 0;
             }
             boolean visited = withFlag.isFlag();
             if (visited) {
-                if (label == 2) {
-                    PackageInsnNode newInsnNode = processLoopNode(root);
-                    insnNodes[index] = newInsnNode;
-                } else if (label == 1) {
-                    PackageInsnNode newInsnNode = processAwaitNode(root);
-                    insnNodes[index] = newInsnNode;
+                if (label == 1) {
+                    insnNodes[index] = processAwaitLoopNode(root);
+                } else if (label == 3) {
+                    insnNodes[index] = processAwaitNode(root);
+                } else if (label == 4) {
+                    insnNodes[index] = processReturnNode(root);
                 } else {
                     insnNodes[index] = insnNode;
                 }
             } else {
-                if (label == 0) {
-                    pushSuccessors(root, stack);
+                if (label == 2) {
+                    pushSscSuccessors(scc, stack);
+                    for (Integer idx : scc) {
+                        BranchAnalyzer.Node<BasicValue> frame = frames[idx];
+                        stack.push(WithFlag.of(frame, true));
+                    }
+                } else {
+                    if (label == 0) {
+                        pushSuccessors(root, stack);
+                    }
+                    stack.push(WithFlag.of(root, true));
                 }
-                stack.push(WithFlag.of(root, true));
             }
         }
     }
 
-    private AbstractInsnNode[] collectSuccessors(
+    AbstractInsnNode[] collectSuccessors(
             BranchAnalyzer.Node<? extends BasicValue> root,
             BiFunction<AbstractInsnNode, BranchAnalyzer.Node<? extends BasicValue>, AbstractInsnNode> mapper
     ) {
@@ -505,13 +541,13 @@ public class MethodContext {
         return insnNodes;
     }
 
-    private String findLambdaName(BranchAnalyzer.Node<? extends BasicValue> node, Arguments arguments, MethodType type) {
+    String findLambdaName(BranchAnalyzer.Node<? extends BasicValue> node, Arguments arguments, MethodType type) {
         int mappedIndex = mapped(node.getIndex());
         String desc = Type.getMethodDescriptor(Constants.JPROMISE_DESC, arguments.argTypes(0));
         return classContext.findLambdaByHead(getRootMethodContext(), desc, mappedIndex, type);
     }
 
-    private MethodNode createLambdaNode(Arguments arguments) {
+    MethodNode createLambdaNode(Arguments arguments) {
         int access = Opcodes.ACC_PRIVATE | Opcodes.ACC_SYNTHETIC;
         if (isStatic()) {
             access |= Opcodes.ACC_STATIC;
@@ -534,6 +570,12 @@ public class MethodContext {
         int locals = node.getLocals();
         AsmHelper.LocalReverseIterator iterator = AsmHelper.reverseIterateLocal(node);
         int i = 0;
+        // if in loop body, ignore last local var: stack
+        // if in await body, ignore last local var: error
+        if (type == MethodType.LOOP_BODY || type == MethodType.AWAIT_BODY) {
+            ++i;
+            iterator.next();
+        }
         while (iterator.hasNext()) {
             Integer index = iterator.next();
             BasicValue value = node.getLocal(index);
@@ -580,7 +622,7 @@ public class MethodContext {
         calcExtraAwaitArgumentsType(validLocals, frame, arguments);
         // await type, throwable type -> arguments
         arguments.addArgument(Constants.OBJECT_DESC);
-        arguments.addArgument(Constants.THROWABLE_DESC);
+        arguments.addArgument(THROWABLE_DESC);
         // x, y, z, a, b, await type, throwable type
         return arguments;
     }
@@ -600,6 +642,114 @@ public class MethodContext {
                 insnNodes.add(new VarInsnNode(Opcodes.ALOAD, iLocal));
             }
         }
+    }
+
+    private AbstractInsnNode processReturnNode(BranchAnalyzer.Node<? extends BasicValue> node) {
+        List<TryCatchBlockNode> tcbNodes = new ArrayList<>();
+        int start = -1;
+        int end = insnNodes.length;
+        for (TryCatchBlockNode handler : node.getHandlers()) {
+            int idxStart = mv.instructions.indexOf(handler.start);
+            int idxEnd = mv.instructions.indexOf(handler.end);
+            if (idxStart >= start && idxEnd <= end) {
+                if (idxStart > start || idxEnd < end) {
+                    tcbNodes.clear();
+                }
+                tcbNodes.add(handler);
+                start = idxStart;
+                end = idxEnd;
+            }
+        }
+        tcbNodes.sort((n1, n2) -> {
+            int i1 = mv.instructions.indexOf(n1.handler);
+            int i2 = mv.instructions.indexOf(n2.handler);
+            return Integer.compare(i1, i2);
+        });
+        assert !tcbNodes.isEmpty();
+        PackageInsnNode packageInsnNode = new PackageInsnNode();
+        List<AbstractInsnNode> insnList = packageInsnNode.getInsnNodes();
+        // add the insn node just before ARETURN
+        // stack: ... -> ..., JPromise
+        insnList.add(node.getInsnNode());
+        // stack: ..., JPromise
+        BranchAnalyzer.Node<? extends BasicValue> returnNode = node.getSuccessors().iterator().next();
+
+        // new Object[tcbNodes.size() * 2]
+        // stack: ..., JPromise -> ..., JPromise, int
+        insnList.add(AsmHelper.loadConstantInt(tcbNodes.size() * 2));
+        // stack: ..., JPromise, int -> ..., JPromise, Object[]
+        insnList.add(new TypeInsnNode(Opcodes.ANEWARRAY, Constants.OBJECT_NAME));
+        updateStacks(returnNode.getStackSize() + 1);
+        // push arguments to array above
+        int i = 0;
+        for (TryCatchBlockNode tcbNode : tcbNodes) {
+            // dup the array instance
+            // stack: ..., JPromise, Object[] -> ..., JPromise, Object[], Object[]
+            insnList.add(new InsnNode(Opcodes.DUP));
+            // push the index to stack
+            // stack: ..., JPromise, Object[], Object[] -> ..., JPromise, Object[], Object[], int
+            insnList.add(AsmHelper.loadConstantInt(i++));
+            // push exception type to stack
+            // stack: ..., JPromise, Object[], Object[], int -> ..., JPromise, Object[], Object[], int, Class
+            Type exceptionType = tcbNode.type != null ? Type.getObjectType(tcbNode.type) : THROWABLE_DESC;
+            insnList.add(new LdcInsnNode(exceptionType));
+            // store the exception type to array
+            // stack: ..., JPromise, Object[], Object[], int, Class -> ..., JPromise, Object[]
+            insnList.add(new InsnNode(Opcodes.AASTORE));
+
+            // dup the array instance
+            // stack: ..., JPromise, Object[] -> ..., JPromise, Object[], Object[]
+            insnList.add(new InsnNode(Opcodes.DUP));
+            // push the index to stack
+            // stack: ..., JPromise, Object[], Object[] -> ..., JPromise, Object[], Object[], int
+            insnList.add(AsmHelper.loadConstantInt(i++));
+            // push lambda to stack
+
+            int posHandler = mv.instructions.indexOf(tcbNode.handler);
+            BranchAnalyzer.Node<BasicValue> handlerNode = getFrames()[posHandler];
+            if (!isStatic()) {
+                // load this to stack
+                // stack: ..., JPromise, Object[], Object[], int -> ..., JPromise, Object[], Object[], int, this
+                insnList.add(new VarInsnNode(Opcodes.ALOAD, 0));
+            }
+            int validLocals = calcValidLocals(handlerNode);
+            // load validLocals number of local vars except this to stack
+            // stack: ..., JPromise, Object[], Object[], int, this? -> ..., JPromise, Object[], Object[], int, this?, x, y, z
+            // here use node instead handlerNode because current frame is node. But they should be compatible
+            int stackNum = AsmHelper.pushLocalToStack(validLocals, isStatic(), node, insnList);
+            updateStacks(returnNode.getStackSize() + 3 + (isStatic() ? 0 : 1) + stackNum);
+            // create arguments for lambda
+            Arguments arguments = new Arguments();
+            localsToArguments(validLocals, node, arguments);
+            arguments.addArgument(exceptionType);
+            String lambdaName = findLambdaName(handlerNode, arguments, MethodType.CATCH_BODY);
+            if (lambdaName == null) {
+                CatchLambdaContext lambdaContext = new CatchLambdaContext(this, arguments, handlerNode);
+                lambdaContext.buildLambda();
+                lambdaName = lambdaContext.getLambdaNode().name;
+            }
+            // stack: ..., JPromise, Object[], Object[], int, this?, x, y, z -> ..., JPromise, Object[], Object[], int, JAsyncCatchFunction0
+            insnList.add(LambdaUtils.invokeJAsyncCatchFunction0(
+                    classType(),
+                    lambdaName,
+                    exceptionType,
+                    isStatic(),
+                    arguments.argTypes(1)
+            ));
+            updateStacks(returnNode.getStackSize() + 4);
+            // stack: ..., JPromise, Object[], Object[], int, JAsyncCatchFunction0 -> ..., JPromise, Object[]
+            insnList.add(new InsnNode(Opcodes.AASTORE));
+        }
+        // ..., JPROMISE, Object[] -> ..., JPROMISE
+        insnList.add(new MethodInsnNode(
+                Opcodes.INVOKEINTERFACE,
+                Constants.JPROMISE_NAME,
+                Constants.JPROMISE_DO_MULTI_CATCHES_NAME,
+                Constants.JPROMISE_DO_MULTI_CATCHES1_DESC.getDescriptor())
+        );
+        insnList.add(new InsnNode(Opcodes.ARETURN));
+        packageInsnNode.complete();
+        return packageInsnNode;
     }
 
     private PackageInsnNode processAwaitNode(BranchAnalyzer.Node<? extends BasicValue> node) {
@@ -644,13 +794,9 @@ public class MethodContext {
         Arguments arguments = calcAwaitArgumentsType(validLocals, node);
         String lambdaName = findLambdaName(node, arguments, MethodType.AWAIT_BODY);
         if (lambdaName == null) {
-            MethodNode lambdaNode = createLambdaNode(arguments);
-            AsmHelper.updateStack(lambdaNode, getMv().maxStack);
-            AsmHelper.updateLocal(lambdaNode, getMv().maxLocals);
-            LabelMap labelMap = new LabelMap();
-            AbstractInsnNode[] successors = collectSuccessors(node, (in, n) -> in.clone(labelMap));
-            buildLambda(lambdaNode, MethodType.AWAIT_BODY, arguments, successors, validLocals, node, null, labelMap);
-            lambdaName = lambdaNode.name;
+            AwaitLambdaContext lambdaContext = new AwaitLambdaContext(this, arguments, node, validLocals);
+            lambdaContext.buildLambda();
+            lambdaName = lambdaContext.getLambdaNode().name;
         }
         insnList.add(LambdaUtils.invokeJAsyncPromiseFunction2(
                 classType(),
@@ -680,233 +826,7 @@ public class MethodContext {
         ));
     }
 
-    private void pop(MethodNode lambdaNode) {
-        lambdaNode.visitMethodInsn(
-                Opcodes.INVOKEINTERFACE,
-                Constants.JSTACK_NAME,
-                Constants.JSTACK_POP_NAME,
-                Constants.JSTACK_POP_DESC.getDescriptor(),
-                true
-        );
-    }
-
-    private void primitiveToObject(List<AbstractInsnNode> insnNodes, Type type) {
-        // stack: ..., pusher, int
-        if (type.getSort() == Type.INT) {
-            // Integer.valueOf(top)
-            // stack: ..., pusher, int -> ..., pusher, Integer
-            insnNodes.add(new MethodInsnNode(
-                    Opcodes.INVOKESTATIC,
-                    Constants.INTEGER_NAME,
-                    Constants.INTEGER_VALUE_OF_NAME,
-                    Constants.INTEGER_VALUE_OF_DESC.getDescriptor(),
-                    false
-            ));
-        }
-        // stack: ..., pusher, float
-        else if (type.getSort() == Type.FLOAT) {
-            // Float.valueOf(top)
-            // stack: ..., pusher, float -> ..., pusher, Float
-            insnNodes.add(new MethodInsnNode(
-                    Opcodes.INVOKESTATIC,
-                    Constants.FLOAT_NAME,
-                    Constants.FLOAT_VALUE_OF_NAME,
-                    Constants.FLOAT_VALUE_OF_DESC.getDescriptor(),
-                    false
-            ));
-        }
-        // stack: ..., pusher, long
-        else if (type.getSort() == Type.LONG) {
-            // Long.valueOf(top)
-            // stack: ..., pusher, long -> ..., pusher, Long
-            insnNodes.add(new MethodInsnNode(
-                    Opcodes.INVOKESTATIC,
-                    Constants.LONG_NAME,
-                    Constants.LONG_VALUE_OF_NAME,
-                    Constants.LONG_VALUE_OF_DESC.getDescriptor(),
-                    false
-            ));
-        }
-        // stack: ..., pusher, double
-        else if (type.getSort() == Type.DOUBLE) {
-            // Double.valueOf(top)
-            // stack: ..., pusher, double -> ..., pusher, Double
-            insnNodes.add(new MethodInsnNode(
-                    Opcodes.INVOKESTATIC,
-                    Constants.DOUBLE_NAME,
-                    Constants.DOUBLE_VALUE_OF_NAME,
-                    Constants.DOUBLE_VALUE_OF_DESC.getDescriptor(),
-                    false
-            ));
-        }
-        // stack: ..., pusher, boolean
-        else if (type.getSort() == Type.BOOLEAN) {
-            // Boolean.valueOf(top)
-            // stack: ..., pusher, boolean -> ..., pusher, Boolean
-            insnNodes.add(new MethodInsnNode(
-                    Opcodes.INVOKESTATIC,
-                    Constants.BOOLEAN_NAME,
-                    Constants.BOOLEAN_VALUE_OF_NAME,
-                    Constants.BOOLEAN_VALUE_OF_DESC.getDescriptor(),
-                    false
-            ));
-        }
-        // stack: ..., pusher, short
-        else if (type.getSort() == Type.SHORT) {
-            // Short.valueOf(top)
-            // stack: ..., pusher, short -> ..., pusher, Short
-            insnNodes.add(new MethodInsnNode(
-                    Opcodes.INVOKESTATIC,
-                    Constants.SHORT_NAME,
-                    Constants.SHORT_VALUE_OF_NAME,
-                    Constants.SHORT_VALUE_OF_DESC.getDescriptor(),
-                    false
-            ));
-        }
-        // stack: ..., pusher, char
-        else if (type.getSort() == Type.CHAR) {
-            // Character.valueOf(top)
-            // stack: ..., pusher, char -> ..., pusher, Character
-            insnNodes.add(new MethodInsnNode(
-                    Opcodes.INVOKESTATIC,
-                    Constants.CHARACTER_NAME,
-                    Constants.CHARACTER_VALUE_OF_NAME,
-                    Constants.CHARACTER_VALUE_OF_DESC.getDescriptor(),
-                    false
-            ));
-        }
-        // stack: ..., pusher, byte
-        else if (type.getSort() == Type.BYTE) {
-            // Byte.valueOf(top)
-            // stack: ..., pusher, byte -> ..., pusher, Byte
-            insnNodes.add(new MethodInsnNode(
-                    Opcodes.INVOKESTATIC,
-                    Constants.BYTE_NAME,
-                    Constants.BYTE_VALUE_OF_NAME,
-                    Constants.BYTE_VALUE_OF_DESC.getDescriptor(),
-                    false
-            ));
-        }
-    }
-
-    private int objectToPrimitive(MethodNode methodNode, Type type) {
-        // stack: ..., Integer
-        if (type.getSort() == Type.INT) {
-            // t.intValue()
-            // stack: ..., Integer -> ..., int
-            methodNode.visitMethodInsn(
-                    Opcodes.INVOKEVIRTUAL,
-                    Constants.INTEGER_NAME,
-                    Constants.INTEGER_INT_VALUE_NAME,
-                    Constants.INTEGER_INT_VALUE_DESC.getDescriptor(),
-                    false
-            );
-            return 1;
-        }
-        // stack: ..., Float
-        else if (type.getSort() == Type.FLOAT) {
-            // t.floatValue()
-            // stack: ..., Float -> ..., float
-            methodNode.visitMethodInsn(
-                    Opcodes.INVOKEVIRTUAL,
-                    Constants.FLOAT_NAME,
-                    Constants.FLOAT_FLOAT_VALUE_NAME,
-                    Constants.FLOAT_FLOAT_VALUE_DESC.getDescriptor(),
-                    false
-            );
-            return 1;
-        }
-        // stack: ..., Long
-        else if (type.getSort() == Type.LONG) {
-            // t.longValue()
-            // stack: ..., Long -> ..., long
-            methodNode.visitMethodInsn(
-                    Opcodes.INVOKEVIRTUAL,
-                    Constants.LONG_NAME,
-                    Constants.LONG_LONG_VALUE_NAME,
-                    Constants.LONG_LONG_VALUE_DESC.getDescriptor(),
-                    false
-            );
-            return 1;
-        }
-        // stack: ..., Double
-        else if (type.getSort() == Type.DOUBLE) {
-            // t.doubleValue()
-            // stack: ..., Double -> ..., double
-            methodNode.visitMethodInsn(
-                    Opcodes.INVOKEVIRTUAL,
-                    Constants.DOUBLE_NAME,
-                    Constants.DOUBLE_DOUBLE_VALUE_NAME,
-                    Constants.DOUBLE_DOUBLE_VALUE_DESC.getDescriptor(),
-                    false
-            );
-            return 1;
-        }
-        // stack: ..., Boolean
-        else if (type.getSort() == Type.BOOLEAN) {
-            // t.booleanValue()
-            // stack: ..., Boolean -> ..., boolean
-            methodNode.visitMethodInsn(
-                    Opcodes.INVOKEVIRTUAL,
-                    Constants.BOOLEAN_NAME,
-                    Constants.BOOLEAN_BOOLEAN_VALUE_NAME,
-                    Constants.BOOLEAN_BOOLEAN_VALUE_DESC.getDescriptor(),
-                    false
-            );
-            return 1;
-        }
-        // stack: ..., Short
-        else if (type.getSort() == Type.SHORT) {
-            // t.shortValue()
-            // stack: ..., Short -> ..., short
-            methodNode.visitMethodInsn(
-                    Opcodes.INVOKEVIRTUAL,
-                    Constants.SHORT_NAME,
-                    Constants.SHORT_SHORT_VALUE_NAME,
-                    Constants.SHORT_SHORT_VALUE_DESC.getDescriptor(),
-                    false
-            );
-            return 1;
-        }
-        // stack: ..., Character
-        else if (type.getSort() == Type.CHAR) {
-            // t.charValue()
-            // stack: ..., Character -> ..., char
-            methodNode.visitMethodInsn(
-                    Opcodes.INVOKEVIRTUAL,
-                    Constants.CHARACTER_NAME,
-                    Constants.CHARACTER_CHAR_VALUE_NAME,
-                    Constants.CHARACTER_CHAR_VALUE_DESC.getDescriptor(),
-                    false
-            );
-            return 1;
-        }
-        // stack: ..., Byte
-        else if (type.getSort() == Type.BYTE) {
-            // t.byteValue()
-            // stack: ..., Byte -> ..., byte
-            methodNode.visitMethodInsn(
-                    Opcodes.INVOKEVIRTUAL,
-                    Constants.BYTE_NAME,
-                    Constants.BYTE_BYTE_VALUE_NAME,
-                    Constants.BYTE_BYTE_VALUE_DESC.getDescriptor(),
-                    false
-            );
-            return 1;
-        }
-        return 0;
-    }
-
-    private int objectToType(MethodNode methodNode, Type type) {
-        if (AsmHelper.needCastTo(Constants.OBJECT_DESC, type)) {
-            methodNode.visitTypeInsn(Opcodes.CHECKCAST, type.getInternalName());
-            return 1;
-        } else {
-            return 0;
-        }
-    }
-
-    private void pushStack(PackageInsnNode packageInsnNode, MethodNode methodNode, BranchAnalyzer.Node<? extends BasicValue> node, AbstractInsnNode[] insnArray) {
+    void pushStack(PackageInsnNode packageInsnNode, MethodNode methodNode, BranchAnalyzer.Node<? extends BasicValue> node, AbstractInsnNode[] insnArray) {
         List<AbstractInsnNode> insnNodes = packageInsnNode.getInsnNodes();
         // stack: ... -> ..., pusher
         insnNodes.add(new MethodInsnNode(
@@ -1036,160 +956,7 @@ public class MethodContext {
         insnNodes.add(new InsnNode(Opcodes.ARETURN));
     }
 
-    private int popStack(BranchAnalyzer.Node<? extends BasicValue> node, List<Integer> lambdaMap, MethodNode lambdaNode) {
-        int mappedIndex = mapped(node.getIndex());
-        // local: this?, JPortal, JStack
-        int locals = node.getLocals();
-        // The last local var is stack in the loop lambda body. It is not pushed.
-        // The last local var is error in the await lambda body. It is not pushed as well.
-        int usedLocals = (type == MethodType.LOOP_BODY || type == MethodType.AWAIT_BODY) ? locals - 1 : locals;
-        int portalSlot = isStatic() ? 0 : 1;
-        int stackSlot = portalSlot + 1;
-        if (usedLocals > 0) {
-            // load portal to index: 0 / 1 + usedLocals.
-            // stack: [] -> JPortal
-            lambdaNode.visitVarInsn(Opcodes.ALOAD, portalSlot);
-            lambdaMap.add(mappedIndex);
-            AsmHelper.updateStack(lambdaNode, 1);
-            portalSlot += usedLocals;
-            // stack: JPortal -> []
-            // locals: ..., -> ..., JPortal
-            lambdaNode.visitVarInsn(Opcodes.ASTORE, portalSlot);
-            lambdaMap.add(mappedIndex);
-            AsmHelper.updateLocal(lambdaNode, portalSlot + 1);
-
-            // load stack to index: 1 / 2 + usedLocals
-            // stack: [] -> JStack
-            lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
-            lambdaMap.add(mappedIndex);
-            stackSlot = portalSlot + 1;
-            // stack: JStack -> []
-            // locals: ..., JPortal -> ..., JPortal, JStack
-            lambdaNode.visitVarInsn(Opcodes.ASTORE, stackSlot);
-            lambdaMap.add(mappedIndex);
-            AsmHelper.updateLocal(lambdaNode, stackSlot + 1);
-        }
-        // push stack
-        // stack: [] -> JStack
-        lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
-        lambdaMap.add(mappedIndex);
-        AsmHelper.updateStack(lambdaNode, 1);
-        // restore locals
-        for (int i = isStatic() ? 0 : 1; i < locals;) {
-            int nextPos;
-            BasicValue value = node.getLocal(i);
-            if (value != null && value.getType() != null) {
-                Type type = value.getType();
-                nextPos = i + type.getSize();
-            } else {
-                nextPos = i + 1;
-            }
-            // The last local var in loop lambda body is stack, it is not pushed, so can not be popped.
-            // The last local var in await lambda body is error, it is not pushed, so can not be popped as well.
-            if (nextPos >= locals && (type == MethodType.LOOP_BODY || type == MethodType.AWAIT_BODY)) {
-                break;
-            }
-            // stack: JStack -> JStack, JStack
-            lambdaNode.visitInsn(Opcodes.DUP);
-            lambdaMap.add(mappedIndex);
-            // stack: JStack, JStack -> JStack, T
-            pop(lambdaNode);
-            lambdaMap.add(mappedIndex);
-            AsmHelper.updateStack(lambdaNode, 2);
-            if (value != null && value.getType() != null) {
-                Type type = value.getType();
-                int numInsn;
-                if (type.getSort() != Type.OBJECT && type.getSort() != Type.ARRAY) {
-                    // stack: JStack, T -> JStack, t
-                    numInsn = objectToPrimitive(lambdaNode, type);
-                } else {
-                    numInsn = objectToType(lambdaNode, type);
-                }
-                addManyMap(lambdaMap, mappedIndex, numInsn);
-                // stack: JStack, t -> JStack
-                // local: ..., u, ... -> ..., t, ...
-                lambdaNode.visitVarInsn(type.getOpcode(Opcodes.ISTORE), i);
-            } else {
-                // stack: JStack, t -> JStack
-                // local: ..., u, ... -> ..., t, ...
-                lambdaNode.visitVarInsn(Opcodes.ASTORE, i);
-            }
-            lambdaMap.add(mappedIndex);
-            i = nextPos;
-        }
-        // restore stacks
-        int stackSize = node.getStackSize();
-        BasicValue lastValue = null;
-        Set<BasicValue> uninitializedValues = new HashSet<>();
-        boolean newing = false;
-        for (int i = 0; i < stackSize; ++i) {
-            BasicValue value = node.getStack(i);
-            if (value instanceof JAsyncValue) {
-                JAsyncValue asyncValue = (JAsyncValue) value;
-                if (asyncValue.isUninitialized()) {
-                    if (uninitializedValues.contains(asyncValue) && value == lastValue) {
-                        if (newing) {
-                            newing = false;
-                            // stack: ..., new type -> ..., new type, new type
-                            lambdaNode.visitInsn(Opcodes.DUP);
-                            lambdaMap.add(mappedIndex);
-                            // stack: ..., new type, new type -> ..., new type, new type, JStack
-                            lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
-                            lambdaMap.add(mappedIndex);
-                        } else {
-                            throw new IllegalStateException("An uninitialized this object is in the wrong position.");
-                        }
-                    } else {
-                        // stack: ..., JStack -> ...,
-                        lambdaNode.visitInsn(Opcodes.POP);
-                        lambdaMap.add(mappedIndex);
-                        // stack: ..., -> ..., new type
-                        lambdaNode.visitTypeInsn(Opcodes.NEW, asyncValue.getType().getInternalName());
-                        lambdaMap.add(mappedIndex);
-                        newing = true;
-                    }
-                    uninitializedValues.add(asyncValue);
-                    lastValue = value;
-                    continue;
-                }
-            }
-            if (newing) {
-                newing = false;
-                // stack: ..., new type -> ..., new type, JStack
-                lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
-                lambdaMap.add(mappedIndex);
-                Logger.warn("An uninitialized this object lost.");
-            }
-            // stack: ..., JStack -> ..., T
-            pop(lambdaNode);
-            lambdaMap.add(mappedIndex);
-            if (value != null && value.getType() != null) {
-                Type type = value.getType();
-                if (type.getSort() != Type.OBJECT && type.getSort() != Type.ARRAY) {
-                    // stack: ..., T -> ..., t
-                    int numInsn = objectToPrimitive(lambdaNode, type);
-                    addManyMap(lambdaMap, mappedIndex, numInsn);
-                }
-            }
-            // stack: ..., t -> ..., t, JStack
-            lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
-            lambdaMap.add(mappedIndex);
-            lastValue = value;
-        }
-        if (newing) {
-            // stack: ..., new type -> ..., new type, JStack
-            lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
-            lambdaMap.add(mappedIndex);
-            Logger.warn("An uninitialized this object lost.");
-        }
-        // stack: ..., JStack -> ...
-        lambdaNode.visitInsn(Opcodes.POP);
-        lambdaMap.add(mappedIndex);
-        AsmHelper.updateStack(lambdaNode, 1 + stackSize);
-        return portalSlot;
-    }
-
-    private PackageInsnNode processLoopNode(BranchAnalyzer.Node<? extends BasicValue> node) {
+    private PackageInsnNode processAwaitLoopNode(BranchAnalyzer.Node<? extends BasicValue> node) {
         // JContext.createStackPusher()
         //   .push(var0).push(var1)....push(varN)
         //   .complete()
@@ -1235,20 +1002,9 @@ public class MethodContext {
         Arguments arguments = Arguments.of(Constants.JPORTAL_DESC, Constants.JSTACK_DESC);
         String innerLambdaName = findLambdaName(node, arguments, MethodType.LOOP_BODY);
         if (innerLambdaName == null) {
-            AbstractInsnNode insnNode = getMv().instructions.get(node.getIndex());
-            if (!(insnNode instanceof LabelNode)) {
-                // 因为这个指令是至少2个指令的后继，只有 LabelNode 可以是多个指令的后继
-                throw new IllegalStateException("This is impossible!");
-            }
-            LabelNode labelNode = (LabelNode) insnNode;
-            // (stack) -> ...
-            MethodNode innerLambda = createLambdaNode(arguments);
-            LabelNode portalLabel = new LabelNode();
-            LabelMap labelMap = new LabelMap();
-            labelMap.put(labelNode, portalLabel);
-            AbstractInsnNode[] successors = collectSuccessors(node, (in, n) -> in.clone(labelMap));
-            buildLambda(innerLambda, MethodType.LOOP_BODY, null, successors, -1, node, portalLabel, labelMap);
-            innerLambdaName = innerLambda.name;
+            LoopLambdaContext loopLambdaContext = new LoopLambdaContext(this, arguments, node);
+            loopLambdaContext.buildLambda();
+            innerLambdaName = loopLambdaContext.getLambdaNode().name;
         }
         midLambda.instructions.add(LambdaUtils.invokeJAsyncPromiseFunction0(
                 classType(),
@@ -1276,291 +1032,8 @@ public class MethodContext {
         return packageInsnNode;
     }
 
-    private void buildLambda(
-            MethodNode lambdaNode,
-            MethodType methodType,
-            Arguments arguments,
-            AbstractInsnNode[] insnArray,
-            int locals,
-            BranchAnalyzer.Node<? extends BasicValue> node,
-            LabelNode portalLabel,
-            LabelMap labelMap
-    ) {
-        List<Integer> lambdaMap = new ArrayList<>();
-        int index = node.getIndex();
-        int mappedIndex = mapped(index);
-        lambdaNode.visitCode();
-        List<LocalVariableNode> localVariableNodes = new ArrayList<>();
-        LocalVariableNode[] localVariableArray = new LocalVariableNode[getMv().maxLocals];
-        List<TryCatchBlockNode> processingTcbNode = new ArrayList<>();
-        List<TryCatchBlockNode> completedTcbNode = new ArrayList<>();
-        LabelNode startLabelNode = new LabelNode();
-        lambdaNode.instructions.add(startLabelNode);
-        lambdaMap.add(mappedIndex);
-        updateTcbAndLocal(
-                labelMap,
-                localVariableNodes, localVariableArray,
-                processingTcbNode, completedTcbNode,
-                startLabelNode, node
-        );
-        // todo update try catch blocks.
-        boolean isStatic = isStatic();
-        int offset = isStatic ? 0 : 1;
-        int portalSlot = -1;
-
-        // methodType == AWAIT_BODY
-        if (portalLabel == null) {
-            // arguments: x, y, z, a, b, await result, await error
-            int errorOffset = arguments.argumentLocalOffset(isStatic, -1);
-            Label errorRethrowEndLabel = new Label();
-            // load error to stack
-            lambdaNode.visitVarInsn(Opcodes.ALOAD, errorOffset);
-            lambdaMap.add(mappedIndex);
-            // consume error from stack and jump if null
-            lambdaNode.visitJumpInsn(Opcodes.IFNULL, errorRethrowEndLabel);
-            lambdaMap.add(mappedIndex);
-            // if error non-null, so step here, load error to stack again
-            lambdaNode.visitVarInsn(Opcodes.ALOAD, errorOffset);
-            lambdaMap.add(mappedIndex);
-            // rethrow the error
-            lambdaNode.visitInsn(Opcodes.ATHROW);
-            lambdaMap.add(mappedIndex);
-            // insert the label which jump to if error is null
-            lambdaNode.visitLabel(errorRethrowEndLabel);
-            lambdaMap.add(mappedIndex);
-
-            // arguments: x, y, z, a, b, await result, await error -> stack: a, b, await result
-            // locals: this?, x, y, z, a, b, await type, error type
-            int j = offset;
-            for (Arguments.ExtendType extendType : arguments.getTypes()) {
-                // arguments 的构成恰好同构于 locals + stack，
-                // 虽然最后一位, arguments 中是 await 的结果，而 frame 中是 Promise. 但它们都是 Object, 可以做相同处理.
-                if (j >= locals) {
-                    // error not push to stack.
-                    if (j == errorOffset) {
-                        break;
-                    }
-                    if (extendType.isInitialized()) {
-                        lambdaNode.visitVarInsn(extendType.getOpcode(Opcodes.ILOAD), j);
-                        lambdaMap.add(mappedIndex);
-                        j += extendType.getSize();
-                    } else {
-                        if (extendType.getOffset() == 0) {
-                            lambdaNode.visitTypeInsn(Opcodes.NEW, extendType.getType().getInternalName());
-                            lambdaMap.add(mappedIndex);
-                        } else if (extendType.getOffset() == 1) {
-                            lambdaNode.visitInsn(Opcodes.DUP);
-                            lambdaMap.add(mappedIndex);
-                        } else {
-                            throw new IllegalStateException("The uninitialized this object is in a wrong position.");
-                        }
-                    }
-                } else {
-                    j += extendType.getSize();
-                }
-            }
-            AsmHelper.updateStack(lambdaNode, node.getStackSize());
-        } else {
-            portalSlot = popStack(node, lambdaMap, lambdaNode);
-        }
-        if (lambdaNode.instructions.size() > 1) {
-            LabelNode restoreLabelNode = new LabelNode();
-            lambdaNode.instructions.add(restoreLabelNode);
-            lambdaMap.add(mappedIndex);
-        }
-
-        LabelNode jumpEndNode = null;
-        List<AbstractInsnNode> jumpNodes = null;
-        if (portalLabel != null) {
-            jumpNodes = new ArrayList<>();
-            jumpNodes.add(portalLabel);
-            PackageInsnNode packageInsnNode = new PackageInsnNode();
-            pushStack(packageInsnNode, lambdaNode, node, insnArray);
-            jumpNodes.addAll(packageInsnNode.getInsnNodes());
-            // push portal to stack
-            jumpNodes.add(new VarInsnNode(Opcodes.ALOAD, portalSlot));
-            AsmHelper.appendStack(lambdaNode, node, 1);
-            // push jump lambda
-            InvokeDynamicInsnNode jumpLambdaInsnNode = LambdaUtils.invokePortalJump();
-            jumpNodes.add(jumpLambdaInsnNode);
-            // thenImmediate(jumpLambda)
-            jumpNodes.add(new MethodInsnNode(
-                    Opcodes.INVOKEINTERFACE,
-                    Constants.JPROMISE_NAME,
-                    Constants.JPROMISE_THEN_IMMEDIATE_NAME,
-                    Constants.JPROMISE_THEN_IMMEDIATE0_DESC.getDescriptor(),
-                    true
-            ));
-            jumpNodes.add(new InsnNode(Opcodes.ARETURN));
-            jumpEndNode = new LabelNode();
-            jumpNodes.add(jumpEndNode);
-        }
-
-        LinkedList<AbstractInsnNode> insnList = new LinkedList<>();
-        List<Integer> insnListMap = new ArrayList<>();
-        List<AbstractInsnNode> preInsnList = new LinkedList<>();
-        List<Integer> preInsnListMap = new ArrayList<>();
-        List<BranchAnalyzer.Node<? extends BasicValue>> preFrames = new LinkedList<>();
-        int i = 0;
-        boolean reconnect = false;
-        for (AbstractInsnNode insnNode : insnArray) {
-            if (insnNode != null) {
-                if (i != index) {
-                    List<AbstractInsnNode> target;
-                    List<Integer> targetMap;
-                    if (i < index) {
-                        target = preInsnList;
-                        targetMap = preInsnListMap;
-                        if (i == index - 1) {
-                            BranchAnalyzer.Node<BasicValue> frame = getFrames()[i];
-                            if (frame.getSuccessors().contains(node)) {
-                                reconnect = true;
-                            }
-                        }
-                    } else {
-                        target = insnList;
-                        targetMap = insnListMap;
-                    }
-                    BranchAnalyzer.Node<BasicValue> frame = getFrames()[i];
-                    int originalIndex = mapped(i);
-                    if (insnNode instanceof PackageInsnNode) {
-                        PackageInsnNode packageInsnNode = (PackageInsnNode) insnNode;
-                        for (AbstractInsnNode n : packageInsnNode.getInsnNodes()) {
-                            processLambdaNode(
-                                    labelMap,
-                                    localVariableNodes, localVariableArray,
-                                    processingTcbNode, completedTcbNode,
-                                    insnList, preFrames,
-                                    target, targetMap,
-                                    frame, originalIndex, n
-                            );
-                        }
-                    } else {
-                        processLambdaNode(
-                                labelMap,
-                                localVariableNodes, localVariableArray,
-                                processingTcbNode, completedTcbNode,
-                                insnList, preFrames,
-                                target, targetMap,
-                                frame, originalIndex, insnNode
-                        );
-                    }
-                }
-            }
-            ++i;
-        }
-        LabelNode reconnectLabel = new LabelNode();
-        if (reconnect) {
-            insnList.add(0, reconnectLabel);
-            insnListMap.add(mappedIndex);
-        }
-        Iterator<AbstractInsnNode> preInsnIter = preInsnList.iterator();
-        Iterator<Integer> preInsnMapIter = preInsnListMap.iterator();
-        Iterator<BranchAnalyzer.Node<? extends BasicValue>> preFrameIter = preFrames.iterator();
-        while (preInsnIter.hasNext()) {
-            AbstractInsnNode preInsn = preInsnIter.next();
-            Integer preInsnMap = preInsnMapIter.next();
-            BranchAnalyzer.Node<? extends BasicValue> preFrame = preFrameIter.next();
-            processLambdaNode(
-                    labelMap,
-                    localVariableNodes, localVariableArray,
-                    processingTcbNode, completedTcbNode,
-                    insnList, preFrames,
-                    insnList, insnListMap,
-                    preFrame, preInsnMap, preInsn
-            );
-        }
-        if (reconnect) {
-            insnList.add(new JumpInsnNode(Opcodes.GOTO, reconnectLabel));
-            insnListMap.add(mappedIndex);
-        }
-        LabelNode endLabel = new LabelNode();
-        if (insnList.getLast() instanceof LabelNode) {
-            endLabel = (LabelNode) insnList.getLast();
-            completeLocalVar(localVariableArray, localVariableNodes, null, false);
-        } else {
-            insnList.add(endLabel);
-            insnListMap.add(mappedIndex);
-            completeLocalVar(localVariableArray, localVariableNodes, endLabel, false);
-        }
-        completeTryCatchBlockNodes(processingTcbNode, completedTcbNode, endLabel);
-        lambdaNode.tryCatchBlocks = completedTcbNode;
-
-        if (jumpEndNode != null) {
-            endLabel = jumpEndNode;
-        }
-
-        Iterator<AbstractInsnNode> insnIter = insnList.iterator();
-        Iterator<Integer> insnMapIter = insnListMap.iterator();
-        while (insnIter.hasNext()) {
-            lambdaNode.instructions.add(insnIter.next());
-            lambdaMap.add(insnMapIter.next());
-        }
-        if (jumpNodes != null) {
-            for (AbstractInsnNode jumpNode : jumpNodes) {
-                lambdaNode.instructions.add(jumpNode);
-            }
-            addManyMap(lambdaMap, mappedIndex, jumpNodes.size());
-        }
-        LocalVariableNode thisVarNode = findThisVar(localVariableArray, isStatic);
-        if (thisVarNode != null && thisVarNode.start != null) {
-            thisVarNode.end = endLabel;
-            localVariableNodes.add(thisVarNode);
-        }
-        lambdaNode.localVariables = localVariableNodes;
-
-        addLambdaContext(lambdaNode, lambdaMap, methodType);
-    }
-
-    private LabelNode updateTcbAndLocal(
-            LabelMap labelMap,
-            List<LocalVariableNode> localVariableNodes,
-            LocalVariableNode[] localVariableArray,
-            List<TryCatchBlockNode> processingTcbNode,
-            List<TryCatchBlockNode> completedTcbNode,
-            AbstractInsnNode n,
-            BranchAnalyzer.Node<? extends BasicValue> frame
-    ) {
-        LabelNode tcStart = updateTryCatchBlockNodes(processingTcbNode, completedTcbNode, n, frame, labelMap);
-        updateLocalVar(localVariableArray, localVariableNodes, n, frame);
-        return tcStart;
-    }
-
-    private void processLambdaNode(
-            LabelMap labelMap,
-            List<LocalVariableNode> localVariableNodes,
-            LocalVariableNode[] localVariableArray,
-            List<TryCatchBlockNode> processingTcbNode,
-            List<TryCatchBlockNode> completedTcbNode,
-            LinkedList<AbstractInsnNode> insnList,
-            List<BranchAnalyzer.Node<? extends BasicValue>> preFrames,
-            List<AbstractInsnNode> target,
-            List<Integer> targetMap,
-            BranchAnalyzer.Node<? extends BasicValue> frame,
-            int originalIndex,
-            AbstractInsnNode n
-    ) {
-        if (target == insnList) {
-            LabelNode tcStart = updateTcbAndLocal(labelMap, localVariableNodes, localVariableArray, processingTcbNode, completedTcbNode, n, frame);
-            if (tcStart != null) {
-                target.add(tcStart);
-                targetMap.add(originalIndex);
-            }
-        } else {
-            preFrames.add(frame);
-        }
-        target.add(n);
-        targetMap.add(originalIndex);
-    }
-
-    private int mapped(int index) {
+    int mapped(int index) {
         return map != null ? map.get(index) : index;
-    }
-
-    private static void addManyMap(List<Integer> map, int value, int num) {
-        for (int i = 0; i < num; ++i) {
-            map.add(value);
-        }
     }
 
     public enum MethodType {
@@ -1569,5 +1042,6 @@ public class MethodContext {
         LOOP_BODY,
         LOOP_OUT,
         LOOP_MIDDLE,
+        CATCH_BODY,
     }
 }

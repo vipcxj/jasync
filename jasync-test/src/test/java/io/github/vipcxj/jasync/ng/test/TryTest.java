@@ -105,6 +105,36 @@ public class TryTest {
         Assertions.assertFalse(tryWithCatch5().block());
     }
 
+    private JPromise<Boolean> returnInTryWith1() {
+        try {
+            return throwError(new IllegalArgumentException()).thenReturn(true);
+        } catch (IllegalArgumentException e) {
+            return JPromise.just(false);
+        }
+    }
+
+    @Test
+    public void testReturnInTryWith() throws InterruptedException {
+        Assertions.assertFalse(returnInTryWith1().block());
+    }
+
+    private JPromise<Integer> returnInTryWith2() {
+        try {
+            try {
+                return throwError(new IllegalStateException()).thenReturn(0);
+            } catch (IllegalArgumentException e0) {
+                return JPromise.just(1);
+            }
+        } catch (IllegalStateException e1) {
+            return JPromise.just(2);
+        }
+    }
+
+    @Test
+    public void testReturnInTryWith2() throws InterruptedException {
+        Assertions.assertEquals(2, returnInTryWith2().block());
+    }
+
     private JPromise<String> tryWithMultiTypeCatch(String what) {
         String message = "hello ";
         try {
@@ -128,7 +158,6 @@ public class TryTest {
         Assertions.assertEquals("hello null", tryWithMultiTypeCatch("error").block());
     }
 
-    @Async
     private JPromise<String> tryWithMultiCatch1(String what, int flag) {
         String message = "hello";
         try {

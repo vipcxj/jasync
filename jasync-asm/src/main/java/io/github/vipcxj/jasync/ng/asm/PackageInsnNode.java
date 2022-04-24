@@ -20,7 +20,7 @@ public class PackageInsnNode extends AbstractInsnNode {
 
     @Override
     public int getType() {
-        return 0;
+        return -1;
     }
 
     @Override

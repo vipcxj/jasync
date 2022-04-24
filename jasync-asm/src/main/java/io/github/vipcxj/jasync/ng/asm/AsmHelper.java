@@ -217,7 +217,8 @@ public class AsmHelper {
         return iLocal;
     }
 
-    public static void pushLocalToStack(int validLocals, boolean isStatic, Frame<? extends BasicValue> frame, List<AbstractInsnNode> results) {
+    public static int pushLocalToStack(int validLocals, boolean isStatic, Frame<? extends BasicValue> frame, List<AbstractInsnNode> results) {
+        int num = 0;
         int start = isStatic ? 0 : 1;
         for (int i = start; i < validLocals;) {
             BasicValue value = frame.getLocal(i);
@@ -229,7 +230,9 @@ public class AsmHelper {
                 results.add(new InsnNode(Opcodes.ACONST_NULL));
                 ++i;
             }
+            ++ num;
         }
+        return num;
     }
 
     public static void appendStack(MethodNode methodNode, Frame<?> frame, int appendSize) {
@@ -482,6 +485,246 @@ public class AsmHelper {
             return (String) name.get(insnNode);
         } catch (IllegalAccessException | NoSuchFieldException e) {
             return null;
+        }
+    }
+
+    public static int objectToPrimitive(MethodNode methodNode, Type type) {
+        // stack: ..., Integer
+        if (type.getSort() == Type.INT) {
+            // t.intValue()
+            // stack: ..., Integer -> ..., int
+            methodNode.visitMethodInsn(
+                    Opcodes.INVOKEVIRTUAL,
+                    Constants.INTEGER_NAME,
+                    Constants.INTEGER_INT_VALUE_NAME,
+                    Constants.INTEGER_INT_VALUE_DESC.getDescriptor(),
+                    false
+            );
+            return 1;
+        }
+        // stack: ..., Float
+        else if (type.getSort() == Type.FLOAT) {
+            // t.floatValue()
+            // stack: ..., Float -> ..., float
+            methodNode.visitMethodInsn(
+                    Opcodes.INVOKEVIRTUAL,
+                    Constants.FLOAT_NAME,
+                    Constants.FLOAT_FLOAT_VALUE_NAME,
+                    Constants.FLOAT_FLOAT_VALUE_DESC.getDescriptor(),
+                    false
+            );
+            return 1;
+        }
+        // stack: ..., Long
+        else if (type.getSort() == Type.LONG) {
+            // t.longValue()
+            // stack: ..., Long -> ..., long
+            methodNode.visitMethodInsn(
+                    Opcodes.INVOKEVIRTUAL,
+                    Constants.LONG_NAME,
+                    Constants.LONG_LONG_VALUE_NAME,
+                    Constants.LONG_LONG_VALUE_DESC.getDescriptor(),
+                    false
+            );
+            return 1;
+        }
+        // stack: ..., Double
+        else if (type.getSort() == Type.DOUBLE) {
+            // t.doubleValue()
+            // stack: ..., Double -> ..., double
+            methodNode.visitMethodInsn(
+                    Opcodes.INVOKEVIRTUAL,
+                    Constants.DOUBLE_NAME,
+                    Constants.DOUBLE_DOUBLE_VALUE_NAME,
+                    Constants.DOUBLE_DOUBLE_VALUE_DESC.getDescriptor(),
+                    false
+            );
+            return 1;
+        }
+        // stack: ..., Boolean
+        else if (type.getSort() == Type.BOOLEAN) {
+            // t.booleanValue()
+            // stack: ..., Boolean -> ..., boolean
+            methodNode.visitMethodInsn(
+                    Opcodes.INVOKEVIRTUAL,
+                    Constants.BOOLEAN_NAME,
+                    Constants.BOOLEAN_BOOLEAN_VALUE_NAME,
+                    Constants.BOOLEAN_BOOLEAN_VALUE_DESC.getDescriptor(),
+                    false
+            );
+            return 1;
+        }
+        // stack: ..., Short
+        else if (type.getSort() == Type.SHORT) {
+            // t.shortValue()
+            // stack: ..., Short -> ..., short
+            methodNode.visitMethodInsn(
+                    Opcodes.INVOKEVIRTUAL,
+                    Constants.SHORT_NAME,
+                    Constants.SHORT_SHORT_VALUE_NAME,
+                    Constants.SHORT_SHORT_VALUE_DESC.getDescriptor(),
+                    false
+            );
+            return 1;
+        }
+        // stack: ..., Character
+        else if (type.getSort() == Type.CHAR) {
+            // t.charValue()
+            // stack: ..., Character -> ..., char
+            methodNode.visitMethodInsn(
+                    Opcodes.INVOKEVIRTUAL,
+                    Constants.CHARACTER_NAME,
+                    Constants.CHARACTER_CHAR_VALUE_NAME,
+                    Constants.CHARACTER_CHAR_VALUE_DESC.getDescriptor(),
+                    false
+            );
+            return 1;
+        }
+        // stack: ..., Byte
+        else if (type.getSort() == Type.BYTE) {
+            // t.byteValue()
+            // stack: ..., Byte -> ..., byte
+            methodNode.visitMethodInsn(
+                    Opcodes.INVOKEVIRTUAL,
+                    Constants.BYTE_NAME,
+                    Constants.BYTE_BYTE_VALUE_NAME,
+                    Constants.BYTE_BYTE_VALUE_DESC.getDescriptor(),
+                    false
+            );
+            return 1;
+        }
+        return 0;
+    }
+
+    public static int objectToType(MethodNode methodNode, Type type) {
+        if (needCastTo(Constants.OBJECT_DESC, type)) {
+            methodNode.visitTypeInsn(Opcodes.CHECKCAST, type.getInternalName());
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    public static void primitiveToObject(List<AbstractInsnNode> insnNodes, Type type) {
+        // stack: ..., pusher, int
+        if (type.getSort() == Type.INT) {
+            // Integer.valueOf(top)
+            // stack: ..., pusher, int -> ..., pusher, Integer
+            insnNodes.add(new MethodInsnNode(
+                    Opcodes.INVOKESTATIC,
+                    Constants.INTEGER_NAME,
+                    Constants.INTEGER_VALUE_OF_NAME,
+                    Constants.INTEGER_VALUE_OF_DESC.getDescriptor(),
+                    false
+            ));
+        }
+        // stack: ..., pusher, float
+        else if (type.getSort() == Type.FLOAT) {
+            // Float.valueOf(top)
+            // stack: ..., pusher, float -> ..., pusher, Float
+            insnNodes.add(new MethodInsnNode(
+                    Opcodes.INVOKESTATIC,
+                    Constants.FLOAT_NAME,
+                    Constants.FLOAT_VALUE_OF_NAME,
+                    Constants.FLOAT_VALUE_OF_DESC.getDescriptor(),
+                    false
+            ));
+        }
+        // stack: ..., pusher, long
+        else if (type.getSort() == Type.LONG) {
+            // Long.valueOf(top)
+            // stack: ..., pusher, long -> ..., pusher, Long
+            insnNodes.add(new MethodInsnNode(
+                    Opcodes.INVOKESTATIC,
+                    Constants.LONG_NAME,
+                    Constants.LONG_VALUE_OF_NAME,
+                    Constants.LONG_VALUE_OF_DESC.getDescriptor(),
+                    false
+            ));
+        }
+        // stack: ..., pusher, double
+        else if (type.getSort() == Type.DOUBLE) {
+            // Double.valueOf(top)
+            // stack: ..., pusher, double -> ..., pusher, Double
+            insnNodes.add(new MethodInsnNode(
+                    Opcodes.INVOKESTATIC,
+                    Constants.DOUBLE_NAME,
+                    Constants.DOUBLE_VALUE_OF_NAME,
+                    Constants.DOUBLE_VALUE_OF_DESC.getDescriptor(),
+                    false
+            ));
+        }
+        // stack: ..., pusher, boolean
+        else if (type.getSort() == Type.BOOLEAN) {
+            // Boolean.valueOf(top)
+            // stack: ..., pusher, boolean -> ..., pusher, Boolean
+            insnNodes.add(new MethodInsnNode(
+                    Opcodes.INVOKESTATIC,
+                    Constants.BOOLEAN_NAME,
+                    Constants.BOOLEAN_VALUE_OF_NAME,
+                    Constants.BOOLEAN_VALUE_OF_DESC.getDescriptor(),
+                    false
+            ));
+        }
+        // stack: ..., pusher, short
+        else if (type.getSort() == Type.SHORT) {
+            // Short.valueOf(top)
+            // stack: ..., pusher, short -> ..., pusher, Short
+            insnNodes.add(new MethodInsnNode(
+                    Opcodes.INVOKESTATIC,
+                    Constants.SHORT_NAME,
+                    Constants.SHORT_VALUE_OF_NAME,
+                    Constants.SHORT_VALUE_OF_DESC.getDescriptor(),
+                    false
+            ));
+        }
+        // stack: ..., pusher, char
+        else if (type.getSort() == Type.CHAR) {
+            // Character.valueOf(top)
+            // stack: ..., pusher, char -> ..., pusher, Character
+            insnNodes.add(new MethodInsnNode(
+                    Opcodes.INVOKESTATIC,
+                    Constants.CHARACTER_NAME,
+                    Constants.CHARACTER_VALUE_OF_NAME,
+                    Constants.CHARACTER_VALUE_OF_DESC.getDescriptor(),
+                    false
+            ));
+        }
+        // stack: ..., pusher, byte
+        else if (type.getSort() == Type.BYTE) {
+            // Byte.valueOf(top)
+            // stack: ..., pusher, byte -> ..., pusher, Byte
+            insnNodes.add(new MethodInsnNode(
+                    Opcodes.INVOKESTATIC,
+                    Constants.BYTE_NAME,
+                    Constants.BYTE_VALUE_OF_NAME,
+                    Constants.BYTE_VALUE_OF_DESC.getDescriptor(),
+                    false
+            ));
+        }
+    }
+
+    public static AbstractInsnNode loadConstantInt(int i) {
+        if (i == 0) {
+            return new InsnNode(Opcodes.ICONST_0);
+        } else if (i == 1) {
+            return new InsnNode(Opcodes.ICONST_1);
+        } else if (i == 2) {
+            return new InsnNode(Opcodes.ICONST_2);
+        } else if (i == 3) {
+            return new InsnNode(Opcodes.ICONST_3);
+        } else if (i == 4) {
+            return new InsnNode(Opcodes.ICONST_4);
+        } else if (i == 5) {
+            return new InsnNode(Opcodes.ICONST_5);
+        } else if (i == -1){
+            return new InsnNode(Opcodes.ICONST_M1);
+        } else if ((i & 0xffffff00) == 0) {
+            return new IntInsnNode(Opcodes.BIPUSH, i);
+        } else if ((i & 0xffff0000) == 0) {
+            return new IntInsnNode(Opcodes.SIPUSH, i);
+        } else {
+            return new LdcInsnNode(i);
         }
     }
 }

@@ -316,6 +316,10 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
             return successors;
         }
 
+        public Set<Node<? extends V>> getTryCatchSuccessors() {
+            return tryCatchSuccessors;
+        }
+
         public LocalVar[] getLocalVars() {
             return localVars;
         }

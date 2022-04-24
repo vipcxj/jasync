@@ -92,7 +92,11 @@ public class InsnTextifier extends Textifier {
         MethodNode tempNode = new MethodNode();
         LabelMap labelMap = new LabelMap();
         for (AbstractInsnNode insnNode : insnNodes) {
-            tempNode.instructions.add(insnNode.clone(labelMap));
+            if (insnNode != null) {
+                tempNode.instructions.add(insnNode.clone(labelMap));
+            } else {
+                tempNode.instructions.add(new UnknownInsnNode());
+            }
         }
         MethodVisitor methodVisitor = new TraceMethodVisitor(this);
         tempNode.accept(methodVisitor);
@@ -390,6 +394,14 @@ public class InsnTextifier extends Textifier {
 
     @Override
     public void visitMaxs(int maxStack, int maxLocals) { }
+
+    public void visitUnknownInsnNode() {
+        AbstractInsnNode insnNode = beforeInsn(-1);
+        int before = text.size();
+        text.add("Unknown Insn\n");
+        int after = text.size();
+        afterInsn(insnNode, before, after);
+    }
 
     protected void traverseText(Function<Object, Object> mapper, int from, int to) {
         for (int i = from; i < to; ++i) {

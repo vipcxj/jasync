@@ -15,6 +15,16 @@ public class Arguments {
         this.uninitializedNum = 0;
     }
 
+    Arguments(Arguments arguments, int from, int to) {
+        this.types = new ArrayList<>();
+        arguments.types.stream().skip(from).limit(to - from).forEach(type -> {
+            this.types.add(type);
+            if (!type.isInitialized()) {
+                ++this.uninitializedNum;
+            }
+        });
+    }
+
     public void addArgument(BasicValue value) {
         boolean uninitialized = false;
         if (value instanceof JAsyncValue) {
@@ -107,6 +117,10 @@ public class Arguments {
             arguments.addArgument(type, false, null);
         }
         return arguments;
+    }
+
+    public static Arguments from(Arguments arguments, int from, int to) {
+        return new Arguments(arguments, from, to);
     }
 
     public static class ExtendType {

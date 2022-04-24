@@ -111,6 +111,25 @@ public class LambdaUtils {
         );
     }
 
+    public static InvokeDynamicInsnNode invokeJAsyncCatchFunction0(
+            Type ownerClass,
+            String implMethodName,
+            Type exceptionType,
+            boolean isStatic,
+            Type... extraArgs
+    ) {
+        return invokeLambda(
+                JASYNC_CATCH_FUNCTION0_METHOD_NAME,
+                JASYNC_CATCH_FUNCTION0_DESC,
+                JASYNC_CATCH_FUNCTION0_METHOD_DESC,
+                Type.getMethodType(JPROMISE_DESC, exceptionType),
+                ownerClass,
+                implMethodName,
+                isStatic,
+                extraArgs
+        );
+    }
+
     public static InvokeDynamicInsnNode invokeJAsyncPromiseSupplier0(
             Type ownerClass,
             String implMethodName,

@@ -49,36 +49,10 @@ public class ClassChecker extends ClassVisitor {
         }
         String returnTypeName = returnType.getClassName();
         if (Utils.isJPromise(returnTypeName)) {
-            return new MethodChecker(name, descriptor, mv);
-        } else {
-            return mv;
+            String key = name + descriptor;
+            asyncMethods.add(key);
+            Logger.info("Find async method " + key + " in class " + className);
         }
-    }
-
-    class MethodChecker extends MethodVisitor {
-
-        private final String name;
-        private final String descriptor;
-        private boolean useAwait;
-
-        public MethodChecker(String name, String descriptor, MethodVisitor mv) {
-            super(Constants.ASM_VERSION, mv);
-            this.name = name;
-            this.descriptor = descriptor;
-            this.useAwait = false;
-        }
-
-        @Override
-        public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-            if (!useAwait) {
-                if (AsmHelper.isAwait(opcode, owner, name, descriptor)) {
-                    useAwait = true;
-                    String key = this.name + this.descriptor;
-                    Logger.info("Find async method " + key + " in class " + className);
-                    asyncMethods.add(key);
-                }
-            }
-            super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
-        }
+        return mv;
     }
 }

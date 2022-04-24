@@ -93,7 +93,12 @@ public class ChainMethodNode extends MethodVisitor {
             verifyMethod(methodContext);
         }
         if (nextVisitor != null) {
-            methodNode.accept(nextVisitor);
+            try {
+                methodNode.accept(nextVisitor);
+            } catch (RuntimeException t) {
+                verifyMethod(methodContext);
+                throw t;
+            }
         }
         for (MethodContext lambdaContext : classContext.getLambdaContexts(methodContext)) {
             AsmHelper.printFrameProblem(
@@ -110,7 +115,12 @@ public class ChainMethodNode extends MethodVisitor {
                 verifyMethod(lambdaContext);
             }
             if (nextClassVisitor != null) {
-                lambdaContext.getMv().accept(nextClassVisitor);
+                try {
+                    lambdaContext.getMv().accept(nextClassVisitor);
+                } catch (RuntimeException t) {
+                    verifyMethod(lambdaContext);
+                    throw t;
+                }
             }
         }
     }

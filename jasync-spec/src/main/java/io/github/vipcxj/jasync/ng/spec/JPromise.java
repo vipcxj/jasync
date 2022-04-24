@@ -385,6 +385,58 @@ public interface JPromise<T> extends JHandle<T> {
         return doCatch(catcher, true);
     }
 
+    /**
+     * <pre>
+     * JAsyncCatchFunction1 closure1 = (e, ctx) -> { ... }
+     * JAsyncCatchFunction0 closure2 = (e) -> { ... }
+     * promise.doMultiCatches(
+     *   immediate,
+     *   IllegalArgumentException.class, closure1,
+     *   RuntimeException.class, closure2
+     * )
+     * </pre>
+     * equals to:
+     * <pre>
+     * promise.doCatch(immediate, (e, ctx) -> {
+     *     if (e instanceof IllegalArgumentException) {
+     *         return closure1.apply(e, ctx);
+     *     } else if (e instanceof RuntimeException) {
+     *         return closure2.apply(e);
+     *     } else {
+     *         throw e;
+     *     }
+     * })
+     * </pre>
+     *
+     * @param immediate whether invoke the closure immediate ignore the current scheduler
+     * @param exceptionTypeAndCatches exception type and catch closure pairs.
+     *                                Both JAsyncCatchFunction0 and JAsyncCatchFunction1 are supported.
+     * @return the promise
+     */
+    JPromise<T> doMultiCatches(boolean immediate, Object... exceptionTypeAndCatches);
+
+    /**
+     * same as doMultiCatches(false, exceptionTypeAndCatches)
+     * @param exceptionTypeAndCatches exception type and catch closure pairs.
+     *                                Both JAsyncCatchFunction0 and JAsyncCatchFunction1 are supported.
+     * @return the promise
+     * @see #doMultiCatches(boolean, Object...)
+     */
+    default JPromise<T> doMultiCatches(Object... exceptionTypeAndCatches) {
+        return doMultiCatches(false, exceptionTypeAndCatches);
+    }
+
+    /**
+     * same as doMultiCatches(true, exceptionTypeAndCatches)
+     * @param exceptionTypeAndCatches exception type and catch closure pairs.
+     *                                Both JAsyncCatchFunction0 and JAsyncCatchFunction1 are supported.
+     * @return the promise
+     * @see #doMultiCatches(boolean, Object...)
+     */
+    default JPromise<T> doMultiCatchImmediate(Object... exceptionTypeAndCatches) {
+        return doMultiCatches(true, exceptionTypeAndCatches);
+    }
+
     <R> JPromise<R> thenOrCatchWithContext(JAsyncPromiseFunction3<T, R> handler, boolean immediate);
     default <R> JPromise<R> thenOrCatchWithContext(JAsyncPromiseFunction3<T, R> handler) {
         return thenOrCatchWithContext(handler, false);

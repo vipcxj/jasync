@@ -40,6 +40,11 @@ public class Constants {
     public static final String JASYNC_PROMISE_FUNCTION2_METHOD_NAME = "apply";
     public static final Type JASYNC_PROMISE_FUNCTION2_METHOD_DESC = Type.getMethodType(JPROMISE_DESC, OBJECT_DESC, THROWABLE_DESC);
 
+    public static final String JASYNC_CATCH_FUNCTION0_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncCatchFunction0";
+    public static final Type JASYNC_CATCH_FUNCTION0_DESC = Type.getObjectType(JASYNC_CATCH_FUNCTION0_NAME);
+    public static final String JASYNC_CATCH_FUNCTION0_METHOD_NAME = "apply";
+    public static final Type JASYNC_CATCH_FUNCTION0_METHOD_DESC = Type.getMethodType(JPROMISE_DESC, THROWABLE_DESC);
+
     public static final String JCONTEXT_CREATE_STACK_PUSHER_NAME = "createStackPusher";
     public static final Type JCONTEXT_CREATE_STACK_PUSHER_DESC = Type.getMethodType(JPUSH_CONTEXT_DESC);
     public static final String JPUSH_CONTEXT_PUSH_NAME = "push";
@@ -58,9 +63,14 @@ public class Constants {
     public static final Type JPORTAL_TASK0_INVOKE_DESC = Type.getMethodType(JPROMISE_DESC, JPORTAL_DESC);
     public static final String JPROMISE_PORTAL_NAME = "portal";
     public static final Type JPROMISE_PORTAL0_DESC = Type.getMethodType(JPROMISE_DESC, JPORTAL_TASK0_DESC);
+    public static final String JPROMISE_EMPTY_NAME = "empty";
+    public static final Type JPROMISE_EMPTY_DESC = Type.getMethodType(JPROMISE_DESC);
 
     public static final String JPROMISE_THEN_OR_CATCH_NAME = "thenOrCatch";
     public static final Type JPROMISE_THEN_OR_CATCH1_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_FUNCTION2_DESC);
+
+    public static final String JPROMISE_DO_MULTI_CATCHES_NAME = "doMultiCatches";
+    public static final Type JPROMISE_DO_MULTI_CATCHES1_DESC = Type.getMethodType(JPROMISE_DESC, AsmHelper.getArrayType(OBJECT_DESC, 1));
 
     public static final String JPROMISE_THEN_IMMEDIATE_NAME = "thenImmediate";
     public static final Type JPROMISE_THEN_IMMEDIATE0_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_SUPPLIER0_DESC);

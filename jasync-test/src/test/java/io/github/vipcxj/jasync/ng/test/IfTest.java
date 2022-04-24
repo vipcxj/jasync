@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 public class IfTest {
 
-    @Async
+    @Async(verify = true)
     private JPromise<String> ifTest1(int toTest) {
         if (JPromise.just(3).await().equals(toTest)) {
             return JPromise.just("yes");
@@ -21,7 +21,7 @@ public class IfTest {
         Assertions.assertEquals("no", ifTest1(4).block());
     }
 
-    @Async
+    @Async(verify = true)
     private JPromise<String> ifTest2(int toTest) {
         JPromise<Integer> three = JPromise.just(3);
         if (three.await().equals(toTest)) {
@@ -37,7 +37,7 @@ public class IfTest {
         Assertions.assertEquals("no", ifTest2(4).block());
     }
 
-    @Async
+    @Async(verify = true)
     private JPromise<String> ifTest3(String message) {
         if (message != null) {
             String hello = JPromise.just("hello ").await();
@@ -52,7 +52,7 @@ public class IfTest {
         Assertions.assertNull(ifTest3(null).block());
     }
 
-    @Async
+    @Async(verify = true)
     private JPromise<String> ifTest4(int i) {
         if (i == 0) {
             return JPromise.just("0");
@@ -82,6 +82,7 @@ public class IfTest {
         Assertions.assertEquals("5", ifTest4(6).block());
     }
 
+    @Async(verify = true)
     private JPromise<Integer> ifTest5(int i) {
         int result = 0;
         if (i == 0) result = JPromise.just(i).await() + 1;

@@ -7,10 +7,7 @@ import org.objectweb.asm.ClassReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 public class Utils {
 
@@ -253,6 +250,12 @@ public class Utils {
             return typeInfoMap;
         } catch (IOException | ClassNotFoundException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
             throw new IllegalStateException("Unable to collect types.", e);
+        }
+    }
+
+    public static void addManyMap(List<Integer> map, int value, int num) {
+        for (int i = 0; i < num; ++i) {
+            map.add(value);
         }
     }
 }

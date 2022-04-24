@@ -47,7 +47,6 @@ public class AwaitTest {
         return 1 + (1 + (3 + 2)) + 3 * 4;
     }
 
-    @Async
     private JPromise<Integer> nestedAwait1() {
         int res = 1 + plus(one().await(), plus(3, two().await()).await()).await()
                 + zero().await()
