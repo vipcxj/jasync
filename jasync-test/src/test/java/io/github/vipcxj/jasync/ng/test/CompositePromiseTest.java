@@ -26,7 +26,7 @@ public class CompositePromiseTest {
     private JPromise<List<Integer>> allSuccess(List<Integer> input) {
         Random random = new Random();
         return JPromise.all(input.stream().map(i -> {
-            int dur = random.nextInt(300, 500);
+            int dur = random.nextInt( 200) + 300;
             return JPromise.sleep(dur, TimeUnit.MILLISECONDS).thenReturn(i);
         }).collect(Collectors.toList()));
     }
@@ -39,10 +39,10 @@ public class CompositePromiseTest {
     private JPromise<List<Integer>> allError(List<Integer> input, Throwable error, int delay) {
         Random random = new Random();
         List<JPromise<? extends Integer>> promises = input.stream().map(i -> {
-            int dur = random.nextInt(300, 900);
+            int dur = random.nextInt(600) + 300;
             return JPromise.sleep(dur, TimeUnit.MILLISECONDS).thenReturn(i);
         }).collect(Collectors.toList());
-        int pos = random.nextInt(0, promises.size());
+        int pos = random.nextInt(promises.size());
         promises.add(pos, JPromise.sleep(delay, TimeUnit.MILLISECONDS).thenPromise(JPromise.error(error)));
         return JPromise.all(promises);
     }
@@ -111,7 +111,7 @@ public class CompositePromiseTest {
     private JPromise<Integer> anyError(List<Integer> input, Throwable error, int num, Throwable spError, int index) {
         Random random = new Random();
         return JPromise.any(input.stream().map(i -> {
-            int dur = random.nextInt(300, 600);
+            int dur = random.nextInt(300) + 300;
             return JPromise.sleep(dur, TimeUnit.MILLISECONDS).then(() -> {
                 if (i == index) {
                     return JPromise.error(spError);
@@ -213,10 +213,10 @@ public class CompositePromiseTest {
     private JPromise<Integer> raceError(List<Integer> input, Throwable error, int delay) {
         Random random = new Random();
         List<JPromise<? extends Integer>> promises = input.stream().map(i -> {
-            int dur = random.nextInt(300, 500);
+            int dur = random.nextInt(200) + 300;
             return JPromise.sleep(dur, TimeUnit.MILLISECONDS).thenReturn(i);
         }).collect(Collectors.toList());
-        int pos = random.nextInt(0, promises.size());
+        int pos = random.nextInt(promises.size());
         promises.add(pos, JPromise.sleep(delay, TimeUnit.MILLISECONDS).thenPromise(JPromise.error(error)));
         return JPromise.race(promises);
     }
