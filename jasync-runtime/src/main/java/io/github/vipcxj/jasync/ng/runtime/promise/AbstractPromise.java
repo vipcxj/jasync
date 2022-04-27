@@ -7,7 +7,6 @@ import io.github.vipcxj.jasync.ng.spec.JThunk;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
     protected volatile boolean started;
@@ -49,18 +48,18 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
     protected synchronized void markResolved() {
         this.resolved = true;
         this.rejected = false;
-        notifyAll();
+        this.notifyAll();
     }
 
     protected synchronized void markRejected() {
         this.resolved = false;
         this.rejected = true;
-        notifyAll();
+        this.notifyAll();
     }
 
     protected synchronized void markDisposed() {
         this.disposed = true;
-        notifyAll();
+        this.notifyAll();
     }
 
     protected List<JPromise<?>> getChildren() {

@@ -7,20 +7,19 @@ import io.github.vipcxj.jasync.ng.spec.JThunk;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 public class AllPromisesTask<T> implements Task<List<T>> {
 
     private final List<JPromise<? extends T>> promises;
     private final int num;
     private final Object[] values;
-    private volatile int resolvedNum;
+    private volatile int resolvedNum = 0;
     @SuppressWarnings("rawtypes")
     private static final AtomicIntegerFieldUpdater<AllPromisesTask> RESOLVED_NUM_UPDATER = AtomicIntegerFieldUpdater.newUpdater(AllPromisesTask.class, "resolvedNum");
     @SuppressWarnings("unused")
-    private volatile boolean rejected;
+    private volatile int rejected = 0;
     @SuppressWarnings("rawtypes")
-    private static final AtomicReferenceFieldUpdater<AllPromisesTask, Boolean> REJECTED_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AllPromisesTask.class, Boolean.TYPE, "rejected");
+    private static final AtomicIntegerFieldUpdater<AllPromisesTask> REJECTED_UPDATER = AtomicIntegerFieldUpdater.newUpdater(AllPromisesTask.class, "rejected");
 
     public AllPromisesTask(List<JPromise<? extends T>> promises) {
         this.promises = promises;
@@ -45,7 +44,7 @@ public class AllPromisesTask<T> implements Task<List<T>> {
                     thunk.resolve(result, ctx);
                 }
             }).onError((error, ctx) -> {
-                if (REJECTED_UPDATER.compareAndSet(this, false, true)) {
+                if (REJECTED_UPDATER.compareAndSet(this, 0, 1)) {
                     for (JPromise<? extends T> promise2 : promises) {
                         if (promise2 != promise) {
                             promise2.cancel();

@@ -7,6 +7,7 @@ import io.github.vipcxj.jasync.ng.spec.JContext;
 import io.github.vipcxj.jasync.ng.spec.JHandle;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.JThunk;
+import io.github.vipcxj.jasync.ng.spec.exceptions.JAsyncWrapException;
 import io.github.vipcxj.jasync.ng.spec.functional.*;
 
 import java.util.ArrayList;
@@ -78,7 +79,9 @@ public class BasePromise<T> extends AbstractPromise<T> {
                 JPromise<R> next = mapper.apply(value, context);
                 next = next != null ? next : JPromise.empty();
                 next.onError(thunk::reject)
-                        .onSuccess(thunk::resolve).async(context);
+                        .onSuccess(thunk::resolve)
+                        .onDispose(thunk::cancel)
+                        .async(context);
             } catch (Throwable throwable) {
                 thunk.reject(throwable, context);
             }
@@ -118,7 +121,10 @@ public class BasePromise<T> extends AbstractPromise<T> {
             try {
                 JPromise<T> next = catcher.apply(error, context);
                 next = next != null ? next : JPromise.empty();
-                next.onError(thunk::reject).onSuccess(thunk::resolve).async(context);
+                next.onError(thunk::reject)
+                        .onSuccess(thunk::resolve)
+                        .onDispose(thunk::cancel)
+                        .async(context);
             } catch (Throwable t) {
                 thunk.reject(t, context);
             }
@@ -186,7 +192,9 @@ public class BasePromise<T> extends AbstractPromise<T> {
             JPromise<R> next = handler.apply(v, t, context);
             next = next != null ? next : JPromise.empty();
             next.onError(thunk::reject)
-                    .onSuccess(thunk::resolve).async(context);
+                    .onSuccess(thunk::resolve)
+                    .onDispose(thunk::cancel)
+                    .async(context);
         } catch (Throwable throwable) {
             thunk.reject(throwable, context);
         }
@@ -212,9 +220,15 @@ public class BasePromise<T> extends AbstractPromise<T> {
             JPromise<R> next = supplier.get(context);
             next = next != null ? next : JPromise.empty();
             if (isResolved()) {
-                next.onSuccess((ignored, ctx) -> resolve(value, ctx)).onError(thunk::reject).async(context);
+                next.onSuccess((ignored, ctx) -> resolve(value, ctx))
+                        .onError(thunk::reject)
+                        .onDispose(thunk::cancel)
+                        .async(context);
             } else {
-                next.onSuccess((ignored, ctx) -> reject(error, ctx)).onError(thunk::reject).async(context);
+                next.onSuccess((ignored, ctx) -> reject(error, ctx))
+                        .onError(thunk::reject)
+                        .onDispose(thunk::cancel)
+                        .async(context);
             }
         } catch (Throwable t) {
             thunk.reject(t, context);
@@ -282,7 +296,7 @@ public class BasePromise<T> extends AbstractPromise<T> {
         async(context);
         while (!isCompleted() && !isDisposed()) {
             try {
-                wait();
+                this.wait();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw e;
@@ -291,7 +305,7 @@ public class BasePromise<T> extends AbstractPromise<T> {
         if (isResolved()) {
             return value;
         } else if (isRejected()) {
-            throw new RuntimeException(error);
+            throw new JAsyncWrapException(error);
         } else {
             throw new InterruptedException();
         }

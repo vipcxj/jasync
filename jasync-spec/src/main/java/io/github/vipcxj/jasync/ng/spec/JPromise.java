@@ -44,6 +44,13 @@ public interface JPromise<T> extends JHandle<T> {
     static  <T> JPromise<T> any(List<JPromise<? extends T>> promises) {
         return provider.any(promises);
     }
+    @SafeVarargs
+    static  <T> JPromise<T> race(JPromise<? extends T>... promises) {
+        return provider.race(promises);
+    }
+    static  <T> JPromise<T> race(List<JPromise<? extends T>> promises) {
+        return provider.race(promises);
+    }
     static <T> JPromise<List<T>> all(List<JPromise<? extends T>> promises) {
         return provider.all(promises);
     }
@@ -69,6 +76,10 @@ public interface JPromise<T> extends JHandle<T> {
      */
     static <T> JPromise<T> generate(BiConsumer<JThunk<T>, JContext> handler) {
         return provider.generate(handler);
+    }
+
+    static <T> JPromiseTrigger<T> createTrigger() {
+        return provider.createTrigger();
     }
 
     static JPromise<JContext> context() {

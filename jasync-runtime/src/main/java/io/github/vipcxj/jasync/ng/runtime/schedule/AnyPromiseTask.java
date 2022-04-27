@@ -5,34 +5,37 @@ import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.JThunk;
 import io.github.vipcxj.jasync.ng.spec.exceptions.JAsyncCompositeException;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 public class AnyPromiseTask<T> implements Task<T> {
 
     private final List<JPromise<? extends T>> promises;
-    private final Map<JPromise<?>, Throwable> errors;
+    private final List<Throwable> errors;
     @SuppressWarnings("unused")
-    private volatile boolean resolved;
+    private volatile int resolved = 0;
     @SuppressWarnings("rawtypes")
-    private static final AtomicReferenceFieldUpdater<AnyPromiseTask, Boolean> RESOLVED_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AnyPromiseTask.class, Boolean.TYPE, "resolved");
-    private volatile int errorNum;
+    private static final AtomicIntegerFieldUpdater<AnyPromiseTask> RESOLVED_UPDATER = AtomicIntegerFieldUpdater.newUpdater(AnyPromiseTask.class, "resolved");
+    private volatile int errorNum = 0;
     @SuppressWarnings("rawtypes")
     private static final AtomicIntegerFieldUpdater<AnyPromiseTask> ERROR_NUM_UPDATER = AtomicIntegerFieldUpdater.newUpdater(AnyPromiseTask.class, "errorNum");
 
     public AnyPromiseTask(List<JPromise<? extends T>> promises) {
         this.promises = promises;
-        this.errors = new ConcurrentHashMap<>();
+        this.errors = new ArrayList<>(promises.size());
+        for (int i = 0; i < promises.size(); ++i) {
+            this.errors.add(i, null);
+        }
     }
 
     @Override
     public void schedule(JThunk<T> thunk, JContext context) {
+        int i = 0;
         for (JPromise<? extends T> promise : promises) {
+            int finalI = i;
             promise.onSuccess((v, ctx) -> {
-                if (RESOLVED_UPDATER.compareAndSet(this, false, true)) {
+                if (RESOLVED_UPDATER.compareAndSet(this, 0, 1)) {
                     for (JPromise<? extends T> promise2 : promises) {
                         if (promise2 != promise) {
                             promise2.cancel();
@@ -42,11 +45,12 @@ public class AnyPromiseTask<T> implements Task<T> {
                 }
             }).onError((error, ctx) -> {
                 int errorNum = ERROR_NUM_UPDATER.incrementAndGet(this);
-                errors.put(promise, error);
+                errors.set(finalI, error);
                 if (errorNum == promises.size()) {
                     thunk.reject(new JAsyncCompositeException(errors), ctx);
                 }
             }).async(context);
+            ++i;
         }
     }
 

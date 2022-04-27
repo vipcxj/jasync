@@ -6,6 +6,7 @@ import io.github.vipcxj.jasync.ng.runtime.schedule.ImmediateTask;
 import io.github.vipcxj.jasync.ng.runtime.schedule.LazyTask;
 import io.github.vipcxj.jasync.ng.spec.JContext;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
+import io.github.vipcxj.jasync.ng.spec.JPromiseTrigger;
 import io.github.vipcxj.jasync.ng.spec.JThunk;
 import io.github.vipcxj.jasync.ng.spec.functional.JAsyncPortalTask1;
 import io.github.vipcxj.jasync.ng.spec.spi.JPromiseSupport;
@@ -60,5 +61,10 @@ public class PromiseSupport implements JPromiseSupport {
     @Override
     public <T> JPromise<T> generate(BiConsumer<JThunk<T>, JContext> handler) {
         return new BasePromise<>(new ImmediateTask<>(handler));
+    }
+
+    @Override
+    public <T> JPromiseTrigger<T> createTrigger() {
+        return new PromiseTrigger<>();
     }
 }
