@@ -220,12 +220,12 @@ public class BasePromise<T> extends AbstractPromise<T> {
             JPromise<R> next = supplier.get(context);
             next = next != null ? next : JPromise.empty();
             if (isResolved()) {
-                next.onSuccess((ignored, ctx) -> resolve(value, ctx))
+                next.onSuccess((ignored, ctx) -> thunk.resolve(value, ctx))
                         .onError(thunk::reject)
                         .onDispose(thunk::cancel)
                         .async(context);
             } else {
-                next.onSuccess((ignored, ctx) -> reject(error, ctx))
+                next.onSuccess((ignored, ctx) -> thunk.reject(error, ctx))
                         .onError(thunk::reject)
                         .onDispose(thunk::cancel)
                         .async(context);
