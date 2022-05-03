@@ -9,6 +9,7 @@ import org.objectweb.asm.tree.analysis.BasicValue;
 import java.util.*;
 import java.util.function.BiFunction;
 
+import static io.github.vipcxj.jasync.ng.asm.AsmHelper.calcMethodArgLocals;
 import static io.github.vipcxj.jasync.ng.asm.AsmHelper.primitiveToObject;
 import static io.github.vipcxj.jasync.ng.asm.Constants.THROWABLE_DESC;
 import static io.github.vipcxj.jasync.ng.asm.Utils.addManyMap;
@@ -26,15 +27,23 @@ public class MethodContext {
     private List<Integer> map;
 
     protected final MethodContext parent;
+    private final int baseValidLocals;
     private final List<MethodContext> children;
     private final AbstractInsnNode[] insnNodes;
     private List<Set<Integer>> loops;
 
     public MethodContext(ClassContext classContext, MethodNode mv) {
-        this(classContext, mv, null, MethodType.TOP, null);
+        this(classContext, mv, null, MethodType.TOP, null, AsmHelper.calcMethodArgLocals(mv));
     }
 
-    public MethodContext(ClassContext classContext, MethodNode mv, List<Integer> map, MethodType type, MethodContext parent) {
+    public MethodContext(
+            ClassContext classContext,
+            MethodNode mv,
+            List<Integer> map,
+            MethodType type,
+            MethodContext parent,
+            int baseValidLocals
+    ) {
         this.classContext = classContext;
         this.mv = mv;
         this.map = map;
@@ -61,12 +70,13 @@ public class MethodContext {
             throw new RuntimeException(e);
         }
         this.parent = parent;
+        this.baseValidLocals = baseValidLocals;
         this.children = new ArrayList<>();
         insnNodes = new AbstractInsnNode[this.frames.length];
     }
 
-    public MethodContext createChild(MethodNode methodNode, List<Integer> map, MethodType type) {
-        return new MethodContext(classContext, methodNode, map, type, this);
+    public MethodContext createChild(MethodNode methodNode, List<Integer> map, MethodType type, int parentLocals) {
+        return new MethodContext(classContext, methodNode, map, type, this, parentLocals);
     }
 
     public MethodNode getMv() {
@@ -134,8 +144,8 @@ public class MethodContext {
         mv.maxStack = Math.max(mv.maxStack, stacksToUpdate.stream().mapToInt(i -> i).max().orElse(0));
     }
 
-    public void addLambdaContext(MethodNode lambdaNode, List<Integer> map, MethodType type) {
-        MethodContext childContext = createChild(lambdaNode, map, type);
+    public void addLambdaContext(MethodNode lambdaNode, List<Integer> map, MethodType type, int parentLocals) {
+        MethodContext childContext = createChild(lambdaNode, map, type, parentLocals);
         children.add(childContext);
         this.classContext.addLambda(getRootMethodContext(), childContext);
     }
@@ -209,6 +219,7 @@ public class MethodContext {
                 completeLocalVar(localVariableArray, localVariableNodes, endNode, true);
             }
             completeTryCatchBlockNodes(processingTcbNodes, completedTcbNodes, endNode);
+            filterTryCatchBlockNodes(completedTcbNodes, newInsnList);
             map = newMap;
             getMv().instructions = newInsnList;
             getMv().tryCatchBlocks = completedTcbNodes;
@@ -384,6 +395,10 @@ public class MethodContext {
         return newEndNode;
     }
 
+    void filterTryCatchBlockNodes(List<TryCatchBlockNode> completedTcbNodes, InsnList insnList) {
+        completedTcbNodes.removeIf(tcb -> !insnList.contains(tcb.handler));
+    }
+
     private AbstractInsnNode getFirstNode(AbstractInsnNode node) {
         if (node instanceof PackageInsnNode) {
             PackageInsnNode packageInsnNode = (PackageInsnNode) node;
@@ -424,7 +439,7 @@ public class MethodContext {
         AbstractInsnNode insnNode = next.getInsnNode();
         if (insnNode.getOpcode() == Opcodes.ARETURN) {
             return true;
-        } else if (insnNode instanceof LabelNode || insnNode instanceof LineNumberNode) {
+        } else if (insnNode instanceof LabelNode || insnNode instanceof LineNumberNode || insnNode instanceof FrameNode) {
             return isReturn(next);
         } else {
             return false;
@@ -566,23 +581,27 @@ public class MethodContext {
         return methodNode;
     }
 
-    private int calcValidLocals(BranchAnalyzer.Node<? extends BasicValue> node) {
+    int calcValidLocals(BranchAnalyzer.Node<? extends BasicValue> node) {
         int locals = node.getLocals();
         AsmHelper.LocalReverseIterator iterator = AsmHelper.reverseIterateLocal(node);
         int i = 0;
-        // if in loop body, ignore last local var: stack
-        // if in await body, ignore last local var: error
-        if (type == MethodType.LOOP_BODY || type == MethodType.AWAIT_BODY) {
-            ++i;
-            iterator.next();
-        }
         while (iterator.hasNext()) {
             Integer index = iterator.next();
             BasicValue value = node.getLocal(index);
-            if (value == null || value.getType() == null) {
+            if (index >= baseValidLocals) {
+                if (value instanceof JAsyncValue) {
+                    JAsyncValue jAsyncValue = (JAsyncValue) value;
+                    if (jAsyncValue.getIndex() == index) {
+                        break;
+                    }
+                }
                 ++i;
             } else {
-                break;
+                if (value == null || value.getType() == null) {
+                    ++i;
+                } else {
+                    break;
+                }
             }
         }
         return locals - i;
@@ -724,7 +743,7 @@ public class MethodContext {
             arguments.addArgument(exceptionType);
             String lambdaName = findLambdaName(handlerNode, arguments, MethodType.CATCH_BODY);
             if (lambdaName == null) {
-                CatchLambdaContext lambdaContext = new CatchLambdaContext(this, arguments, handlerNode);
+                CatchLambdaContext lambdaContext = new CatchLambdaContext(this, arguments, handlerNode, validLocals);
                 lambdaContext.buildLambda();
                 lambdaName = lambdaContext.getLambdaNode().name;
             }
@@ -827,8 +846,10 @@ public class MethodContext {
     }
 
     void pushStack(PackageInsnNode packageInsnNode, MethodNode methodNode, BranchAnalyzer.Node<? extends BasicValue> node, AbstractInsnNode[] insnArray) {
+        // JPromise.createStackPusher().push(x).push(y).push(z).push(a).push(b).complete()
         List<AbstractInsnNode> insnNodes = packageInsnNode.getInsnNodes();
         // stack: ... -> ..., pusher
+        // JPromise.createStackPusher()
         insnNodes.add(new MethodInsnNode(
                 Opcodes.INVOKESTATIC,
                 Constants.JCONTEXT_NAME,
@@ -883,20 +904,15 @@ public class MethodContext {
 
         // stack: pusher
         AsmHelper.LocalReverseIterator iterator = AsmHelper.reverseIterateLocal(node);
-        boolean first = true;
+        int validLocals = calcValidLocals(node);
         while (iterator.hasNext()) {
             int pos = iterator.next();
             // this should not be push.
             if (isStatic() || pos > 0) {
-                if (first) {
-                    first = false;
-                    // The last local var in loop method is stack, it need not be pushed.
-                    // The last local var in await method is error, it need not be pushed as well.
-                    if (type == MethodType.LOOP_BODY || type == MethodType.AWAIT_BODY) {
-                        continue;
-                    }
-                }
                 BasicValue value = node.getLocal(pos);
+                if (pos >= validLocals) {
+                    continue;
+                }
                 if (value != null && value.getType() != null) {
                     Type type = value.getType();
                     // stack: pusher -> pusher, t
@@ -986,7 +1002,7 @@ public class MethodContext {
         outLambda.visitInsn(Opcodes.ARETURN);
         List<Integer> outLambdaMap = new ArrayList<>();
         addManyMap(outLambdaMap, mapped(node.getIndex()), outLambda.instructions.size());
-        addLambdaContext(outLambda, outLambdaMap, MethodType.LOOP_OUT);
+        addLambdaContext(outLambda, outLambdaMap, MethodType.LOOP_OUT, calcMethodArgLocals(outLambda));
 
         if (!isStatic()) {
             // push this to stack
@@ -1023,7 +1039,7 @@ public class MethodContext {
         midLambda.visitInsn(Opcodes.ARETURN);
         List<Integer> midLambdaMap = new ArrayList<>();
         addManyMap(midLambdaMap, mapped(node.getIndex()), midLambda.instructions.size());
-        addLambdaContext(midLambda, midLambdaMap, MethodType.LOOP_MIDDLE);
+        addLambdaContext(midLambda, midLambdaMap, MethodType.LOOP_MIDDLE, AsmHelper.calcMethodArgLocals(midLambda));
         PackageInsnNode packageInsnNode = new PackageInsnNode();
         packageInsnNode.getInsnNodes().add(node.getInsnNode());
         pushStack(packageInsnNode, getMv(), node, insnNodes);

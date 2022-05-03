@@ -23,8 +23,8 @@ public class TypeInterpreter extends BasicInterpreter {
 
     @Override
     public BasicValue copyOperation(AbstractInsnNode insn, BasicValue value) throws AnalyzerException {
-        if (value instanceof JAsyncValue) {
-            return ((JAsyncValue) value).copyOperation(insn);
+        if (value instanceof JAsyncValue || AsmHelper.isModifyLocalInsn(insn)) {
+            return JAsyncValue.copyOperation(insn, value);
         }
         return super.copyOperation(insn, value);
     }

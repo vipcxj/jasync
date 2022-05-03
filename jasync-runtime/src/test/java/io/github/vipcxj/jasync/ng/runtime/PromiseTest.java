@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PromiseTest {
 
@@ -216,6 +217,19 @@ public class PromiseTest {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    @Test
+    public void testTwoFinally() throws InterruptedException {
+        AtomicInteger i = new AtomicInteger();
+        JPromise.empty().doFinally(() -> {
+            i.incrementAndGet();
+            return JPromise.empty();
+        }).doFinally(() -> {
+            i.incrementAndGet();
+            return JPromise.empty();
+        }).block();
+        Assertions.assertEquals(2, i.get());
     }
 
     @Test

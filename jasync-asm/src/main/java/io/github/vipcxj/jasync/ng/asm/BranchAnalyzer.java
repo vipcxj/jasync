@@ -52,11 +52,6 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
     protected boolean newControlFlowExceptionEdge(int insnIndex, TryCatchBlockNode tryCatchBlock) {
         Node<BasicValue> frame = (Node<BasicValue>) getFrames()[insnIndex];
         frame.handlers.add(tryCatchBlock);
-        if (tryCatchBlock.start != tryCatchBlock.handler) {
-            int successorIndex = methodNode.instructions.indexOf(tryCatchBlock.handler);
-            Node<BasicValue> successor = (Node<BasicValue>) getFrames()[successorIndex];
-            frame.tryCatchSuccessors.add(successor);
-        }
         return true;
     }
 
@@ -81,6 +76,13 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
                 nodes[i].index = i;
                 nodes[i].insnNode = insnNode;
                 installLocalVars(nodes[i], methodNode, labelNodes);
+                for (TryCatchBlockNode tcb : nodes[i].handlers) {
+                    if (tcb.start != tcb.handler) {
+                        int successorIndex = methodNode.instructions.indexOf(tcb.handler);
+                        Node<BasicValue> successor = (Node<BasicValue>) getFrames()[successorIndex];
+                        nodes[i].tryCatchSuccessors.add(successor);
+                    }
+                }
             }
         }
         for (Node<BasicValue> node : nodes) {
@@ -135,6 +137,8 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
                 }
                 entries = newEntries;
             }
+        } else if (node.insnNode.getOpcode() == Opcodes.ATHROW) {
+            flagCast(node, Constants.THROWABLE_DESC, node.getStackSize() - 1);
         }
     }
 

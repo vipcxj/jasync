@@ -11,14 +11,22 @@ import java.util.List;
 public class CatchLambdaContext extends AbstractLambdaContext {
 
     private final AbstractInsnNode[] successors;
+    private final int validLocals;
 
     protected CatchLambdaContext(
             MethodContext methodContext,
             Arguments arguments,
-            BranchAnalyzer.Node<BasicValue> node
+            BranchAnalyzer.Node<BasicValue> node,
+            int validLocals
     ) {
         super(methodContext, MethodContext.MethodType.CATCH_BODY, arguments, node);
+        this.validLocals = validLocals;
         this.successors = methodContext.collectSuccessors(node, (in, n) -> in.clone(labelMap));
+    }
+
+    @Override
+    protected int validLocals() {
+        return validLocals;
     }
 
     @Override

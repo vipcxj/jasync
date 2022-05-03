@@ -61,9 +61,10 @@ public abstract class AbstractLambdaContext {
         addEndLabelNode();
         lambdaNode.tryCatchBlocks = completedTcbNode;
         lambdaNode.localVariables = localVariableNodes;
-        methodContext.addLambdaContext(lambdaNode, lambdaMap, methodType);
+        methodContext.addLambdaContext(lambdaNode, lambdaMap, methodType, validLocals());
     }
 
+    protected abstract int validLocals();
     protected abstract void addInitCodes();
     protected abstract void addBodyCodes();
 

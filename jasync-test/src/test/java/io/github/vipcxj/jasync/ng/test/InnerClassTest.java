@@ -19,7 +19,7 @@ public class InnerClassTest {
 
         class NestInnerClass {
 
-            @Async
+            @Async(debugId = "fun")
             private JPromise<String> fun() {
                 return JPromise.just(
                         JPromise.just("InnerClass").await() + "." + JPromise.just("NestInnerClass").await()

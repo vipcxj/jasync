@@ -26,6 +26,14 @@ public class AwaitLambdaContext extends AbstractLambdaContext {
     }
 
     @Override
+    protected int validLocals() {
+        // local: this?, x, y, z, await value, error
+        // locals => this?, x, y, z
+        // base valid locals => locals + await value
+        return locals + 1;
+    }
+
+    @Override
     protected void addInitCodes() {
         boolean isStatic = methodContext.isStatic();
         // arguments: x, y, z, a, b, await result, await error

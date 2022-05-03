@@ -18,6 +18,7 @@ public class LoopLambdaContext extends AbstractLambdaContext {
     private final AbstractInsnNode[] successors;
     private final LabelNode portalLabel;
     private int portalSlot;
+    private final int validLocals;
 
     protected LoopLambdaContext(
             MethodContext methodContext,
@@ -25,6 +26,7 @@ public class LoopLambdaContext extends AbstractLambdaContext {
             BranchAnalyzer.Node<? extends BasicValue> node
     ) {
         super(methodContext, MethodContext.MethodType.LOOP_BODY, arguments, node);
+        this.validLocals = methodContext.calcValidLocals(node);
         AbstractInsnNode insnNode = node.getInsnNode();
         if (!(insnNode instanceof LabelNode)) {
             // 因为这个指令是至少2个指令的后继，只有 LabelNode 可以是多个指令的后继
@@ -34,6 +36,11 @@ public class LoopLambdaContext extends AbstractLambdaContext {
         this.portalLabel = new LabelNode();
         labelMap.put(labelNode, portalLabel);
         this.successors = methodContext.collectSuccessors(node, (in, n) -> in.clone(labelMap));
+    }
+
+    @Override
+    protected int validLocals() {
+        return validLocals;
     }
 
     @Override
@@ -82,12 +89,8 @@ public class LoopLambdaContext extends AbstractLambdaContext {
 
     private int popStack() {
         boolean isStatic = methodContext.isStatic();
-        MethodContext.MethodType containerType = methodContext.getType();
         // local: this?, JPortal, JStack
-        int locals = node.getLocals();
-        // The last local var is stack in the loop lambda body. It is not pushed.
-        // The last local var is error in the await lambda body. It is not pushed as well.
-        int usedLocals = (containerType == MethodContext.MethodType.LOOP_BODY || containerType == MethodContext.MethodType.AWAIT_BODY) ? locals - 1 : locals;
+        int usedLocals = validLocals();
         int portalSlot = isStatic ? 0 : 1;
         int stackSlot = portalSlot + 1;
         if (usedLocals > 0) {
@@ -120,7 +123,7 @@ public class LoopLambdaContext extends AbstractLambdaContext {
         lambdaMap.add(mappedIndex);
         AsmHelper.updateStack(lambdaNode, 1);
         // restore locals
-        for (int i = isStatic ? 0 : 1; i < locals;) {
+        for (int i = isStatic ? 0 : 1; i < usedLocals;) {
             int nextPos;
             BasicValue value = node.getLocal(i);
             if (value != null && value.getType() != null) {
@@ -128,11 +131,6 @@ public class LoopLambdaContext extends AbstractLambdaContext {
                 nextPos = i + type.getSize();
             } else {
                 nextPos = i + 1;
-            }
-            // The last local var in loop lambda body is stack, it is not pushed, so can not be popped.
-            // The last local var in await lambda body is error, it is not pushed, so can not be popped as well.
-            if (nextPos >= locals && (containerType == MethodContext.MethodType.LOOP_BODY || containerType == MethodContext.MethodType.AWAIT_BODY)) {
-                break;
             }
             // stack: JStack -> JStack, JStack
             lambdaNode.visitInsn(Opcodes.DUP);

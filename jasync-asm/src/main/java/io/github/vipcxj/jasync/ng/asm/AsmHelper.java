@@ -416,6 +416,10 @@ public class AsmHelper {
         }
     }
 
+    public static int calcMethodArgLocals(MethodNode methodNode) {
+        return Type.getMethodType(methodNode.desc).getArgumentsAndReturnSizes() >> 2;
+    }
+
     // Used for debug. Because asm package is sharded, so the get method can not be invoked by the debugger.
     /** @noinspection unused, RedundantSuppression */
     public static AbstractInsnNode getInsn(Object methodNode, int i) {
@@ -726,5 +730,17 @@ public class AsmHelper {
         } else {
             return new LdcInsnNode(i);
         }
+    }
+
+    public static boolean isStoreInsn(AbstractInsnNode insn) {
+        return insn.getOpcode() == Opcodes.ISTORE
+                || insn.getOpcode() == Opcodes.LSTORE
+                || insn.getOpcode() == Opcodes.FSTORE
+                || insn.getOpcode() == Opcodes.DSTORE
+                || insn.getOpcode() == Opcodes.ASTORE;
+    }
+
+    public static boolean isModifyLocalInsn(AbstractInsnNode insn) {
+        return isStoreInsn(insn) || insn.getOpcode() == Opcodes.IINC;
     }
 }

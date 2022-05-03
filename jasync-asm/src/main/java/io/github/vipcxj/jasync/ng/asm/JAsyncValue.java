@@ -3,7 +3,9 @@ package io.github.vipcxj.jasync.ng.asm;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.IincInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
 import org.objectweb.asm.tree.analysis.BasicValue;
 import org.objectweb.asm.tree.analysis.Value;
 
@@ -17,6 +19,7 @@ public class JAsyncValue extends BasicValue {
     private boolean uninitialized;
     private AbstractInsnNode newInsnNode;
     private Set<AbstractInsnNode> copyInsnNodes;
+    private int index;
 
 
     /**
@@ -27,6 +30,7 @@ public class JAsyncValue extends BasicValue {
     public JAsyncValue(Type type) {
         super(type);
         this.uninitialized = false;
+        this.index = -1;
     }
 
     public BasicValue merge(BasicValue other) {
@@ -77,14 +81,25 @@ public class JAsyncValue extends BasicValue {
         }
     }
 
-    public JAsyncValue copyOperation(AbstractInsnNode insn) {
-        if (isUninitialized()) {
-            if (copyInsnNodes == null) {
-                copyInsnNodes = new HashSet<>();
+    public static JAsyncValue copyOperation(AbstractInsnNode insn, BasicValue value) {
+        JAsyncValue jv;
+        if (value instanceof JAsyncValue) {
+            jv = (JAsyncValue) value;
+            if (jv.isUninitialized()) {
+                if (jv.copyInsnNodes == null) {
+                    jv.copyInsnNodes = new HashSet<>();
+                }
+                jv.copyInsnNodes.add(insn);
             }
-            copyInsnNodes.add(insn);
+        } else {
+            jv = new JAsyncValue(value.getType());
         }
-        return this;
+        if (insn instanceof VarInsnNode) {
+            jv.index = ((VarInsnNode) insn).var;
+        } else if (insn instanceof IincInsnNode) {
+            jv.index = ((IincInsnNode) insn).var;
+        }
+        return jv;
     }
 
     public static boolean isUninitialized(Value value) {
@@ -102,6 +117,10 @@ public class JAsyncValue extends BasicValue {
 
     public void setUninitialized(boolean uninitialized) {
         this.uninitialized = uninitialized;
+    }
+
+    public int getIndex() {
+        return index;
     }
 
     public AbstractInsnNode getNewInsnNode() {

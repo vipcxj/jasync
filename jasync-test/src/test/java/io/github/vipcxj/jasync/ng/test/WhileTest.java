@@ -5,6 +5,11 @@ import io.github.vipcxj.jasync.ng.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
+
 public class WhileTest {
 
     public JPromise<Integer> sum1(int to) {
@@ -68,6 +73,77 @@ public class WhileTest {
     @Test
     public void test4() throws InterruptedException {
         Assertions.assertEquals(123 * 321, multi2(123, 321).block());
+    }
+
+    private static class TestObject {
+
+        private int i = 10;
+
+        public boolean ok() {
+            return i >= 0;
+        }
+
+        public JPromise<TestObject> getObj() {
+            return JPromise.just(this);
+        }
+
+        public JPromise<Void> consume() {
+            --i;
+            return JPromise.empty();
+        }
+
+        public JPromise<Void> consume(Object o) {
+            if (o == this) {
+                return consume();
+            } else {
+                return JPromise.empty();
+            }
+        }
+
+        public JPromise<Void> close() {
+            ++i;
+            return JPromise.empty();
+        }
+    }
+
+    private JPromise<Integer> whileWithFinally(TestObject n, Object o) {
+        try {
+            if (o != null) {
+                n.consume(o).await();
+            }
+            while (n.ok()) {
+                Object obj = n.getObj().await();
+                n.consume(obj).await();
+            }
+        } finally {
+            n.close().await();
+        }
+        return JPromise.just(n.i);
+    }
+
+    @Test
+    public void testWhileWithFinally() throws InterruptedException {
+        TestObject n = new TestObject();
+        Assertions.assertEquals(0, whileWithFinally(n, null).block());
+        n = new TestObject();
+        Assertions.assertEquals(0, whileWithFinally(n, n).block());
+    }
+
+    private JPromise<Integer> onlyLoopInTryBlock(TestObject n) {
+        try {
+            while (n.ok()) {
+                Object obj = n.getObj().await();
+                n.consume(obj).await();
+            }
+        } finally {
+            n.close().await();
+        }
+        return JPromise.just(n.i);
+    }
+
+    @Test
+    public void testOnlyLoopInTryBlock() throws InterruptedException {
+        Assertions.assertEquals(0, onlyLoopInTryBlock(new TestObject()).block());
     }
 
 }
