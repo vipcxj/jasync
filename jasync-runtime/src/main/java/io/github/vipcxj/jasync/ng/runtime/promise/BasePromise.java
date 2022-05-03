@@ -10,8 +10,9 @@ import io.github.vipcxj.jasync.ng.spec.JThunk;
 import io.github.vipcxj.jasync.ng.spec.exceptions.JAsyncWrapException;
 import io.github.vipcxj.jasync.ng.spec.functional.*;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -22,9 +23,9 @@ public class BasePromise<T> extends AbstractPromise<T> {
     protected final Task<T> task;
     private JContext context;
     private final JPromise<?> parent;
-    private List<BiConsumer<T, JContext>> successHandlers;
-    private List<BiConsumer<Throwable, JContext>> errorHandlers;
-    private List<Consumer<JContext>> completeHandlers;
+    private final Set<BiConsumer<T, JContext>> successHandlers = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<BiConsumer<Throwable, JContext>> errorHandlers = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<Consumer<JContext>> completeHandlers = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     public BasePromise(Task<T> task) {
         this(task, null);
@@ -52,24 +53,15 @@ public class BasePromise<T> extends AbstractPromise<T> {
         return new BasePromise<>(new LazyTask<>(handler), parent);
     }
 
-    private List<BiConsumer<T, JContext>> getSuccessHandlers() {
-        if (successHandlers == null) {
-            successHandlers = new ArrayList<>();
-        }
+    private Set<BiConsumer<T, JContext>> getSuccessHandlers() {
         return successHandlers;
     }
 
-    private List<BiConsumer<Throwable, JContext>> getErrorHandlers() {
-        if (errorHandlers == null) {
-            errorHandlers = new ArrayList<>();
-        }
+    private Set<BiConsumer<Throwable, JContext>> getErrorHandlers() {
         return errorHandlers;
     }
 
-    public List<Consumer<JContext>> getCompleteHandlers() {
-        if (completeHandlers == null) {
-            completeHandlers = new ArrayList<>();
-        }
+    public Set<Consumer<JContext>> getCompleteHandlers() {
         return completeHandlers;
     }
 
@@ -322,27 +314,15 @@ public class BasePromise<T> extends AbstractPromise<T> {
     }
 
     private void triggerSuccessHandlers(JContext context) {
-        if (successHandlers != null) {
-            for (BiConsumer<T, JContext> resolveHandler : successHandlers) {
-                resolveHandler.accept(value, context);
-            }
-        }
+        successHandlers.forEach(handler -> handler.accept(value, context));
     }
 
     private void triggerErrorHandlers(JContext context) {
-        if (errorHandlers != null) {
-            for (BiConsumer<Throwable, JContext> rejectHandler : errorHandlers) {
-                rejectHandler.accept(error, context);
-            }
-        }
+        errorHandlers.forEach(handler -> handler.accept(error, context));
     }
 
     private void triggerCompleteHandlers(JContext context) {
-        if (completeHandlers != null) {
-            for (Consumer<JContext> completeHandler : completeHandlers) {
-                completeHandler.accept(context);
-            }
-        }
+        completeHandlers.forEach(handler -> handler.accept(context));
     }
 
     @Override

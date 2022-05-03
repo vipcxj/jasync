@@ -4,6 +4,8 @@ import io.github.vipcxj.jasync.ng.spec.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -213,6 +215,48 @@ public class PromiseTest {
             }).block();
         } catch (InterruptedException e) {
             e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testCancelLoop() throws InterruptedException {
+        JPromise<Object> loop = JPromise.portal(portal -> {
+            return JPromise.sleep(1, TimeUnit.SECONDS)
+                    .onFinally(() -> System.out.println("ping"))
+                    .then(portal::jump);
+        });
+        loop.async();
+        JPromise.race(
+                JPromise.sleep(3010, TimeUnit.MILLISECONDS).onFinally(loop::cancel),
+                loop
+        ).block();
+    }
+
+    @Test
+    void testMultiThread() throws InterruptedException {
+        JPromiseTrigger<Integer> trigger = JPromise.createTrigger();
+        trigger.start();
+        List<Thread> threads = new ArrayList<>();
+        for (int j = 0; j < 30; ++j) {
+            Thread t = new Thread(() -> {
+                try {
+                    Integer r = trigger.getPromise().thenMap(i -> i + 1).block();
+                    Assertions.assertEquals(r, 2);
+                    r = trigger.getPromise().thenMap(i -> i + 2).block();
+                    Assertions.assertEquals(r, 3);
+                } catch (InterruptedException ignored) {}
+            });
+            t.start();
+            threads.add(t);
+        }
+        new Thread(() -> {
+            try {
+                Thread.sleep(500);
+                trigger.resolve(1);
+            } catch (InterruptedException ignored) {}
+        }).start();
+        for (Thread thread : threads) {
+            thread.join();
         }
     }
 

@@ -5,16 +5,17 @@ import io.github.vipcxj.jasync.ng.spec.JContext;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.JThunk;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
     protected volatile boolean started;
     protected volatile boolean resolved;
     protected volatile boolean rejected;
     protected volatile boolean disposed;
-    protected List<JPromise<?>> children;
-    protected List<Runnable> terminalHandlers;
+    protected final Set<JPromise<?>> children = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    protected final Set<Runnable> terminalHandlers = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     protected abstract Task<T> getTask();
 
@@ -38,10 +39,8 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
     }
 
     protected void scheduleNext(JContext context) {
-        if (children != null) {
-            for (JPromise<?> child : children) {
-                child.schedule(context);
-            }
+        for (JPromise<?> child : children) {
+            child.schedule(context);
         }
     }
 
@@ -62,26 +61,16 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         this.notifyAll();
     }
 
-    protected List<JPromise<?>> getChildren() {
-        if (children == null) {
-            children = new ArrayList<>();
-        }
+    protected Set<JPromise<?>> getChildren() {
         return children;
     }
 
-    public List<Runnable> getTerminalHandlers() {
-        if (terminalHandlers == null) {
-            terminalHandlers = new ArrayList<>();
-        }
+    public Set<Runnable> getTerminalHandlers() {
         return terminalHandlers;
     }
 
     private void triggerTerminalHandlers() {
-        if (terminalHandlers != null) {
-            for (Runnable handler : terminalHandlers) {
-                handler.run();
-            }
-        }
+        terminalHandlers.forEach(Runnable::run);
     }
 
     @Override
@@ -109,11 +98,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         try {
             triggerTerminalHandlers();
         } finally {
-            if (children != null) {
-                for (JPromise<?> child : children) {
-                    child.dispose();
-                }
-            }
+            children.forEach(JPromise::dispose);
         }
     }
 }
