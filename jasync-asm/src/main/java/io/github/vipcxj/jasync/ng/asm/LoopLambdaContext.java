@@ -18,7 +18,7 @@ public class LoopLambdaContext extends AbstractLambdaContext {
     private final AbstractInsnNode[] successors;
     private final LabelNode portalLabel;
     private int portalSlot;
-    private final int validLocals;
+    private int validLocals;
 
     protected LoopLambdaContext(
             MethodContext methodContext,
@@ -94,12 +94,12 @@ public class LoopLambdaContext extends AbstractLambdaContext {
         int portalSlot = isStatic ? 0 : 1;
         int stackSlot = portalSlot + 1;
         if (usedLocals > 0) {
-            // load portal to index: 0 / 1 + usedLocals.
+            // load portal to index: locals.
             // stack: [] -> JPortal
             lambdaNode.visitVarInsn(Opcodes.ALOAD, portalSlot);
             lambdaMap.add(mappedIndex);
             AsmHelper.updateStack(lambdaNode, 1);
-            portalSlot += usedLocals;
+            validLocals = portalSlot = (node.getLocals() == stackSlot) ? (node.getLocals() + 1) : node.getLocals();
             // stack: JPortal -> []
             // locals: ..., -> ..., JPortal
             lambdaNode.visitVarInsn(Opcodes.ASTORE, portalSlot);
