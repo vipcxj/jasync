@@ -9,7 +9,7 @@ import java.io.OutputStream;
 public class Transformer {
 
     public static void transform(Object fileObject) {
-        Logger.info("Transforming " + ReflectObjectHelper.toUri(fileObject));
+        Logger.trace("Transforming " + ReflectObjectHelper.toUri(fileObject));
         try (InputStream is = ReflectObjectHelper.openInputStream(fileObject)) {
             try (ByteArrayOutputStream os = new ByteArrayOutputStream()){
                 byte[] buffer = new byte[128 * 1024];
