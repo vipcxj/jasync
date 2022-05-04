@@ -595,7 +595,7 @@ public class MethodContext {
                         break;
                     }
                 }
-                ++i;
+                i += value.getSize();
             } else {
                 if (value == null || value.getType() == null) {
                     ++i;
