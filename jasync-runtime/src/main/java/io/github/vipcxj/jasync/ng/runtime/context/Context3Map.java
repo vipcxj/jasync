@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.ng.runtime.context;
 
+import java.util.Objects;
 import java.util.Set;
 
 public class Context3Map implements ContextMap {
@@ -53,11 +54,11 @@ public class Context3Map implements ContextMap {
     public ContextMap put(Object key, Object value) {
         ContextMap.checkKey(key);
         if (key.equals(this.key1)) {
-            return new Context3Map(key, value, this.key2, this.value2, this.key3, this.value3);
+            return Objects.equals(value, value1) ? this : new Context3Map(key, value, this.key2, this.value2, this.key3, this.value3);
         } else if (key.equals(this.key2)) {
-            return new Context3Map(this.key1, this.value1, key, value, this.key3, this.value3);
+            return Objects.equals(value, value2) ? this : new Context3Map(this.key1, this.value1, key, value, this.key3, this.value3);
         } else if (key.equals(this.key3)) {
-            return new Context3Map(this.key1, this.value1, this.key2, this.value2, key, value);
+            return Objects.equals(value, value3) ? this : new Context3Map(this.key1, this.value1, this.key2, this.value2, key, value);
         } else {
             return new Context4Map(this.key1, this.value1, this.key2, this.value2, this.key3, this.value3, key, value);
         }

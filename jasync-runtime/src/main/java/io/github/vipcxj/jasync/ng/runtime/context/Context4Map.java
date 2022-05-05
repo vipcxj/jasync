@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.ng.runtime.context;
 
+import java.util.Objects;
 import java.util.Set;
 
 public class Context4Map implements ContextMap {
@@ -60,13 +61,13 @@ public class Context4Map implements ContextMap {
     public ContextMap put(Object key, Object value) {
         ContextMap.checkKey(key);
         if (key.equals(this.key1)) {
-            return new Context4Map(key, value, this.key2, this.value2, this.key3, this.value3, this.key4, this.value4);
+            return Objects.equals(value, value1) ? this : new Context4Map(key, value, this.key2, this.value2, this.key3, this.value3, this.key4, this.value4);
         } else if (key.equals(this.key2)) {
-            return new Context4Map(this.key1, this.value1, key, value, this.key3, this.value3, this.key4, this.value4);
+            return Objects.equals(value, value2) ? this : new Context4Map(this.key1, this.value1, key, value, this.key3, this.value3, this.key4, this.value4);
         } else if (key.equals(this.key3)) {
-            return new Context4Map(this.key1, this.value1, this.key2, this.value2, key, value, this.key4, this.value4);
+            return Objects.equals(value, value3) ? this : new Context4Map(this.key1, this.value1, this.key2, this.value2, key, value, this.key4, this.value4);
         } else if (key.equals(this.key4)) {
-            return new Context4Map(this.key1, this.value1, this.key2, this.value2, this.key3, this.value3, key, value);
+            return Objects.equals(value, value4) ? this : new Context4Map(this.key1, this.value1, this.key2, this.value2, this.key3, this.value3, key, value);
         } else {
             return new Context5Map(this.key1, this.value1, this.key2, this.value2, this.key3, this.value3, this.key4, this.value4, key, value);
         }

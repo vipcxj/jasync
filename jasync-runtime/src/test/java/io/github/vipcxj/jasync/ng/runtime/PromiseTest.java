@@ -274,6 +274,53 @@ public class PromiseTest {
         }
     }
 
+    @Test
+    void testLoop0() throws InterruptedException {
+        long res = JPromise.portal(locals -> {
+            String var0 = (String) locals[0];
+            int var1 = (Integer) locals[1];
+            long var2 = (Long) locals[2];
+            if (var1 < 10) {
+                var2 += var1;
+                ++var1;
+                return JPromise.jump(0, var0, var1, var2);
+            } else {
+                return JPromise.just(var2);
+            }
+        }, 0, "a", 0, 0L).block();
+        Assertions.assertEquals(45, res);
+    }
+
+    @Test
+    void testLoop1() throws InterruptedException {
+        long res = JPromise.portal(locals -> {
+            String var0 = (String) locals[0];
+            int i = (Integer) locals[1];
+            int j = (Integer) locals[2];
+            long sum = (Long) locals[3];
+            if (i < 10) {
+                return JPromise.portal(locals1 -> {
+                    String var00 = (String) locals1[0];
+                    int i0 = (Integer) locals1[1];
+                    int j0 = (Integer) locals1[2];
+                    long sum0 = (Long) locals1[3];
+                    if (j0 < 10) {
+                        sum0 += 1;
+                        ++j0;
+                        return JPromise.jump(1, var00, i0, j0, sum0);
+                    } else {
+                        ++i0;
+                        j0 = 0;
+                        return JPromise.jump(0, var00, i0, j0, sum0);
+                    }
+                }, 1, var0, i, j, sum);
+            } else {
+                return JPromise.just(sum);
+            }
+        }, 0, "a", 0, 0, 0L).block();
+        Assertions.assertEquals(100, res);
+    }
+
     private void sleep(long time, JThunk<Void> thunk, JContext context) {
         try {
             Thread.sleep(time);

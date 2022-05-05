@@ -1,5 +1,7 @@
 package io.github.vipcxj.jasync.ng.runtime.context;
 
+import java.util.HashMap;
+import java.util.Objects;
 import java.util.Set;
 
 public class Context6Map implements ContextMap {
@@ -71,7 +73,30 @@ public class Context6Map implements ContextMap {
 
     @Override
     public ContextMap put(Object key, Object value) {
-        return null;
+        ContextMap.checkKey(key);
+        if (key.equals(this.key1)) {
+            return Objects.equals(value, value1) ? this : new Context6Map(key, value, this.key2, this.value2, this.key3, this.value3, this.key4, this.value4, this.key5, this.value5, this.key6, this.value6);
+        } else if (key.equals(this.key2)) {
+            return Objects.equals(value, value2) ? this : new Context6Map(this.key1, this.value1, key, value, this.key3, this.value3, this.key4, this.value4, this.key5, this.value5, this.key6, this.value6);
+        } else if (key.equals(this.key3)) {
+            return Objects.equals(value, value3) ? this : new Context6Map(this.key1, this.value1, this.key2, this.value2, key, value, this.key4, this.value4, this.key5, this.value5, this.key6, this.value6);
+        } else if (key.equals(this.key4)) {
+            return Objects.equals(value, value4) ? this : new Context6Map(this.key1, this.value1, this.key2, this.value2, this.key3, this.value3, key, value, this.key5, this.value5, this.key6, this.value6);
+        } else if (key.equals(this.key5)) {
+            return Objects.equals(value, value5) ? this : new Context6Map(this.key1, this.value1, this.key2, this.value2, this.key3, this.value3, this.key4, this.value4, key, value, this.key6, this.value6);
+        } else if (key.equals(this.key6)) {
+            return Objects.equals(value, value6) ? this : new Context6Map(this.key1, this.value1, this.key2, this.value2, this.key3, this.value3, this.key4, this.value4, this.key5, this.value5, key, value);
+        } else {
+            HashMap<Object, Object> map = new HashMap<>();
+            map.put(key1, value1);
+            map.put(key2, value2);
+            map.put(key3, value3);
+            map.put(key4, value4);
+            map.put(key5, value5);
+            map.put(key6, value6);
+            map.put(key, value);
+            return new ContextNMap(map);
+        }
     }
 
     @Override

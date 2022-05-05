@@ -47,6 +47,18 @@ public interface JContext {
     default boolean isEmpty() {
         return size() == 0;
     }
+    @Internal
+    Object[] getLocals();
+    @Internal
+    JContext pushLocals(Object... args);
+    @Internal
+    JContext popLocals();
+    @Internal
+    JContext setPortal(int jumpIndex, JPortal<?> portal);
+    @Internal
+    <T> JPromise<T> jump(int jumpIndex);
+    @Internal
+    JContext removePortal(int jumpIndex);
     JScheduler getScheduler();
     JContext setScheduler(JScheduler scheduler);
     @Internal

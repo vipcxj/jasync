@@ -31,6 +31,20 @@ public interface JPromise<T> extends JHandle<T> {
     static <T> JPromise<T> portal(JAsyncPortalTask0<T> task) {
         return portal((factory, context) -> task.invoke(factory));
     }
+    static <T> JPromise<T> portal(JAsyncPromiseFunction0<Object[], T> task, int jumpIndex, Object... locals) {
+        JPromise<T> promise = updateContext(ctx -> ctx.pushLocals(locals))
+                .thenImmediate(() ->
+                        portal((factory, context) -> {
+                                    Object[] theLocals = context.getLocals();
+                                    return updateContext(ctx -> ctx.popLocals().setPortal(jumpIndex, factory))
+                                            .thenImmediate(() -> task.apply(theLocals));
+                                }
+                        ));
+        return promise.withUpdateContext(ctx -> ctx.removePortal(jumpIndex));
+    }
+    static <T> JPromise<T> jump(int jumpIndex, Object... localVars) {
+        return updateContext(ctx -> ctx.pushLocals(localVars)).thenImmediate(ctx -> ctx.jump(jumpIndex));
+    }
     static <T> JPromise<T> wrap(JAsyncPromiseSupplier0<T> supplier) {
         return JPromise.empty().thenImmediate(supplier);
     }
@@ -96,12 +110,24 @@ public interface JPromise<T> extends JHandle<T> {
         return withContext(context).thenImmediate(promise::withUpdateContext);
     }
 
+    static <T> JPromise<T> wrapContext(JPromise<T> promise, Function<JContext, JContext> contextUpdater) {
+        return updateContext(contextUpdater).thenImmediate(promise::withUpdateContext);
+    }
+
     static <T> JPromise<T> wrapContext(JAsyncPromiseFunction0<JContext, T> function, JContext context) {
         return withContext(context).thenWithContextImmediate((oldContext, newContext) -> function.apply(newContext).withUpdateContext(oldContext));
     }
 
+    static <T> JPromise<T> wrapContext(JAsyncPromiseFunction0<JContext, T> function, Function<JContext, JContext> contextUpdater) {
+        return updateContext(contextUpdater).thenWithContextImmediate((oldContext, newContext) -> function.apply(newContext).withUpdateContext(oldContext));
+    }
+
     static <T> JPromise<T> wrapContext(JAsyncPromiseSupplier0<T> function, JContext context) {
         return withContext(context).thenImmediate((oldContext) -> function.get().withUpdateContext(oldContext));
+    }
+
+    static <T> JPromise<T> wrapContext(JAsyncPromiseSupplier0<T> function, Function<JContext, JContext> contextUpdater) {
+        return updateContext(contextUpdater).thenImmediate((oldContext) -> function.get().withUpdateContext(oldContext));
     }
 
     static JPromise<JScheduler> withScheduler(JScheduler scheduler) {
@@ -340,6 +366,10 @@ public interface JPromise<T> extends JHandle<T> {
 
     default <R> JPromise<R> thenReturn(R next) {
         return thenMapImmediate(() -> next);
+    }
+
+    default <R> JPromise<R> thenVoid() {
+        return thenReturn(null);
     }
 
     default <R> JPromise<R> thenPromise(JPromise<R> nextPromise) {
