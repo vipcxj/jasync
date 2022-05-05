@@ -20,7 +20,6 @@ public class LongAndDoubleTest {
         Assertions.assertEquals(2L, simpleLong1(2L).block());
     }
 
-    @Async(logResultByteCode = Async.BYTE_CODE_OPTION_FULL_SUPPORT)
     private JPromise<Long> simpleLong2(long n) {
         long a = n + 1;
         long b = a + JPromise.just(1L).await();

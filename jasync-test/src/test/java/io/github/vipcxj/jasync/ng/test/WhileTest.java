@@ -5,11 +5,6 @@ import io.github.vipcxj.jasync.ng.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.file.Files;
-
 public class WhileTest {
 
     public JPromise<Integer> sum1(int to) {
@@ -42,7 +37,7 @@ public class WhileTest {
         return JPromise.just(res);
     }
 
-    @Async(debug = true)
+    @Async
     public JPromise<Integer> multi2(int a, int b) {
         int res = 0;
         int i = 0, j = 0;

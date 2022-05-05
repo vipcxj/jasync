@@ -540,7 +540,6 @@ public class LabelTest {
         Assertions.assertEquals(25, doWhileHasAwait3().block());
     }
 
-    @Async(debug = true)
     public JPromise<Integer> doWhileHasAwait4() {
         int a = 0;
         int i = 0;
@@ -675,7 +674,6 @@ public class LabelTest {
         }
     }
 
-    @Async(debug = true)
     public JPromise<Integer> forHasAwait1(int num) {
         int a = 0;
         label:
@@ -702,7 +700,6 @@ public class LabelTest {
         }
     }
 
-    @Async(debug = true)
     public JPromise<Integer> forHasAwait2(int num) {
         int a = 0;
         label1:

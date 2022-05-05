@@ -38,7 +38,6 @@ public class Issues {
         Assertions.assertEquals(7, test2(3, 3).block());
     }
 
-    @Async
     public JPromise<Long> test3() {
         List<Long> list = new ArrayList<>();
         list.add(1L);

@@ -17,8 +17,7 @@ public class LoopLambdaContext extends AbstractLambdaContext {
 
     private final AbstractInsnNode[] successors;
     private final LabelNode portalLabel;
-    private int portalSlot;
-    private int validLocals;
+    private final int validLocals;
 
     protected LoopLambdaContext(
             MethodContext methodContext,
@@ -45,7 +44,7 @@ public class LoopLambdaContext extends AbstractLambdaContext {
 
     @Override
     protected void addInitCodes() {
-        portalSlot = popStack();
+        restoreLocalAndStack();
     }
 
     @Override
@@ -57,110 +56,77 @@ public class LoopLambdaContext extends AbstractLambdaContext {
 
         lambdaNode.instructions.add(portalLabel);
         lambdaMap.add(mappedIndex);
+
         PackageInsnNode packageInsnNode = new PackageInsnNode();
-        methodContext.pushStack(packageInsnNode, lambdaNode, node, successors);
+        // stack: ... -> ..., jumpIndex
+        packageInsnNode.getInsnNodes().add(AsmHelper.loadConstantInt(mappedIndex));
+        // stack: ..., jumpIndex -> ..., jumpIndex, Object[]
+        methodContext.collectLocalsAndStackToArrayArg(packageInsnNode, lambdaNode, node, successors, validLocals);
+        // JPromise.jump(jumpIndex, localVars)
+        // stack: ..., jumpIndex, Object[] -> ..., JPromise
+        packageInsnNode.getInsnNodes().add(new MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                Constants.JPROMISE_NAME,
+                Constants.JPROMISE_JUMP_NAME,
+                Constants.JPROMISE_JUMP_DESC.getDescriptor(), true
+        ));
+        // return
+        // stack: ..., JPromise -> ...
+        packageInsnNode.getInsnNodes().add(new InsnNode(Opcodes.ARETURN));
+        packageInsnNode.complete();
         for (AbstractInsnNode insnNode : packageInsnNode.getInsnNodes()) {
             lambdaNode.instructions.add(insnNode);
             lambdaMap.add(mappedIndex);
         }
-        // push portal to stack
-        lambdaNode.visitVarInsn(Opcodes.ALOAD, portalSlot);
-        lambdaMap.add(mappedIndex);
-        AsmHelper.appendStack(lambdaNode, node, 1);
-        // push jump lambda
-        InvokeDynamicInsnNode jumpLambdaInsnNode = LambdaUtils.invokePortalJump();
-        lambdaNode.instructions.add(jumpLambdaInsnNode);
-        lambdaMap.add(mappedIndex);
-        // thenImmediate(jumpLambda)
-        lambdaNode.visitMethodInsn(
-                Opcodes.INVOKEINTERFACE,
-                Constants.JPROMISE_NAME,
-                Constants.JPROMISE_THEN_IMMEDIATE_NAME,
-                Constants.JPROMISE_THEN_IMMEDIATE0_DESC.getDescriptor(),
-                true
-        );
-        lambdaMap.add(mappedIndex);
-        lambdaNode.visitInsn(Opcodes.ARETURN);
-        lambdaMap.add(mappedIndex);
-        Label jumpEnd = new Label();
-        lambdaNode.visitLabel(jumpEnd);
-        lambdaMap.add(mappedIndex);
     }
 
-    private int popStack() {
+    private void restoreLocalAndStack() {
         boolean isStatic = methodContext.isStatic();
-        // local: this?, JPortal, JStack
-        int usedLocals = validLocals();
-        int portalSlot = isStatic ? 0 : 1;
-        int stackSlot = portalSlot + 1;
-        if (usedLocals > 0) {
-            // load portal to index: locals.
-            // stack: [] -> JPortal
-            lambdaNode.visitVarInsn(Opcodes.ALOAD, portalSlot);
-            lambdaMap.add(mappedIndex);
-            AsmHelper.updateStack(lambdaNode, 1);
-            validLocals = portalSlot = (node.getLocals() == stackSlot) ? (node.getLocals() + 1) : node.getLocals();
-            // stack: JPortal -> []
-            // locals: ..., -> ..., JPortal
-            lambdaNode.visitVarInsn(Opcodes.ASTORE, portalSlot);
-            lambdaMap.add(mappedIndex);
-            AsmHelper.updateLocal(lambdaNode, portalSlot + 1);
-
-            // load stack to index: 1 / 2 + usedLocals
-            // stack: [] -> JStack
-            lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
-            lambdaMap.add(mappedIndex);
-            stackSlot = portalSlot + 1;
-            // stack: JStack -> []
-            // locals: ..., JPortal -> ..., JPortal, JStack
-            lambdaNode.visitVarInsn(Opcodes.ASTORE, stackSlot);
-            lambdaMap.add(mappedIndex);
-            AsmHelper.updateLocal(lambdaNode, stackSlot + 1);
-        }
-        // push stack
-        // stack: [] -> JStack
-        lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
+        int offset = isStatic ? 0 : 1;
+        // locals: this?, localVars
+        // push localVars
+        // stack: [] -> localVars
+        lambdaNode.visitVarInsn(Opcodes.ALOAD, offset);
         lambdaMap.add(mappedIndex);
         AsmHelper.updateStack(lambdaNode, 1);
         // restore locals
-        for (int i = isStatic ? 0 : 1; i < usedLocals;) {
-            int nextPos;
+        int j = 0;
+        for (int i = offset; i < validLocals;) {
             BasicValue value = node.getLocal(i);
-            if (value != null && value.getType() != null) {
-                Type type = value.getType();
-                nextPos = i + type.getSize();
-            } else {
-                nextPos = i + 1;
-            }
-            // stack: JStack -> JStack, JStack
+            // stack: localVars -> localVars, localVars
             lambdaNode.visitInsn(Opcodes.DUP);
             lambdaMap.add(mappedIndex);
-            // stack: JStack, JStack -> JStack, T
-            pop(lambdaNode);
+            // stack: localVars, localVars -> localVars, localVars, int
+            AsmHelper.visitConstantInt(lambdaNode, j++);
             lambdaMap.add(mappedIndex);
-            AsmHelper.updateStack(lambdaNode, 2);
+            AsmHelper.updateStack(lambdaNode, 3);
+            // stack: localVars, localVars, int -> localVars, Object
+            lambdaNode.visitInsn(Opcodes.AALOAD);
+            lambdaMap.add(mappedIndex);
             if (value != null && value.getType() != null) {
                 Type type = value.getType();
                 int numInsn;
                 if (type.getSort() != Type.OBJECT && type.getSort() != Type.ARRAY) {
-                    // stack: JStack, T -> JStack, t
+                    // stack: localVars, Object -> localVars, primitive
                     numInsn = objectToPrimitive(lambdaNode, type);
                 } else {
                     numInsn = objectToType(lambdaNode, type);
                 }
                 addManyMap(lambdaMap, mappedIndex, numInsn);
-                // stack: JStack, t -> JStack
+                // stack: localVars, t -> localVars
                 // local: ..., u, ... -> ..., t, ...
                 lambdaNode.visitVarInsn(type.getOpcode(Opcodes.ISTORE), i);
+                i += type.getSize();
             } else {
-                // stack: JStack, t -> JStack
+                // stack: localVars, t -> localVars
                 // local: ..., u, ... -> ..., t, ...
                 lambdaNode.visitVarInsn(Opcodes.ASTORE, i);
+                ++i;
             }
             lambdaMap.add(mappedIndex);
-            i = nextPos;
         }
         // restore stacks
+        // stack: localVars
         int stackSize = node.getStackSize();
         BasicValue lastValue = null;
         Set<BasicValue> uninitializedValues = new HashSet<>();
@@ -176,15 +142,16 @@ public class LoopLambdaContext extends AbstractLambdaContext {
                             // stack: ..., new containerType -> ..., new containerType, new containerType
                             lambdaNode.visitInsn(Opcodes.DUP);
                             lambdaMap.add(mappedIndex);
-                            // stack: ..., new containerType, new containerType -> ..., new containerType, new containerType, JStack
-                            lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
+                            // stack: ..., new containerType, new containerType -> ..., new containerType, new containerType, localVars
+                            lambdaNode.visitVarInsn(Opcodes.ALOAD, validLocals);
                             lambdaMap.add(mappedIndex);
                         } else {
                             throw new IllegalStateException("An uninitialized this object is in the wrong position.");
                         }
                     } else {
-                        // stack: ..., JStack -> ...,
-                        lambdaNode.visitInsn(Opcodes.POP);
+                        // stack: ..., localVars -> ...,
+                        // locals: ..., -> ..., localVars
+                        lambdaNode.visitVarInsn(Opcodes.ASTORE, validLocals);
                         lambdaMap.add(mappedIndex);
                         // stack: ..., -> ..., new containerType
                         lambdaNode.visitTypeInsn(Opcodes.NEW, asyncValue.getType().getInternalName());
@@ -198,13 +165,16 @@ public class LoopLambdaContext extends AbstractLambdaContext {
             }
             if (newing) {
                 newing = false;
-                // stack: ..., new containerType -> ..., new containerType, JStack
-                lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
+                // stack: ..., new containerType -> ..., new containerType, localVars
+                lambdaNode.visitVarInsn(Opcodes.ALOAD, validLocals);
                 lambdaMap.add(mappedIndex);
                 Logger.warn("An uninitialized this object lost.");
             }
-            // stack: ..., JStack -> ..., T
-            pop(lambdaNode);
+            // stack: ..., localVars -> ..., localVars, int
+            AsmHelper.visitConstantInt(lambdaNode, validLocals + i);
+            lambdaMap.add(mappedIndex);
+            // stack: ..., localVars, int -> ..., T
+            lambdaNode.visitInsn(Opcodes.AALOAD);
             lambdaMap.add(mappedIndex);
             if (value != null && value.getType() != null) {
                 Type type = value.getType();
@@ -214,31 +184,20 @@ public class LoopLambdaContext extends AbstractLambdaContext {
                     addManyMap(lambdaMap, mappedIndex, numInsn);
                 }
             }
-            // stack: ..., t -> ..., t, JStack
-            lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
+            // stack: ..., t -> ..., t, localVars
+            lambdaNode.visitVarInsn(Opcodes.ALOAD, validLocals);
             lambdaMap.add(mappedIndex);
             lastValue = value;
         }
         if (newing) {
-            // stack: ..., new containerType -> ..., new containerType, JStack
-            lambdaNode.visitVarInsn(Opcodes.ALOAD, stackSlot);
+            // stack: ..., new containerType -> ..., new containerType, localVars
+            lambdaNode.visitVarInsn(Opcodes.ALOAD, validLocals);
             lambdaMap.add(mappedIndex);
             Logger.warn("An uninitialized this object lost.");
         }
-        // stack: ..., JStack -> ...
+        // stack: ..., localVars -> ...
         lambdaNode.visitInsn(Opcodes.POP);
         lambdaMap.add(mappedIndex);
         AsmHelper.updateStack(lambdaNode, 1 + stackSize);
-        return portalSlot;
-    }
-
-    private void pop(MethodNode lambdaNode) {
-        lambdaNode.visitMethodInsn(
-                Opcodes.INVOKEINTERFACE,
-                Constants.JSTACK_NAME,
-                Constants.JSTACK_POP_NAME,
-                Constants.JSTACK_POP_DESC.getDescriptor(),
-                true
-        );
     }
 }

@@ -155,6 +155,24 @@ public class LambdaUtils {
             Type... extraArgs
     ) {
         return invokeLambda(
+                JASYNC_PROMISE_FUNCTION0_METHOD_NAME,
+                JASYNC_PROMISE_FUNCTION0_DESC,
+                JASYNC_PROMISE_FUNCTION0_METHOD_DESC,
+                Type.getMethodType(JPROMISE_DESC, AsmHelper.getArrayType(OBJECT_DESC, 1)),
+                ownerClass,
+                implMethodName,
+                isStatic,
+                extraArgs
+        );
+    }
+
+    public static InvokeDynamicInsnNode invokeJAsyncPortalTaskAbandon(
+            Type ownerClass,
+            String implMethodName,
+            boolean isStatic,
+            Type... extraArgs
+    ) {
+        return invokeLambda(
                 JPORTAL_TASK0_INVOKE_NAME,
                 JPORTAL_TASK0_DESC,
                 JPORTAL_TASK0_INVOKE_DESC,
@@ -166,7 +184,7 @@ public class LambdaUtils {
         );
     }
 
-    public static InvokeDynamicInsnNode invokePortalJump() {
+    public static InvokeDynamicInsnNode invokePortalJumpAbandon() {
         return new InvokeDynamicInsnNode(
                 JASYNC_PROMISE_SUPPLIER0_METHOD_NAME,
                 Type.getMethodDescriptor(JASYNC_PROMISE_SUPPLIER0_DESC, JPORTAL_DESC),
@@ -176,7 +194,7 @@ public class LambdaUtils {
                         Opcodes.H_INVOKEINTERFACE,
                         JPORTAL_NAME,
                         JPORTAL_JUMP_NAME,
-                        JPORTAL_JUMP_DESC.getDescriptor(),
+                        JPORTAL_JUMP_DESC_1.getDescriptor(),
                         true
                 ),
                 JASYNC_PROMISE_SUPPLIER0_METHOD_DESC

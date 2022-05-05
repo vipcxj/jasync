@@ -9,6 +9,7 @@ public class Constants {
     public static final Type NULL_DESC = Type.getObjectType(NULL_NAME);
     public static final String OBJECT_NAME = "java/lang/Object";
     public static final Type OBJECT_DESC = Type.getObjectType(OBJECT_NAME);
+    public static final Type OBJECT_ARRAY_DESC = AsmHelper.getArrayType(OBJECT_DESC, 1);
     public static final String CLONEABLE_NAME = "java/lang/Cloneable";
     public static final Type CLONEABLE_DESC = Type.getObjectType(CLONEABLE_NAME);
     public static final String SERIALIZABLE_NAME = "java/lang/Serializable";
@@ -22,8 +23,6 @@ public class Constants {
     public static final Type JPUSH_CONTEXT_DESC = Type.getObjectType(JPUSH_CONTEXT_NAME);
     public static final String JSTACK_NAME = "io/github/vipcxj/jasync/ng/spec/JStack";
     public static final Type JSTACK_DESC = Type.getObjectType(JSTACK_NAME);
-    public static final String JSTACK_POP_NAME = "pop";
-    public static final Type JSTACK_POP_DESC = Type.getMethodType(OBJECT_DESC);
 
     public static final String JASYNC_PROMISE_SUPPLIER0_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncPromiseSupplier0";
     public static final Type JASYNC_PROMISE_SUPPLIER0_DESC = Type.getObjectType(JASYNC_PROMISE_SUPPLIER0_NAME);
@@ -56,21 +55,26 @@ public class Constants {
     public static final String JPORTAL_NAME = "io/github/vipcxj/jasync/ng/spec/JPortal";
     public static final Type JPORTAL_DESC = Type.getObjectType(JPORTAL_NAME);
     public static final String JPORTAL_JUMP_NAME = "jump";
-    public static final Type JPORTAL_JUMP_DESC = Type.getMethodType(JPROMISE_DESC);
+    public static final Type JPORTAL_JUMP_DESC_0 = Type.getMethodType(JPROMISE_DESC, Type.INT_TYPE, OBJECT_ARRAY_DESC);
+    public static final Type JPORTAL_JUMP_DESC_1 = Type.getMethodType(JPROMISE_DESC);
     public static final String JPORTAL_TASK0_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncPortalTask0";
     public static final Type JPORTAL_TASK0_DESC = Type.getObjectType(JPORTAL_TASK0_NAME);
     public static final String JPORTAL_TASK0_INVOKE_NAME = "invoke";
     public static final Type JPORTAL_TASK0_INVOKE_DESC = Type.getMethodType(JPROMISE_DESC, JPORTAL_DESC);
     public static final String JPROMISE_PORTAL_NAME = "portal";
-    public static final Type JPROMISE_PORTAL0_DESC = Type.getMethodType(JPROMISE_DESC, JPORTAL_TASK0_DESC);
+    public static final Type JPROMISE_PORTAL0_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_FUNCTION0_DESC, Type.INT_TYPE, OBJECT_ARRAY_DESC);
+    public static final Type JPROMISE_PORTAL1_DESC = Type.getMethodType(JPROMISE_DESC, JPORTAL_TASK0_DESC);
     public static final String JPROMISE_EMPTY_NAME = "empty";
     public static final Type JPROMISE_EMPTY_DESC = Type.getMethodType(JPROMISE_DESC);
+
+    public static final String JPROMISE_JUMP_NAME = "jump";
+    public static final Type JPROMISE_JUMP_DESC = Type.getMethodType(JPROMISE_DESC, Type.INT_TYPE, OBJECT_ARRAY_DESC);
 
     public static final String JPROMISE_THEN_OR_CATCH_NAME = "thenOrCatch";
     public static final Type JPROMISE_THEN_OR_CATCH1_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_FUNCTION2_DESC);
 
     public static final String JPROMISE_DO_MULTI_CATCHES_NAME = "doMultiCatches";
-    public static final Type JPROMISE_DO_MULTI_CATCHES1_DESC = Type.getMethodType(JPROMISE_DESC, AsmHelper.getArrayType(OBJECT_DESC, 1));
+    public static final Type JPROMISE_DO_MULTI_CATCHES1_DESC = Type.getMethodType(JPROMISE_DESC, OBJECT_ARRAY_DESC);
 
     public static final String JPROMISE_THEN_IMMEDIATE_NAME = "thenImmediate";
     public static final Type JPROMISE_THEN_IMMEDIATE0_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_SUPPLIER0_DESC);

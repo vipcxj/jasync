@@ -610,10 +610,10 @@ public class AsmHelper {
     }
 
     public static void primitiveToObject(List<AbstractInsnNode> insnNodes, Type type) {
-        // stack: ..., pusher, int
+        // stack: ..., int
         if (type.getSort() == Type.INT) {
             // Integer.valueOf(top)
-            // stack: ..., pusher, int -> ..., pusher, Integer
+            // stack: ..., int -> ..., Integer
             insnNodes.add(new MethodInsnNode(
                     Opcodes.INVOKESTATIC,
                     Constants.INTEGER_NAME,
@@ -622,10 +622,10 @@ public class AsmHelper {
                     false
             ));
         }
-        // stack: ..., pusher, float
+        // stack: ..., float
         else if (type.getSort() == Type.FLOAT) {
             // Float.valueOf(top)
-            // stack: ..., pusher, float -> ..., pusher, Float
+            // stack: ..., float -> ..., Float
             insnNodes.add(new MethodInsnNode(
                     Opcodes.INVOKESTATIC,
                     Constants.FLOAT_NAME,
@@ -634,10 +634,10 @@ public class AsmHelper {
                     false
             ));
         }
-        // stack: ..., pusher, long
+        // stack: ..., long
         else if (type.getSort() == Type.LONG) {
             // Long.valueOf(top)
-            // stack: ..., pusher, long -> ..., pusher, Long
+            // stack: ..., long -> ..., Long
             insnNodes.add(new MethodInsnNode(
                     Opcodes.INVOKESTATIC,
                     Constants.LONG_NAME,
@@ -646,10 +646,10 @@ public class AsmHelper {
                     false
             ));
         }
-        // stack: ..., pusher, double
+        // stack: ..., double
         else if (type.getSort() == Type.DOUBLE) {
             // Double.valueOf(top)
-            // stack: ..., pusher, double -> ..., pusher, Double
+            // stack: ..., double -> ..., Double
             insnNodes.add(new MethodInsnNode(
                     Opcodes.INVOKESTATIC,
                     Constants.DOUBLE_NAME,
@@ -658,10 +658,10 @@ public class AsmHelper {
                     false
             ));
         }
-        // stack: ..., pusher, boolean
+        // stack: ..., boolean
         else if (type.getSort() == Type.BOOLEAN) {
             // Boolean.valueOf(top)
-            // stack: ..., pusher, boolean -> ..., pusher, Boolean
+            // stack: ..., boolean -> ..., Boolean
             insnNodes.add(new MethodInsnNode(
                     Opcodes.INVOKESTATIC,
                     Constants.BOOLEAN_NAME,
@@ -670,10 +670,10 @@ public class AsmHelper {
                     false
             ));
         }
-        // stack: ..., pusher, short
+        // stack: ..., short
         else if (type.getSort() == Type.SHORT) {
             // Short.valueOf(top)
-            // stack: ..., pusher, short -> ..., pusher, Short
+            // stack: ..., short -> ..., Short
             insnNodes.add(new MethodInsnNode(
                     Opcodes.INVOKESTATIC,
                     Constants.SHORT_NAME,
@@ -682,10 +682,10 @@ public class AsmHelper {
                     false
             ));
         }
-        // stack: ..., pusher, char
+        // stack: ..., char
         else if (type.getSort() == Type.CHAR) {
             // Character.valueOf(top)
-            // stack: ..., pusher, char -> ..., pusher, Character
+            // stack: ..., char -> ..., Character
             insnNodes.add(new MethodInsnNode(
                     Opcodes.INVOKESTATIC,
                     Constants.CHARACTER_NAME,
@@ -694,10 +694,10 @@ public class AsmHelper {
                     false
             ));
         }
-        // stack: ..., pusher, byte
+        // stack: ..., byte
         else if (type.getSort() == Type.BYTE) {
             // Byte.valueOf(top)
-            // stack: ..., pusher, byte -> ..., pusher, Byte
+            // stack: ..., byte -> ..., Byte
             insnNodes.add(new MethodInsnNode(
                     Opcodes.INVOKESTATIC,
                     Constants.BYTE_NAME,
@@ -705,6 +705,30 @@ public class AsmHelper {
                     Constants.BYTE_VALUE_OF_DESC.getDescriptor(),
                     false
             ));
+        }
+    }
+
+    public static void visitConstantInt(MethodNode methodNode, int i) {
+        if (i == 0) {
+            methodNode.visitInsn(Opcodes.ICONST_0);
+        } else if (i == 1) {
+            methodNode.visitInsn(Opcodes.ICONST_1);
+        } else if (i == 2) {
+            methodNode.visitInsn(Opcodes.ICONST_2);
+        } else if (i == 3) {
+            methodNode.visitInsn(Opcodes.ICONST_3);
+        } else if (i == 4) {
+            methodNode.visitInsn(Opcodes.ICONST_4);
+        } else if (i == 5) {
+            methodNode.visitInsn(Opcodes.ICONST_5);
+        } else if (i == -1){
+            methodNode.visitInsn(Opcodes.ICONST_M1);
+        } else if ((i & 0xffffff00) == 0) {
+            methodNode.visitIntInsn(Opcodes.BIPUSH, i);
+        } else if ((i & 0xffff0000) == 0) {
+            methodNode.visitIntInsn(Opcodes.SIPUSH, i);
+        } else {
+            methodNode.visitLdcInsn(i);
         }
     }
 
