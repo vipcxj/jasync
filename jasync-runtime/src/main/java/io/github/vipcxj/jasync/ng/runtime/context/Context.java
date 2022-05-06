@@ -8,7 +8,6 @@ import java.util.concurrent.Executors;
 
 public class Context implements JContext {
 
-    private final JStack[] stacks;
     private final Object[][] localsStack;
     private final IntMap<JPortal<?>> portalMap;
     private final ContextMap contextMap;
@@ -16,19 +15,17 @@ public class Context implements JContext {
     public final static JContext DEFAULTS = new Context(new ExecutorServiceScheduler(Executors.newWorkStealingPool()));
 
     public Context(JScheduler scheduler) {
-        this(Context0Map.EMPTY, scheduler, null, null, null);
+        this(Context0Map.EMPTY, scheduler, null, null);
     }
 
     public Context(
             ContextMap contextMap,
             JScheduler scheduler,
-            JStack[] stacks,
             Object[][] localsStack,
             IntMap<JPortal<?>> portalMap
     ) {
         this.contextMap = contextMap;
         this.scheduler = scheduler;
-        this.stacks = stacks;
         this.localsStack = localsStack;
         this.portalMap = portalMap == null ? IntMap.empty() : portalMap;
     }
@@ -57,7 +54,7 @@ public class Context implements JContext {
     public JContext set(Object key, Object value) {
         ContextMap newContextMap = contextMap.put(key, value);
         if (newContextMap != contextMap) {
-            return new Context(newContextMap, scheduler, stacks, localsStack, portalMap);
+            return new Context(newContextMap, scheduler, localsStack, portalMap);
         } else {
             return this;
         }
@@ -67,7 +64,7 @@ public class Context implements JContext {
     public JContext remove(Object key) {
         ContextMap newContextMap = contextMap.remove(key);
         if (newContextMap != contextMap) {
-            return new Context(newContextMap, scheduler, stacks, localsStack, portalMap);
+            return new Context(newContextMap, scheduler, localsStack, portalMap);
         } else {
             return this;
         }
@@ -81,39 +78,10 @@ public class Context implements JContext {
     @Override
     public JContext setScheduler(JScheduler scheduler) {
         if (this.scheduler != scheduler) {
-            return new Context(contextMap, scheduler, stacks, localsStack, portalMap);
+            return new Context(contextMap, scheduler, localsStack, portalMap);
         } else {
             return this;
         }
-    }
-
-    @Override
-    public JContext pushStack(JStack stack) {
-        JStack[] newStacks;
-        if (stacks == null) {
-            newStacks = new JStack[] { stack };
-        } else {
-            newStacks = new JStack[stacks.length + 1];
-            System.arraycopy(stacks, 0, newStacks, 0, stacks.length);
-            newStacks[stacks.length] = stack;
-        }
-        return new Context(contextMap, scheduler, newStacks, localsStack, portalMap);
-    }
-
-    @Override
-    public JPromise<JStack> popStack() {
-        if (stacks == null || stacks.length < 1) {
-            throw new IllegalStateException("The stack is empty, unable to pop it.");
-        }
-        JStack[] newStacks;
-        if (stacks.length == 1) {
-            newStacks = null;
-        } else {
-            newStacks = new JStack[stacks.length - 1];
-            System.arraycopy(stacks, 0, newStacks, 0, stacks.length - 1);
-        }
-        Context newContext = new Context(contextMap, scheduler, newStacks, localsStack, portalMap);
-        return JPromise.withContext(newContext).thenReturn(stacks[stacks.length - 1]);
     }
 
     @Override
@@ -126,7 +94,7 @@ public class Context implements JContext {
             System.arraycopy(localsStack, 0, newLocalsStack, 0, localsStack.length);
             newLocalsStack[localsStack.length] = args;
         }
-        return new Context(contextMap, scheduler, stacks, newLocalsStack, portalMap);
+        return new Context(contextMap, scheduler, newLocalsStack, portalMap);
     }
 
     @Override
@@ -141,7 +109,7 @@ public class Context implements JContext {
             newLocalsStack = new Object[localsStack.length - 1][];
             System.arraycopy(localsStack, 0, newLocalsStack, 0, localsStack.length - 1);
         }
-        return new Context(contextMap, scheduler, stacks, newLocalsStack, portalMap);
+        return new Context(contextMap, scheduler, newLocalsStack, portalMap);
     }
 
     @Override
@@ -156,7 +124,7 @@ public class Context implements JContext {
     public JContext setPortal(int jumpIndex, JPortal<?> portal) {
         IntMap<JPortal<?>> newPortalMap = portalMap.set(jumpIndex, portal);
         if (newPortalMap != portalMap) {
-            return new Context(contextMap, scheduler, stacks, localsStack, newPortalMap);
+            return new Context(contextMap, scheduler, localsStack, newPortalMap);
         } else {
             return this;
         }
@@ -166,7 +134,7 @@ public class Context implements JContext {
     public JContext removePortal(int jumpIndex) {
         IntMap<JPortal<?>> newPortalMap = portalMap.remove(jumpIndex);
         if (newPortalMap != portalMap) {
-            return new Context(contextMap, scheduler, stacks, localsStack, newPortalMap);
+            return new Context(contextMap, scheduler, localsStack, newPortalMap);
         } else {
             return this;
         }

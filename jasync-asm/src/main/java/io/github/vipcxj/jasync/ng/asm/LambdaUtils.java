@@ -73,25 +73,6 @@ public class LambdaUtils {
         );
     }
 
-    public static InvokeDynamicInsnNode invokeJAsyncPromiseFunction0(
-            Type ownerClass,
-            String implMethodName,
-            Type typeT,
-            boolean isStatic,
-            Type... extraArgs
-    ) {
-        return invokeLambda(
-                JASYNC_PROMISE_FUNCTION0_METHOD_NAME,
-                JASYNC_PROMISE_FUNCTION0_DESC,
-                JASYNC_PROMISE_FUNCTION0_METHOD_DESC,
-                Type.getMethodType(JPROMISE_DESC, typeT),
-                ownerClass,
-                implMethodName,
-                isStatic,
-                extraArgs
-        );
-    }
-
     public static InvokeDynamicInsnNode invokeJAsyncPromiseFunction2(
             Type ownerClass,
             String implMethodName,
@@ -130,24 +111,6 @@ public class LambdaUtils {
         );
     }
 
-    public static InvokeDynamicInsnNode invokeJAsyncPromiseSupplier0(
-            Type ownerClass,
-            String implMethodName,
-            boolean isStatic,
-            Type... extraArgs
-    ) {
-        return invokeLambda(
-                JASYNC_PROMISE_SUPPLIER0_METHOD_NAME,
-                JASYNC_PROMISE_SUPPLIER0_DESC,
-                JASYNC_PROMISE_SUPPLIER0_METHOD_DESC,
-                JASYNC_PROMISE_SUPPLIER0_METHOD_DESC,
-                ownerClass,
-                implMethodName,
-                isStatic,
-                extraArgs
-        );
-    }
-
     public static InvokeDynamicInsnNode invokeJAsyncPortalTask(
             Type ownerClass,
             String implMethodName,
@@ -163,41 +126,6 @@ public class LambdaUtils {
                 implMethodName,
                 isStatic,
                 extraArgs
-        );
-    }
-
-    public static InvokeDynamicInsnNode invokeJAsyncPortalTaskAbandon(
-            Type ownerClass,
-            String implMethodName,
-            boolean isStatic,
-            Type... extraArgs
-    ) {
-        return invokeLambda(
-                JPORTAL_TASK0_INVOKE_NAME,
-                JPORTAL_TASK0_DESC,
-                JPORTAL_TASK0_INVOKE_DESC,
-                JPORTAL_TASK0_INVOKE_DESC,
-                ownerClass,
-                implMethodName,
-                isStatic,
-                extraArgs
-        );
-    }
-
-    public static InvokeDynamicInsnNode invokePortalJumpAbandon() {
-        return new InvokeDynamicInsnNode(
-                JASYNC_PROMISE_SUPPLIER0_METHOD_NAME,
-                Type.getMethodDescriptor(JASYNC_PROMISE_SUPPLIER0_DESC, JPORTAL_DESC),
-                createMetaFactoryHandle(),
-                JASYNC_PROMISE_SUPPLIER0_METHOD_DESC,
-                new Handle(
-                        Opcodes.H_INVOKEINTERFACE,
-                        JPORTAL_NAME,
-                        JPORTAL_JUMP_NAME,
-                        JPORTAL_JUMP_DESC_1.getDescriptor(),
-                        true
-                ),
-                JASYNC_PROMISE_SUPPLIER0_METHOD_DESC
         );
     }
 }

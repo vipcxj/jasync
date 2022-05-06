@@ -1,10 +1,7 @@
 package io.github.vipcxj.jasync.ng.test;
 
 import io.github.vipcxj.jasync.ng.runtime.promise.ValuePromise;
-import io.github.vipcxj.jasync.ng.spec.JContext;
-import io.github.vipcxj.jasync.ng.spec.JPortal;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
-import io.github.vipcxj.jasync.ng.spec.JStack;
 import io.github.vipcxj.jasync.ng.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

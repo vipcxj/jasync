@@ -30,7 +30,7 @@ public class AwaitLambdaContext extends AbstractLambdaContext {
         // local: this?, x, y, z, await value, error
         // locals => this?, x, y, z
         // base valid locals => locals + await value
-        return locals + 1;
+        return locals;
     }
 
     @Override

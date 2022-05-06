@@ -12,7 +12,6 @@ public class PromiseTriggerTest {
 
     private JPromise<Integer> triggerSuccess(int expect) {
         JPromiseTrigger<Integer> trigger = JPromise.createTrigger();
-        trigger.start();
         JPromise.sleep(300, TimeUnit.MILLISECONDS)
                 .onFinally(() -> {
                     trigger.resolve(expect);
@@ -29,7 +28,6 @@ public class PromiseTriggerTest {
 
     private JPromise<Integer> triggerError(Throwable t) {
         JPromiseTrigger<Integer> trigger = JPromise.createTrigger();
-        trigger.start();
         JPromise.sleep(300, TimeUnit.MILLISECONDS)
                 .onFinally(() -> {
                     trigger.reject(t);
@@ -45,7 +43,6 @@ public class PromiseTriggerTest {
 
     private JPromise<Integer> triggerCancel() {
         JPromiseTrigger<Integer> trigger = JPromise.createTrigger();
-        trigger.start();
         JPromise.sleep(300, TimeUnit.MILLISECONDS)
                 .onFinally(trigger::cancel).await();
         return trigger.getPromise();
@@ -53,6 +50,8 @@ public class PromiseTriggerTest {
 
     @Test
     public void testTriggerCancel() {
-        Utils.assertError(InterruptedException.class, () -> triggerCancel().block());
+        Utils.assertError(InterruptedException.class, () -> {
+            triggerCancel().block();
+        });
     }
 }

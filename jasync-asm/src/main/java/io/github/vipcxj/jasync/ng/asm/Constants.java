@@ -18,16 +18,6 @@ public class Constants {
     public static final Type THROWABLE_DESC = Type.getObjectType(THROWABLE_NAME);
     public static final String JPROMISE_NAME = "io/github/vipcxj/jasync/ng/spec/JPromise";
     public static final Type JPROMISE_DESC = Type.getObjectType(JPROMISE_NAME);
-    public static final String JCONTEXT_NAME = "io/github/vipcxj/jasync/ng/spec/JContext";
-    public static final String JPUSH_CONTEXT_NAME = "io/github/vipcxj/jasync/ng/spec/JPushContext";
-    public static final Type JPUSH_CONTEXT_DESC = Type.getObjectType(JPUSH_CONTEXT_NAME);
-    public static final String JSTACK_NAME = "io/github/vipcxj/jasync/ng/spec/JStack";
-    public static final Type JSTACK_DESC = Type.getObjectType(JSTACK_NAME);
-
-    public static final String JASYNC_PROMISE_SUPPLIER0_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncPromiseSupplier0";
-    public static final Type JASYNC_PROMISE_SUPPLIER0_DESC = Type.getObjectType(JASYNC_PROMISE_SUPPLIER0_NAME);
-    public static final String JASYNC_PROMISE_SUPPLIER0_METHOD_NAME = "get";
-    public static final Type JASYNC_PROMISE_SUPPLIER0_METHOD_DESC = Type.getMethodType(JPROMISE_DESC);
 
     public static final String JASYNC_PROMISE_FUNCTION0_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncPromiseFunction0";
     public static final Type JASYNC_PROMISE_FUNCTION0_DESC = Type.getObjectType(JASYNC_PROMISE_FUNCTION0_NAME);
@@ -44,28 +34,8 @@ public class Constants {
     public static final String JASYNC_CATCH_FUNCTION0_METHOD_NAME = "apply";
     public static final Type JASYNC_CATCH_FUNCTION0_METHOD_DESC = Type.getMethodType(JPROMISE_DESC, THROWABLE_DESC);
 
-    public static final String JCONTEXT_CREATE_STACK_PUSHER_NAME = "createStackPusher";
-    public static final Type JCONTEXT_CREATE_STACK_PUSHER_DESC = Type.getMethodType(JPUSH_CONTEXT_DESC);
-    public static final String JPUSH_CONTEXT_PUSH_NAME = "push";
-    public static final Type JPUSH_CONTEXT_PUSH_DESC = Type.getMethodType(JPUSH_CONTEXT_DESC, OBJECT_DESC);
-    public static final String JPUSH_CONTEXT_COMPLETE_NAME = "complete";
-    public static final Type JPUSH_CONTEXT_COMPLETE_DESC = Type.getMethodType(JPROMISE_DESC);
-    public static final String JCONTEXT_POP_STACK_NAME = "popStack";
-    public static final Type JCONTEXT_POP_STACK_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_FUNCTION0_DESC);
-    public static final String JPORTAL_NAME = "io/github/vipcxj/jasync/ng/spec/JPortal";
-    public static final Type JPORTAL_DESC = Type.getObjectType(JPORTAL_NAME);
-    public static final String JPORTAL_JUMP_NAME = "jump";
-    public static final Type JPORTAL_JUMP_DESC_0 = Type.getMethodType(JPROMISE_DESC, Type.INT_TYPE, OBJECT_ARRAY_DESC);
-    public static final Type JPORTAL_JUMP_DESC_1 = Type.getMethodType(JPROMISE_DESC);
-    public static final String JPORTAL_TASK0_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncPortalTask0";
-    public static final Type JPORTAL_TASK0_DESC = Type.getObjectType(JPORTAL_TASK0_NAME);
-    public static final String JPORTAL_TASK0_INVOKE_NAME = "invoke";
-    public static final Type JPORTAL_TASK0_INVOKE_DESC = Type.getMethodType(JPROMISE_DESC, JPORTAL_DESC);
     public static final String JPROMISE_PORTAL_NAME = "portal";
     public static final Type JPROMISE_PORTAL0_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_FUNCTION0_DESC, Type.INT_TYPE, OBJECT_ARRAY_DESC);
-    public static final Type JPROMISE_PORTAL1_DESC = Type.getMethodType(JPROMISE_DESC, JPORTAL_TASK0_DESC);
-    public static final String JPROMISE_EMPTY_NAME = "empty";
-    public static final Type JPROMISE_EMPTY_DESC = Type.getMethodType(JPROMISE_DESC);
 
     public static final String JPROMISE_JUMP_NAME = "jump";
     public static final Type JPROMISE_JUMP_DESC = Type.getMethodType(JPROMISE_DESC, Type.INT_TYPE, OBJECT_ARRAY_DESC);
@@ -75,9 +45,6 @@ public class Constants {
 
     public static final String JPROMISE_DO_MULTI_CATCHES_NAME = "doMultiCatches";
     public static final Type JPROMISE_DO_MULTI_CATCHES1_DESC = Type.getMethodType(JPROMISE_DESC, OBJECT_ARRAY_DESC);
-
-    public static final String JPROMISE_THEN_IMMEDIATE_NAME = "thenImmediate";
-    public static final Type JPROMISE_THEN_IMMEDIATE0_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_SUPPLIER0_DESC);
 
     public static final String AWAIT = "await";
 

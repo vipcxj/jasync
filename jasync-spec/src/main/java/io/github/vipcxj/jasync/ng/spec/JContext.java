@@ -1,7 +1,6 @@
 package io.github.vipcxj.jasync.ng.spec;
 
 import io.github.vipcxj.jasync.ng.spec.annotations.Internal;
-import io.github.vipcxj.jasync.ng.spec.functional.JAsyncPromiseFunction0;
 import io.github.vipcxj.jasync.ng.spec.spi.JContextProvider;
 
 import java.util.Optional;
@@ -16,12 +15,6 @@ public interface JContext {
     }
     static JContext create(JScheduler scheduler) {
         return provider.create(scheduler);
-    }
-    static JPushContext createStackPusher() {
-        return provider.createPushContext();
-    }
-    static <T> JPromise<T> popStack(JAsyncPromiseFunction0<JStack, T> function) {
-        return JPromise.context().thenImmediate(JContext::popStack).thenImmediate(function);
     }
 
     <T> T get(Object key);
@@ -61,8 +54,4 @@ public interface JContext {
     JContext removePortal(int jumpIndex);
     JScheduler getScheduler();
     JContext setScheduler(JScheduler scheduler);
-    @Internal
-    JContext pushStack(JStack stack);
-    @Internal
-    JPromise<JStack> popStack();
 }

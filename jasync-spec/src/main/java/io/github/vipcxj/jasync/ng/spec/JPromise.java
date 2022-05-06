@@ -100,14 +100,21 @@ public interface JPromise<T> extends JHandle<T> {
         return JPromise.generate(Functions.PROMISE_HANDLER_EXTRACT_CONTEXT);
     }
 
-    static JPromise<JContext> withContext(JContext context) {
+    static JPromise<JContext> updateContext(JContext context) {
         return JPromise.generate((thunk, oldContext) -> {
             thunk.resolve(oldContext, context);
         });
     }
 
+    static JPromise<JContext> updateContext(Function<JContext, JContext> contextUpdater) {
+        return JPromise.generate((thunk, context) -> {
+            JContext newContext = contextUpdater.apply(context);
+            thunk.resolve(context, newContext);
+        });
+    }
+
     static <T> JPromise<T> wrapContext(JPromise<T> promise, JContext context) {
-        return withContext(context).thenImmediate(promise::withUpdateContext);
+        return updateContext(context).thenImmediate(promise::withUpdateContext);
     }
 
     static <T> JPromise<T> wrapContext(JPromise<T> promise, Function<JContext, JContext> contextUpdater) {
@@ -115,7 +122,7 @@ public interface JPromise<T> extends JHandle<T> {
     }
 
     static <T> JPromise<T> wrapContext(JAsyncPromiseFunction0<JContext, T> function, JContext context) {
-        return withContext(context).thenWithContextImmediate((oldContext, newContext) -> function.apply(newContext).withUpdateContext(oldContext));
+        return updateContext(context).thenWithContextImmediate((oldContext, newContext) -> function.apply(newContext).withUpdateContext(oldContext));
     }
 
     static <T> JPromise<T> wrapContext(JAsyncPromiseFunction0<JContext, T> function, Function<JContext, JContext> contextUpdater) {
@@ -123,14 +130,14 @@ public interface JPromise<T> extends JHandle<T> {
     }
 
     static <T> JPromise<T> wrapContext(JAsyncPromiseSupplier0<T> function, JContext context) {
-        return withContext(context).thenImmediate((oldContext) -> function.get().withUpdateContext(oldContext));
+        return updateContext(context).thenImmediate((oldContext) -> function.get().withUpdateContext(oldContext));
     }
 
     static <T> JPromise<T> wrapContext(JAsyncPromiseSupplier0<T> function, Function<JContext, JContext> contextUpdater) {
         return updateContext(contextUpdater).thenImmediate((oldContext) -> function.get().withUpdateContext(oldContext));
     }
 
-    static JPromise<JScheduler> withScheduler(JScheduler scheduler) {
+    static JPromise<JScheduler> updateScheduler(JScheduler scheduler) {
         return JPromise.generate((thunk, context) -> {
             JScheduler oldScheduler = context.getScheduler();
             JContext newContext = context.setScheduler(scheduler);
@@ -139,11 +146,11 @@ public interface JPromise<T> extends JHandle<T> {
     }
 
     static <T> JPromise<T> wrapScheduler(JPromise<T> promise, JScheduler scheduler) {
-        return withScheduler(scheduler).thenImmediate(promise::withUpdateScheduler);
+        return updateScheduler(scheduler).thenImmediate(promise::withUpdateScheduler);
     }
 
     static <T> JPromise<T> wrapScheduler(JAsyncPromiseSupplier0<T> function, JScheduler scheduler) {
-        return withScheduler(scheduler).thenImmediate((oldScheduler) -> function.get().withUpdateScheduler(oldScheduler));
+        return updateScheduler(scheduler).thenImmediate((oldScheduler) -> function.get().withUpdateScheduler(oldScheduler));
     }
 
     static JPromise<Boolean> hasContextValue(Object key) {
@@ -172,13 +179,6 @@ public interface JPromise<T> extends JHandle<T> {
 
     static JPromise<JScheduler> getScheduler() {
         return JPromise.generate(Functions.PROMISE_HANDLER_EXTRACT_SCHEDULER);
-    }
-
-    static JPromise<JContext> updateContext(Function<JContext, JContext> contextUpdater) {
-        return JPromise.generate((thunk, context) -> {
-            JContext newContext = contextUpdater.apply(context);
-            thunk.resolve(context, newContext);
-        });
     }
 
     static <T> JPromise<T> setContextValue(Object key, Object newValue) {
@@ -401,7 +401,7 @@ public interface JPromise<T> extends JHandle<T> {
         return thenWithImmediate(() -> updateContextValueIfExists(key, updater));
     }
     default JPromise<T> withUpdateScheduler(JScheduler scheduler) {
-        return thenWithImmediate(() -> withScheduler(scheduler));
+        return thenWithImmediate(() -> updateScheduler(scheduler));
     }
 
     default JPromise<T> delay(long timeout, TimeUnit unit) {

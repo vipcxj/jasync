@@ -114,40 +114,32 @@ public class PromiseTest {
         Thread.sleep(10000);
     }
 
-    private JPromise<JContext> push(Object... args) {
-        JPushContext pusher = JContext.createStackPusher();
-        for (Object arg : args) {
-            pusher.push(arg);
-        }
-        return pusher.complete();
-    }
-
     @Test
     public void test4() throws InterruptedException {
         int i = 0;
         String msg = "a";
-        JPromise<String> task = push(msg, i).thenImmediate(() -> JPromise.portal(factory -> JContext.popStack(stack -> {
-            int i0 = (Integer) stack.pop();
-            String msg0 = (String) stack.pop();
+        JPromise<String> task = JPromise.portal(locals0 -> {
+            String msg0 = (String) locals0[0];
+            int i0 = (Integer) locals0[1];
             long j = 0;
             if (i0 < 3) {
-                return push(j, msg0, i0).thenImmediate(() -> JPromise.portal(factory1 -> JContext.popStack(stack1 -> {
-                    int i1 = (Integer) stack1.pop();
-                    String msg1 = (String) stack1.pop();
-                    long j0 = (Long) stack1.pop();
+                return JPromise.portal(locals1 -> {
+                    long j0 = (Long) locals1[0];
+                    String msg1 = (String) locals1[1];
+                    int i1 = (Integer) locals1[2];
                     if (j0 < 3) {
                         msg1 += "a";
                         ++j0;
-                        return push(j0, msg1, i1).thenImmediate(factory1::jump);
+                        return JPromise.jump(1, j0, msg1, i1);
                     } else {
                         ++i1;
-                        return push(msg1, i1).thenImmediate(factory::jump);
+                        return JPromise.jump(0, msg1, i1);
                     }
-                })));
+                }, 1, j, msg0, i0);
             } else {
                 return JPromise.just(msg0);
             }
-        })));
+        }, 0, msg, i);
         String result = task.block();
         Assertions.assertEquals("aaaaaaaaaa", result);
     }
@@ -249,7 +241,6 @@ public class PromiseTest {
     @Test
     void testMultiThread() throws InterruptedException {
         JPromiseTrigger<Integer> trigger = JPromise.createTrigger();
-        trigger.start();
         List<Thread> threads = new ArrayList<>();
         for (int j = 0; j < 30; ++j) {
             Thread t = new Thread(() -> {
@@ -319,6 +310,25 @@ public class PromiseTest {
             }
         }, 0, "a", 0, 0, 0L).block();
         Assertions.assertEquals(100, res);
+    }
+
+    @Test
+    void testLoop2() throws InterruptedException {
+        JPromiseTrigger<Integer> trigger = JPromise.createTrigger();
+        trigger.resolve(10);
+        Integer res = JPromise.portal(locals -> {
+            final int i = (Integer) locals[0];
+            return JPromise.wrap(context -> {
+                return JPromise.wrapContext(trigger.getPromise(), context).thenWithContext((n, ctx) -> {
+                    if (i < n) {
+                        return JPromise.jump(0, i + 1);
+                    } else {
+                        return JPromise.just(i);
+                    }
+                });
+            });
+        }, 0, 0).block();
+        Assertions.assertEquals(10, res);
     }
 
     private void sleep(long time, JThunk<Void> thunk, JContext context) {
