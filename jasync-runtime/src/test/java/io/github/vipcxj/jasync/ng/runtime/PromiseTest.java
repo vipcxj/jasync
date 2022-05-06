@@ -242,27 +242,33 @@ public class PromiseTest {
     void testMultiThread() throws InterruptedException {
         JPromiseTrigger<Integer> trigger = JPromise.createTrigger();
         List<Thread> threads = new ArrayList<>();
-        for (int j = 0; j < 30; ++j) {
+        AtomicInteger counter = new AtomicInteger(0);
+        for (int j = 0; j < 60; ++j) {
             Thread t = new Thread(() -> {
                 try {
-                    Integer r = trigger.getPromise().thenMap(i -> i + 1).block();
+                    Thread.sleep(1);
+                    Integer r = trigger.getPromise().thenMapImmediate(i -> i + 1).block();
                     Assertions.assertEquals(r, 2);
-                    r = trigger.getPromise().thenMap(i -> i + 2).block();
+                    r = trigger.getPromise().thenMapImmediate(i -> i + 2).block();
                     Assertions.assertEquals(r, 3);
+                    counter.incrementAndGet();
                 } catch (InterruptedException ignored) {}
             });
             t.start();
             threads.add(t);
         }
-        new Thread(() -> {
+        Thread t =new Thread(() -> {
             try {
-                Thread.sleep(500);
+                Thread.sleep(15);
                 trigger.resolve(1);
             } catch (InterruptedException ignored) {}
-        }).start();
+        });
+        t.start();
         for (Thread thread : threads) {
             thread.join();
         }
+        t.join();
+        Assertions.assertEquals(60, counter.get());
     }
 
     @Test
