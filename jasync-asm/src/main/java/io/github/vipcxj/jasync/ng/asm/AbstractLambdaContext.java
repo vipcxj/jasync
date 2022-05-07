@@ -23,6 +23,8 @@ public abstract class AbstractLambdaContext {
     protected final LocalVariableNode[] localVariableArray;
     protected final List<TryCatchBlockNode> processingTcbNode;
     protected final List<TryCatchBlockNode> completedTcbNode;
+    protected LabelNode startLabelNode;
+    protected LabelNode completeInitLabelNode;
 
     protected AbstractLambdaContext(
             MethodContext methodContext,
@@ -69,15 +71,14 @@ public abstract class AbstractLambdaContext {
     protected abstract void addBodyCodes();
 
     private void addStartLabelNode() {
-        LabelNode startLabelNode = new LabelNode();
+        startLabelNode = new LabelNode();
         lambdaNode.instructions.add(startLabelNode);
         lambdaMap.add(mappedIndex);
-        updateTcbAndLocal(startLabelNode, node);
     }
 
     private void addCompleteInitLabelNode() {
         if (lambdaNode.instructions.size() > 1) {
-            LabelNode completeInitLabelNode = new LabelNode();
+            completeInitLabelNode = new LabelNode();
             lambdaNode.instructions.add(completeInitLabelNode);
             lambdaMap.add(mappedIndex);
         }
@@ -201,7 +202,7 @@ public abstract class AbstractLambdaContext {
         }
     }
 
-    private LabelNode updateTcbAndLocal(
+    protected LabelNode updateTcbAndLocal(
             AbstractInsnNode n,
             BranchAnalyzer.Node<? extends BasicValue> frame
     ) {

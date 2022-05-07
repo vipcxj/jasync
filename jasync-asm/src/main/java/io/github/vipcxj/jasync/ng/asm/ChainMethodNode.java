@@ -2,11 +2,17 @@ package io.github.vipcxj.jasync.ng.asm;
 
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TryCatchBlockNode;
 import org.objectweb.asm.tree.analysis.*;
 import org.objectweb.asm.util.*;
 
 import java.io.PrintWriter;
+import java.util.HashSet;
+import java.util.ListIterator;
+import java.util.Set;
 
 public class ChainMethodNode extends MethodVisitor {
     private final MethodVisitor nextVisitor;
@@ -46,7 +52,7 @@ public class ChainMethodNode extends MethodVisitor {
         Analyzer<BasicValue> analyzer = new BranchAnalyzer(verifier);
         MethodNode methodNode = methodContext.getMv();
         try {
-            analyzer.analyze(classContext.getName(), methodNode);
+            analyzer.analyzeAndComputeMaxs(classContext.getName(), methodNode);
         } catch (AnalyzerException e) {
             AsmHelper.printFrameProblem(
                     classContext.getName(),
@@ -66,9 +72,36 @@ public class ChainMethodNode extends MethodVisitor {
         AsmHelper.printMethod(methodNode, printer, printWriter, true);
     }
 
+    /**
+     * asm merge the insn node in try block to the try handler.
+     * However the frame of the insn node is the state before executed.
+     * The state after the last insn node executed in the try block is not merged to the try handler.
+     * So we add a label node just before try end, so the last state is always merged to try handler.
+     */
+    private void patchTryCatchFrame() {
+        if (methodNode.tryCatchBlocks != null && !methodNode.tryCatchBlocks.isEmpty()) {
+            Set<LabelNode> labels = new HashSet<>();
+            for (TryCatchBlockNode tryCatchBlock : methodNode.tryCatchBlocks) {
+                labels.add(tryCatchBlock.end);
+            }
+            ListIterator<AbstractInsnNode> iterator = methodNode.instructions.iterator();
+            while (iterator.hasNext()) {
+                AbstractInsnNode insnNode = iterator.next();
+                if (insnNode instanceof LabelNode && labels.contains(insnNode)) {
+                    if (iterator.hasPrevious()) {
+                        iterator.previous();
+                        iterator.add(new LabelNode());
+                        iterator.next();
+                    }
+                }
+            }
+        }
+    }
+
     @Override
     public void visitEnd() {
         super.visitEnd();
+        patchTryCatchFrame();
         MethodContext methodContext = new MethodContext(classContext, methodNode);
         JAsyncInfo info = methodContext.getInfo();
         AsmHelper.printFrameProblem(

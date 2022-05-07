@@ -157,7 +157,7 @@ public class PromiseTrigger<T> implements JPromiseTrigger<T> {
                                 if (CB_STATE.weakCompareAndSet(this, ST_CB_SAFE, ST_CB_PUTTING)) {
                                     try {
                                         if (callbacks == null) {
-                                            callbacks = new ArrayList<>();
+                                            callbacks = new ArrayList<>(1);
                                         }
                                         callbacks.add(new ThunkAndContext<>(thunk, context));
                                     } finally {

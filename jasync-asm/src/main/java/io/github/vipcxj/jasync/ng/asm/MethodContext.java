@@ -848,7 +848,7 @@ public class MethodContext {
         return j;
     }
 
-    void collectLocalsAndStackToArrayArg(PackageInsnNode packageInsnNode, MethodNode methodNode, BranchAnalyzer.Node<? extends BasicValue> node, AbstractInsnNode[] insnArray, int validLocals) {
+    void collectLocalsAndStackToArrayArg(PackageInsnNode packageInsnNode, MethodNode methodNode, BranchAnalyzer.Node<? extends BasicValue> node, AbstractInsnNode[] insnArray, int validLocals, int extraStackNum) {
         List<AbstractInsnNode> insnNodes = packageInsnNode.getInsnNodes();
         // new Object[numLocals + numStacks]
         // stack: ... -> ..., int
@@ -856,7 +856,7 @@ public class MethodContext {
         insnNodes.add(AsmHelper.loadConstantInt(calcLocalsNumByValidLocals(node, validLocals) + stackSize));
         // stack: ..., int -> ..., Object[]
         insnNodes.add(new TypeInsnNode(Opcodes.ANEWARRAY, Constants.OBJECT_NAME));
-        AsmHelper.updateStack(methodNode, stackSize + 1);
+        AsmHelper.appendStack(methodNode, node, 1 + extraStackNum);
 
         // collect locals
         int offset = isStatic() ? 0 : 1;
@@ -883,7 +883,7 @@ public class MethodContext {
             }
             // stack: ..., Object[], Object[], int, ? -> ..., Object[]
             insnNodes.add(new InsnNode(Opcodes.AASTORE));
-            AsmHelper.appendStack(methodNode, node, 4);
+            AsmHelper.appendStack(methodNode, node, 4 + extraStackNum);
         }
 
         // collect stacks
@@ -942,7 +942,7 @@ public class MethodContext {
             }
             // stack: ..., Object[], Object[], int, ? -> ..., Object[]
             insnNodes.add(new InsnNode(Opcodes.AASTORE));
-            AsmHelper.appendStack(methodNode, node, 4);
+            AsmHelper.appendStack(methodNode, node, 4 + extraStackNum);
         }
     }
 
@@ -976,7 +976,7 @@ public class MethodContext {
         insnNodes.add(AsmHelper.loadConstantInt(mappedIndex));
         // stack: ..., localVars -> {...}, jumpIndex -> ..., localVars -> {...}, jumpIndex, localVars
         int validLocals = calcValidLocals(node);
-        collectLocalsAndStackToArrayArg(packageInsnNode, getMv(), node, this.insnNodes, validLocals);
+        collectLocalsAndStackToArrayArg(packageInsnNode, getMv(), node, this.insnNodes, validLocals, 2);
         // stack: ..., localVars -> {...}, jumpIndex, localVars -> ..., JPromise
         insnNodes.add(new MethodInsnNode(
                 Opcodes.INVOKESTATIC,

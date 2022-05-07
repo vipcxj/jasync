@@ -102,7 +102,7 @@ public class ECJClassWriterEnhancer extends AsmVisitorWrapper.AbstractBase {
         }
 
         private boolean isSkip(AbstractInsnNode insnNode) {
-            return insnNode instanceof LabelNode || insnNode instanceof LineNumberNode;
+            return insnNode instanceof LabelNode || insnNode instanceof LineNumberNode || insnNode instanceof FrameNode;
         }
 
         private boolean equalMethodInsn(MethodInsnNode a, MethodInsnNode b) {

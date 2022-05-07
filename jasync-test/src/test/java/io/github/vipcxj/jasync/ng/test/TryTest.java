@@ -9,6 +9,33 @@ import java.io.IOException;
 
 public class TryTest {
 
+    static class TestClosable {
+
+        private final int target;
+        private int i;
+
+        TestClosable(int target) {
+            this.target = target;
+        }
+
+        public boolean isSuccess() {
+            return i >= target;
+        }
+
+        public JPromise<Integer> add(int n) {
+            i += n;
+            return JPromise.just(i);
+        }
+
+        public JPromise<Integer> get() {
+            return JPromise.just(i);
+        }
+
+        public JPromise<Void> close() {
+            return JPromise.empty();
+        }
+    }
+
     @Async
     private JPromise<String> tryWithCatch1(JPromise<String> what) {
         String message = "hello";
@@ -327,6 +354,107 @@ public class TryTest {
     @Test
     public void testTryFinallyCatchReturn() throws InterruptedException {
         Assertions.assertEquals(tryFinallyCatchReturnNoAwait(), tryFinallyCatchReturn().block());
+    }
+
+    @Async(verify = true)
+    private JPromise<Integer> tryFinallyWithLoop1(int target) {
+        TestClosable closable = new TestClosable(target);
+        try {
+            for (int i = 0; i < 10; ++i) {
+                closable.add(i).await();
+                if (closable.isSuccess()) {
+                    break;
+                }
+            }
+            return closable.get();
+        } finally {
+            closable.close().await();
+        }
+    }
+
+    @Test
+    public void testTryFinallyWithLoop1() throws InterruptedException {
+        Assertions.assertEquals(10, tryFinallyWithLoop1(10).block());
+        Assertions.assertEquals(36, tryFinallyWithLoop1(30).block());
+        Assertions.assertEquals(45, tryFinallyWithLoop1(45).block());
+        Assertions.assertEquals(45, tryFinallyWithLoop1(50).block());
+    }
+
+    private JPromise<Void> doSomething() {
+        return JPromise.empty();
+    }
+
+    private JPromise<Integer> tryFinallyWithLoop2(int target) {
+        TestClosable closable = new TestClosable(target);
+        try {
+            for (int i = 0; i < 10; ++i) {
+                // not use closable in the loop body
+                doSomething().await();
+            }
+            // use closable out of the loop body
+            return closable.get();
+        } finally {
+            closable.close().await();
+        }
+    }
+
+    @Test
+    public void testTryFinallyWithLoop2() throws InterruptedException {
+        Assertions.assertEquals(0, tryFinallyWithLoop2(5).block());
+        Assertions.assertEquals(0, tryFinallyWithLoop2(10).block());
+    }
+
+    static class TestContext {
+        private final int target;
+        private int i;
+
+        TestContext(int target) {
+            this.target = target;
+        }
+
+        TestBuf createBuff() {
+            return new TestBuf();
+        }
+        JPromise<Void> readSomeBufUntilAny(TestBuf buf) {
+            if (buf != null) {
+                buf.add();
+            }
+            ++i;
+            return JPromise.empty();
+        }
+        boolean isSuccess() {
+            return i == target;
+        }
+    }
+
+    static class TestBuf {
+        private int i = 0;
+        private void add() {
+            ++i;
+        }
+        void release() {}
+    }
+
+    @Async(verify = true)
+    public JPromise<Integer> tryFinallyWithLoop3(TestContext context, boolean storeIfRead) {
+        // Here local var byteBuf is merged by null and TestBuf. The index of it should also be merged.
+        // Then calcLocalVars will take byteBuf into account.
+        TestBuf byteBuf = storeIfRead ? context.createBuff() : null;
+        try {
+            while (!context.isSuccess()) {
+                context.readSomeBufUntilAny(byteBuf).await();
+            }
+            return byteBuf != null ? JPromise.just(byteBuf.i) : JPromise.just(context.i);
+        } finally {
+            if (byteBuf != null)
+                byteBuf.release();
+        }
+    }
+
+    @Test
+    public void testTryFinallyWithLoop3() throws InterruptedException {
+        Assertions.assertEquals(5, tryFinallyWithLoop3(new TestContext(5), true).block());
+        Assertions.assertEquals(5, tryFinallyWithLoop3(new TestContext(5), false).block());
     }
 
     private String tryFinallyCatchExceptionNoAwait() {

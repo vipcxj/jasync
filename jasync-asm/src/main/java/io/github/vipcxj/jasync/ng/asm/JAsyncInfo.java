@@ -12,10 +12,12 @@ public class JAsyncInfo {
     public static final int BYTE_CODE_OPTION_FRAME = 2;
     public static final int BYTE_CODE_OPTION_INDEX = 4;
     public static final int BYTE_CODE_OPTION_MAP = 8;
+    public static final int BYTE_CODE_OPTION_TCB = 16;
     public static final int BYTE_CODE_OPTION_FULL_SUPPORT = BYTE_CODE_OPTION_ON
             | BYTE_CODE_OPTION_FRAME
             | BYTE_CODE_OPTION_INDEX
-            | BYTE_CODE_OPTION_MAP;
+            | BYTE_CODE_OPTION_MAP
+            | BYTE_CODE_OPTION_TCB;
 
     public static final JAsyncInfo DEFAULT = new JAsyncInfo();
     private final String debugId;
@@ -70,6 +72,10 @@ public class JAsyncInfo {
         return (option & BYTE_CODE_OPTION_MAP) != 0;
     }
 
+    public static boolean isLogByteCodeWithTCB(int option) {
+        return (option & BYTE_CODE_OPTION_TCB) != 0;
+    }
+
     public int getLogOriginalByteCode() {
         return logOriginalByteCode;
     }
@@ -90,6 +96,10 @@ public class JAsyncInfo {
         return isLogByteCodeWithMap(logOriginalByteCode);
     }
 
+    public boolean isLogOriginalByteCodeWithTCB() {
+        return isLogByteCodeWithTCB(logOriginalByteCode);
+    }
+
     public int getLogResultByteCode() {
         return logResultByteCode;
     }
@@ -108,6 +118,10 @@ public class JAsyncInfo {
 
     public boolean isLogResultByteCodeWithMap() {
         return isLogByteCodeWithMap(logResultByteCode);
+    }
+
+    public boolean isLogResultByteCodeWithTCB() {
+        return isLogByteCodeWithTCB(logResultByteCode);
     }
 
     public boolean isLogOriginalAsm() {

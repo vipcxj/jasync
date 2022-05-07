@@ -85,6 +85,20 @@ public class InsnTextifier extends Textifier {
         this.mapWidth = 0;
     }
 
+    private List<TryCatchBlockNode> cloneTryCatchBlockNodes(List<TryCatchBlockNode> tcbNodes, LabelMap labelMap) {
+        if (tcbNodes == null) {
+            return null;
+        }
+        List<TryCatchBlockNode> results = new ArrayList<>();
+        int i = 0;
+        for (TryCatchBlockNode tcbNode : tcbNodes) {
+            TryCatchBlockNode newNode = new TryCatchBlockNode(labelMap.get(tcbNode.start), labelMap.get(tcbNode.end), labelMap.get(tcbNode.handler), tcbNode.type);
+            newNode.updateIndex(i++);
+            results.add(newNode);
+        }
+        return results;
+    }
+
     public void print(PrintWriter printWriter, MethodNode methodNode, int option) {
         this.text.clear();
         this.index = 0;
@@ -97,6 +111,9 @@ public class InsnTextifier extends Textifier {
             } else {
                 tempNode.instructions.add(new UnknownInsnNode());
             }
+        }
+        if (JAsyncInfo.isLogByteCodeWithTCB(option)) {
+            tempNode.tryCatchBlocks = cloneTryCatchBlockNodes(methodNode.tryCatchBlocks, labelMap);
         }
         MethodVisitor methodVisitor = new TraceMethodVisitor(this);
         tempNode.accept(methodVisitor);

@@ -133,9 +133,16 @@ public class AsmHelper {
         if (frames == null && owner != null) {
             BranchAnalyzer analyzer = new BranchAnalyzer();
             try {
-                analyzer.analyze(owner, methodNode);
+                analyzer.analyzeAndComputeMaxs(owner, methodNode);
+            } catch (AnalyzerException e) {
+                if (error == null) {
+                    error = e;
+                    from = Integer.MIN_VALUE + 1;
+                    to = Integer.MAX_VALUE - 1;
+                }
+            } catch (Throwable ignored) { } finally {
                 frames = analyzer.getFrames();
-            } catch (Throwable ignored) { }
+            }
         }
         if (frames == null) {
             //noinspection unchecked

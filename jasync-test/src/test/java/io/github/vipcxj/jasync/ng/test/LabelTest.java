@@ -301,7 +301,7 @@ public class LabelTest {
         Assertions.assertEquals(20, whileHasAwait3().block());
     }
 
-    @Async
+    @Async(verify = true)
     public JPromise<Integer> whileHasAwait4() {
         int a = 0;
         int i = 0;

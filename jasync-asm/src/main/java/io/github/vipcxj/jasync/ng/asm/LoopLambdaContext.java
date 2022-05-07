@@ -1,10 +1,12 @@
 package io.github.vipcxj.jasync.ng.asm;
 
 import io.github.vipcxj.jasync.ng.utils.Logger;
-import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.tree.*;
+import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.analysis.BasicValue;
 
 import java.util.*;
@@ -61,7 +63,7 @@ public class LoopLambdaContext extends AbstractLambdaContext {
         // stack: ... -> ..., jumpIndex
         packageInsnNode.getInsnNodes().add(AsmHelper.loadConstantInt(mappedIndex));
         // stack: ..., jumpIndex -> ..., jumpIndex, Object[]
-        methodContext.collectLocalsAndStackToArrayArg(packageInsnNode, lambdaNode, node, successors, validLocals);
+        methodContext.collectLocalsAndStackToArrayArg(packageInsnNode, lambdaNode, node, successors, validLocals, 1);
         // JPromise.jump(jumpIndex, localVars)
         // stack: ..., jumpIndex, Object[] -> ..., JPromise
         packageInsnNode.getInsnNodes().add(new MethodInsnNode(

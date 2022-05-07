@@ -40,8 +40,10 @@ public class JAsyncValue extends BasicValue {
         if (this.equals(other)) {
             return this;
         }
+        int otherIndex = -1;
         if (other instanceof JAsyncValue) {
             JAsyncValue asyncOther = (JAsyncValue) other;
+            otherIndex = asyncOther.index;
             if (asyncOther.isUninitialized() != this.isUninitialized()) {
                 return BasicValue.UNINITIALIZED_VALUE;
             }
@@ -59,6 +61,16 @@ public class JAsyncValue extends BasicValue {
         }
         JAsyncValue newValue = new JAsyncValue(newType);
         newValue.uninitialized = this.uninitialized;
+        if (index == -1) {
+            newValue.index = otherIndex;
+        } else if (otherIndex == -1) {
+            newValue.index = index;
+        } else {
+            if (index != otherIndex) {
+                throw new IllegalArgumentException("This is impossible.");
+            }
+            newValue.index = index;
+        }
         return newValue;
     }
 
