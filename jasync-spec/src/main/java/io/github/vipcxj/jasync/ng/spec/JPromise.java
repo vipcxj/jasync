@@ -13,6 +13,9 @@ import java.util.function.Function;
 @SuppressWarnings("unused")
 public interface JPromise<T> extends JHandle<T> {
     JPromiseSupport provider = Utils.getProvider(JPromiseSupport.class);
+    static int genId() {
+        return provider.generateId();
+    }
     static <T> JPromise<T> just(T value) {
         return provider.just(value);
     }

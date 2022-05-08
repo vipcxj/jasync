@@ -13,6 +13,7 @@ import java.util.*;
 
 import static io.github.vipcxj.jasync.ng.asm.AsmHelper.objectToPrimitive;
 import static io.github.vipcxj.jasync.ng.asm.AsmHelper.objectToType;
+import static io.github.vipcxj.jasync.ng.asm.MethodContext.WHY_COLLECT_JUMP;
 import static io.github.vipcxj.jasync.ng.asm.Utils.addManyMap;
 
 public class LoopLambdaContext extends AbstractLambdaContext {
@@ -20,14 +21,17 @@ public class LoopLambdaContext extends AbstractLambdaContext {
     private final AbstractInsnNode[] successors;
     private final LabelNode portalLabel;
     private final int validLocals;
+    private final String jumpTarget;
 
     protected LoopLambdaContext(
             MethodContext methodContext,
             Arguments arguments,
-            BranchAnalyzer.Node<? extends BasicValue> node
+            BranchAnalyzer.Node<? extends BasicValue> node,
+            String jumpTarget
     ) {
         super(methodContext, MethodContext.MethodType.LOOP_BODY, arguments, node);
         this.validLocals = methodContext.calcValidLocals(node);
+        this.jumpTarget = jumpTarget;
         AbstractInsnNode insnNode = node.getInsnNode();
         if (!(insnNode instanceof LabelNode)) {
             // 因为这个指令是至少2个指令的后继，只有 LabelNode 可以是多个指令的后继
@@ -61,9 +65,16 @@ public class LoopLambdaContext extends AbstractLambdaContext {
 
         PackageInsnNode packageInsnNode = new PackageInsnNode();
         // stack: ... -> ..., jumpIndex
-        packageInsnNode.getInsnNodes().add(AsmHelper.loadConstantInt(mappedIndex));
+        packageInsnNode.getInsnNodes().add(methodContext.loadJumpTarget(jumpTarget));
         // stack: ..., jumpIndex -> ..., jumpIndex, Object[]
-        methodContext.collectLocalsAndStackToArrayArg(packageInsnNode, lambdaNode, node, successors, validLocals, 1);
+        methodContext.collectLocalsAndStackToArrayArg(
+                packageInsnNode,
+                lambdaNode,
+                node,
+                successors,
+                validLocals,
+                WHY_COLLECT_JUMP
+        );
         // JPromise.jump(jumpIndex, localVars)
         // stack: ..., jumpIndex, Object[] -> ..., JPromise
         packageInsnNode.getInsnNodes().add(new MethodInsnNode(
@@ -80,6 +91,7 @@ public class LoopLambdaContext extends AbstractLambdaContext {
             lambdaNode.instructions.add(insnNode);
             lambdaMap.add(mappedIndex);
         }
+        methodContext.logCollectLocalsAndStack(node, WHY_COLLECT_JUMP, lambdaNode.name, methodContext.getMv().name, validLocals);
     }
 
     private void restoreLocalAndStack() {

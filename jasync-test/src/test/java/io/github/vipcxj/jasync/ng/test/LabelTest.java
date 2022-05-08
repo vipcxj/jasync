@@ -2,6 +2,7 @@ package io.github.vipcxj.jasync.ng.test;
 
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.annotations.Async;
+import io.github.vipcxj.jasync.ng.spec.exceptions.JAsyncWrapException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -301,7 +302,6 @@ public class LabelTest {
         Assertions.assertEquals(20, whileHasAwait3().block());
     }
 
-    @Async(verify = true)
     public JPromise<Integer> whileHasAwait4() {
         int a = 0;
         int i = 0;
@@ -340,8 +340,13 @@ public class LabelTest {
     }
 
     @Test
-    public void testWhileHasAwait4() throws InterruptedException {
-        Assertions.assertEquals(45, whileHasAwait4().block());
+    public void testWhileHasAwait4() throws Throwable {
+        try {
+            Assertions.assertEquals(45, whileHasAwait4().block());
+        } catch (JAsyncWrapException e) {
+            e.getCause().printStackTrace();
+            throw e.getCause();
+        }
     }
 
     @Async

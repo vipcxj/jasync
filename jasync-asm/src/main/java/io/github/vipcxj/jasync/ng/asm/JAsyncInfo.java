@@ -24,6 +24,7 @@ public class JAsyncInfo {
     private final boolean disabled;
     private final int logOriginalByteCode;
     private final int logResultByteCode;
+    private final boolean logLocalsAndStackInfo;
     private final boolean logOriginalAsm;
     private final boolean logResultAsm;
     private final boolean verify;
@@ -33,16 +34,18 @@ public class JAsyncInfo {
         this.disabled = false;
         this.logOriginalByteCode = BYTE_CODE_OPTION_OFF;
         this.logResultByteCode = BYTE_CODE_OPTION_OFF;
+        this.logLocalsAndStackInfo = false;
         this.logOriginalAsm = false;
         this.logResultAsm = false;
         this.verify = false;
     }
 
-    public JAsyncInfo(String debugId, boolean disabled, int logOriginalByteCode, int logResultByteCode, boolean logOriginalAsm, boolean logResultAsm, boolean verify) {
+    public JAsyncInfo(String debugId, boolean disabled, int logOriginalByteCode, int logResultByteCode, boolean logLocalsAndStackInfo, boolean logOriginalAsm, boolean logResultAsm, boolean verify) {
         this.debugId = debugId;
         this.disabled = disabled;
         this.logOriginalByteCode = logOriginalByteCode;
         this.logResultByteCode = logResultByteCode;
+        this.logLocalsAndStackInfo = logLocalsAndStackInfo;
         this.logOriginalAsm = logOriginalAsm;
         this.logResultAsm = logResultAsm;
         this.verify = verify;
@@ -124,6 +127,10 @@ public class JAsyncInfo {
         return isLogByteCodeWithTCB(logResultByteCode);
     }
 
+    public boolean isLogLocalsAndStackInfo() {
+        return logLocalsAndStackInfo;
+    }
+
     public boolean isLogOriginalAsm() {
         return logOriginalAsm;
     }
@@ -147,6 +154,7 @@ public class JAsyncInfo {
                 boolean disabled = false;
                 int logOriginalByteCode = BYTE_CODE_OPTION_OFF;
                 int logResultByteCode = BYTE_CODE_OPTION_OFF;
+                boolean logLocalsAndStackInfo = false;
                 boolean logOriginalAsm = false;
                 boolean logResultAsm = false;
                 boolean verify = false;
@@ -163,13 +171,15 @@ public class JAsyncInfo {
                         logResultByteCode = (Integer) value;
                     } else if ("verify".equals(name)) {
                         verify = (Boolean) value;
+                    } else if ("logLocalsAndStackInfo".equals(name)) {
+                        logLocalsAndStackInfo = (Boolean) value;
                     } else if ("logOriginalAsm".equals(name)) {
                         logOriginalAsm = (Boolean) value;
                     } else if ("logResultAsm".equals(name)) {
                         logResultAsm = (Boolean) value;
                     }
                 }
-                return new JAsyncInfo(debugId, disabled, logOriginalByteCode, logResultByteCode, logOriginalAsm, logResultAsm, verify);
+                return new JAsyncInfo(debugId, disabled, logOriginalByteCode, logResultByteCode, logLocalsAndStackInfo, logOriginalAsm, logResultAsm, verify);
             }
         }
         return null;

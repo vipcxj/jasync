@@ -6,8 +6,12 @@ import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.TryCatchBlockNode;
-import org.objectweb.asm.tree.analysis.*;
-import org.objectweb.asm.util.*;
+import org.objectweb.asm.tree.analysis.Analyzer;
+import org.objectweb.asm.tree.analysis.AnalyzerException;
+import org.objectweb.asm.tree.analysis.BasicValue;
+import org.objectweb.asm.tree.analysis.BasicVerifier;
+import org.objectweb.asm.util.ASMifier;
+import org.objectweb.asm.util.Printer;
 
 import java.io.PrintWriter;
 import java.util.HashSet;
@@ -133,6 +137,13 @@ public class ChainMethodNode extends MethodVisitor {
                 throw t;
             }
         }
+
+        for (FieldContext fieldContext : classContext.getFieldContexts(methodContext)) {
+            if (nextClassVisitor != null) {
+                fieldContext.accept(nextClassVisitor);
+            }
+        }
+
         for (MethodContext lambdaContext : classContext.getLambdaContexts(methodContext)) {
             AsmHelper.printFrameProblem(
                     classContext.getName(),

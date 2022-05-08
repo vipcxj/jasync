@@ -27,6 +27,7 @@ public @interface Async {
     boolean logResultPosTree() default false;
     int logOriginalByteCode() default BYTE_CODE_OPTION_OFF;
     int logResultByteCode() default BYTE_CODE_OPTION_OFF;
+    boolean logLocalsAndStackInfo() default false;
     boolean logOriginalAsm() default false;
     boolean logResultAsm() default false;
     boolean verify() default false;

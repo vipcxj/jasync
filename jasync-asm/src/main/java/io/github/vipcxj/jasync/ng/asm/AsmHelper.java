@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.ng.asm;
 
+import io.github.vipcxj.jasync.ng.utils.Logger;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -10,6 +11,7 @@ import org.objectweb.asm.util.Textifier;
 import org.objectweb.asm.util.TraceMethodVisitor;
 
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -129,7 +131,8 @@ public class AsmHelper {
         if (from > 0 || to < 0) {
             throw new IllegalArgumentException("The arg from should greater than 0, and the arg to should less than 0.");
         }
-        PrintWriter printWriter = new PrintWriter(System.out);
+        StringWriter sw = new StringWriter();
+        PrintWriter printWriter = new PrintWriter(sw);
         if (frames == null && owner != null) {
             BranchAnalyzer analyzer = new BranchAnalyzer();
             try {
@@ -160,44 +163,46 @@ public class AsmHelper {
                     map,
                     byteCodeOption
             );
-            return;
-        }
-        List<AbstractInsnNode> insnNodes = new LinkedList<>();
-        insnNodes.add(errorNode);
-        int i = 0;
-        AbstractInsnNode node = errorNode.getPrevious();
-        while (i++ < -from && node != null) {
-            insnNodes.add(0, node);
-            node = node.getPrevious();
-        }
-        i = 0;
-        node = errorNode.getNext();
-        while (i ++ < to && node != null) {
-            insnNodes.add(node);
-            node = node.getNext();
-        }
-        List<Frame<? extends BasicValue>> frameList = new ArrayList<>();
-        List<Integer> mapList = new ArrayList<>();
-        AbstractInsnNode firstInsn = insnNodes.get(0);
-        int firstIndex = methodNode.instructions.indexOf(firstInsn);
-        for (i = firstIndex; i < firstIndex + insnNodes.size(); ++i) {
-            if (i < frames.length) {
-                frameList.add(frames[i]);
-                if (map != null && i < map.size()) {
-                    mapList.add(map.get(i));
+        } else {
+            List<AbstractInsnNode> insnNodes = new LinkedList<>();
+            insnNodes.add(errorNode);
+            int i = 0;
+            AbstractInsnNode node = errorNode.getPrevious();
+            while (i++ < -from && node != null) {
+                insnNodes.add(0, node);
+                node = node.getPrevious();
+            }
+            i = 0;
+            node = errorNode.getNext();
+            while (i ++ < to && node != null) {
+                insnNodes.add(node);
+                node = node.getNext();
+            }
+            List<Frame<? extends BasicValue>> frameList = new ArrayList<>();
+            List<Integer> mapList = new ArrayList<>();
+            AbstractInsnNode firstInsn = insnNodes.get(0);
+            int firstIndex = methodNode.instructions.indexOf(firstInsn);
+            for (i = firstIndex; i < firstIndex + insnNodes.size(); ++i) {
+                if (i < frames.length) {
+                    frameList.add(frames[i]);
+                    if (map != null && i < map.size()) {
+                        mapList.add(map.get(i));
+                    }
                 }
             }
+            printFrameProblem(
+                    printWriter,
+                    owner,
+                    methodNode,
+                    errorNode,
+                    insnNodes,
+                    frameList,
+                    map != null ? mapList : null,
+                    byteCodeOption
+            );
         }
-        printFrameProblem(
-                printWriter,
-                owner,
-                methodNode,
-                errorNode,
-                insnNodes,
-                frameList,
-                map != null ? mapList : null,
-                byteCodeOption
-        );
+        Logger.info(sw.toString());
+        printWriter.close();
     }
 
     public static int storeStackToLocal(int validLocals, BranchAnalyzer.Node<? extends BasicValue> frame, List<AbstractInsnNode> results, AbstractInsnNode[] insnNodes) {

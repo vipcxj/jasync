@@ -34,4 +34,5 @@ public interface JPromiseSupport extends PrioritySupport {
     <T> JPromise<T> create(BiConsumer<JThunk<T>, JContext> handler);
     <T> JPromise<T> generate(BiConsumer<JThunk<T>, JContext> handler);
     <T>JPromiseTrigger<T> createTrigger();
+    int generateId();
 }

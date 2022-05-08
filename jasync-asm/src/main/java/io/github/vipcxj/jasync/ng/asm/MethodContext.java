@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.ng.asm;
 
+import io.github.vipcxj.jasync.ng.utils.Logger;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
@@ -8,6 +9,7 @@ import org.objectweb.asm.tree.analysis.BasicValue;
 
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 import static io.github.vipcxj.jasync.ng.asm.AsmHelper.primitiveToObject;
 import static io.github.vipcxj.jasync.ng.asm.Constants.THROWABLE_DESC;
@@ -830,6 +832,7 @@ public class MethodContext {
         );
         insnList.add(new InsnNode(Opcodes.ARETURN));
         packageInsnNode.complete();
+        logCollectLocalsAndStack(node, WHY_COLLECT_AWAIT, getMv().name, lambdaName, validLocals);
         return packageInsnNode;
     }
 
@@ -848,7 +851,35 @@ public class MethodContext {
         return j;
     }
 
-    void collectLocalsAndStackToArrayArg(PackageInsnNode packageInsnNode, MethodNode methodNode, BranchAnalyzer.Node<? extends BasicValue> node, AbstractInsnNode[] insnArray, int validLocals, int extraStackNum) {
+    public static final int WHY_COLLECT_AWAIT = 0;
+    public static final int WHY_COLLECT_LOOP = 1;
+    public static final int WHY_COLLECT_JUMP = 2;
+    private static String whyCollect(int whyCollect) {
+        if (whyCollect == WHY_COLLECT_AWAIT) {
+            return "await";
+        } else if (whyCollect == WHY_COLLECT_LOOP) {
+            return "loop";
+        } else if (whyCollect == WHY_COLLECT_JUMP) {
+            return "jump";
+        } else {
+            return "unknown";
+        }
+    }
+
+    void collectLocalsAndStackToArrayArg(
+            PackageInsnNode packageInsnNode,
+            MethodNode methodNode,
+            BranchAnalyzer.Node<? extends BasicValue> node,
+            AbstractInsnNode[] insnArray,
+            int validLocals,
+            int whyCollect
+    ) {
+        int extraStackNum = 0;
+        if (whyCollect == WHY_COLLECT_LOOP) {
+            extraStackNum = 2;
+        } else if (whyCollect == WHY_COLLECT_JUMP) {
+            extraStackNum = 1;
+        }
         List<AbstractInsnNode> insnNodes = packageInsnNode.getInsnNodes();
         // new Object[numLocals + numStacks]
         // stack: ... -> ..., int
@@ -946,6 +977,72 @@ public class MethodContext {
         }
     }
 
+    void logCollectLocalsAndStack(BranchAnalyzer.Node<? extends BasicValue> node, int whyCollect, String fromMethod, String toMethod, int validLocals) {
+        if (!info.isLogLocalsAndStackInfo()) {
+            return;
+        }
+        List<BasicValue> currentLocals = new ArrayList<>();
+        List<BasicValue> collectedLocals = new ArrayList<>();
+        List<BasicValue> currentStacks = new ArrayList<>();
+        List<BasicValue> collectedStacks = new ArrayList<>();
+        int offset = isStatic() ? 0 : 1;
+        for (int i = offset; i < node.getLocals();) {
+            BasicValue value = node.getLocal(i);
+            currentLocals.add(value);
+            i += value != null ? value.getSize() : 1;
+        }
+        for (int i = offset; i < validLocals;) {
+            BasicValue value = node.getLocal(i);
+            if (value != null && value.getType() != null) {
+                i += value.getSize();
+            } else {
+                ++i;
+            }
+            collectedLocals.add(value);
+        }
+        for (int i = 0; i < node.getStackSize(); ++i) {
+            currentStacks.add(node.getStack(i));
+        }
+        int stackNum = whyCollect == WHY_COLLECT_AWAIT ? (node.getStackSize() - 1) : node.getStackSize();
+        for (int i = 0; i < stackNum; ++i) {
+            BasicValue value = node.getStack(i);
+            if (JAsyncValue.isUninitialized(value)) {
+                collectedStacks.add(BasicValue.UNINITIALIZED_VALUE);
+            } else {
+                collectedStacks.add(value);
+            }
+        }
+        String prefix = "[" + fromMethod + " -> " + toMethod + "][" + whyCollect(whyCollect) + "](" + mapped(node.getIndex()) + "/" + baseValidLocals + "): ";
+        Logger.info(prefix + "current locals { " + currentLocals.stream().map(BasicValue::toString).collect(Collectors.joining(", ")) + " } ");
+        Logger.info(prefix + "collect locals { " + collectedLocals.stream().map(BasicValue::toString).collect(Collectors.joining(", ")) + " }");
+        Logger.info(prefix + "current stacks { " + currentStacks.stream().map(BasicValue::toString).collect(Collectors.joining(", ")) + " }");
+        Logger.info(prefix + "collect stacks { " + collectedStacks.stream().map(BasicValue::toString).collect(Collectors.joining(", ")) + " }");
+    }
+
+    String genJumpIndexField(int mappedIndex) {
+        String fieldName = classContext.generateUniqueFieldName("JUMP_TARGET_" + getRootMethodContext().getMv().name + "_" + mappedIndex);
+        if (classContext.hasFieldContext(getRootMethodContext(), fieldName)) {
+            return fieldName;
+        }
+        FieldContext fieldContext = FieldContext.createPrivateStaticFinalField(fieldName, Type.INT_TYPE.getDescriptor());
+        fieldContext.addInitInsnNode(new MethodInsnNode(
+                Opcodes.INVOKESTATIC,
+                Constants.JPROMISE_NAME,
+                Constants.JPROMISE_GEN_ID_NAME,
+                Constants.JPROMISE_GEN_ID_DESC.getDescriptor(),
+                true)
+        );
+        fieldContext.addInitInsnNode(new FieldInsnNode(Opcodes.PUTSTATIC, classContext.getName(), fieldName, fieldContext.getDescriptor()));
+        fieldContext.addInitInsnNode(new InsnNode(Opcodes.RETURN));
+        fieldContext.updateMaxStack(1);
+        classContext.addFieldContext(getRootMethodContext(), fieldContext);
+        return fieldName;
+    }
+
+    AbstractInsnNode loadJumpTarget(String jumpTargetFieldName) {
+        return new FieldInsnNode(Opcodes.GETSTATIC, classContext.getName(), jumpTargetFieldName, Type.INT_TYPE.getDescriptor());
+    }
+
     private PackageInsnNode processAwaitLoopNode(BranchAnalyzer.Node<? extends BasicValue> node) {
         int mappedIndex = mapped(node.getIndex());
         PackageInsnNode packageInsnNode = new PackageInsnNode();
@@ -959,10 +1056,11 @@ public class MethodContext {
             insnNodes.add(new VarInsnNode(Opcodes.ALOAD, 0));
             AsmHelper.appendStack(getMv(), node, 1);
         }
+        String jumpTargetFieldName = genJumpIndexField(mappedIndex);
         Arguments arguments = Arguments.of(Constants.OBJECT_ARRAY_DESC);
         String lambdaName = findLambdaName(node, arguments, MethodType.LOOP_BODY);
         if (lambdaName == null) {
-            LoopLambdaContext loopLambdaContext = new LoopLambdaContext(this, arguments, node);
+            LoopLambdaContext loopLambdaContext = new LoopLambdaContext(this, arguments, node, jumpTargetFieldName);
             loopLambdaContext.buildLambda();
             lambdaName = loopLambdaContext.getLambdaNode().name;
         }
@@ -973,10 +1071,10 @@ public class MethodContext {
                 isStatic()
         ));
         // stack: ..., localVars -> {...} -> ..., localVars -> {...}, jumpIndex
-        insnNodes.add(AsmHelper.loadConstantInt(mappedIndex));
+        insnNodes.add(loadJumpTarget(jumpTargetFieldName));
         // stack: ..., localVars -> {...}, jumpIndex -> ..., localVars -> {...}, jumpIndex, localVars
         int validLocals = calcValidLocals(node);
-        collectLocalsAndStackToArrayArg(packageInsnNode, getMv(), node, this.insnNodes, validLocals, 2);
+        collectLocalsAndStackToArrayArg(packageInsnNode, getMv(), node, this.insnNodes, validLocals, WHY_COLLECT_LOOP);
         // stack: ..., localVars -> {...}, jumpIndex, localVars -> ..., JPromise
         insnNodes.add(new MethodInsnNode(
                 Opcodes.INVOKESTATIC,
@@ -987,6 +1085,7 @@ public class MethodContext {
         ));
         insnNodes.add(new InsnNode(Opcodes.ARETURN));
         packageInsnNode.complete();
+        logCollectLocalsAndStack(node, WHY_COLLECT_LOOP, getMv().name, lambdaName, validLocals);
         return packageInsnNode;
     }
 

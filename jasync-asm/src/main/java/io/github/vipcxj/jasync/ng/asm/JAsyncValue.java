@@ -106,7 +106,7 @@ public class JAsyncValue extends BasicValue {
         } else {
             jv = new JAsyncValue(value.getType());
         }
-        if (insn instanceof VarInsnNode) {
+        if (insn instanceof VarInsnNode && AsmHelper.isStoreInsn(insn)) {
             jv.index = ((VarInsnNode) insn).var;
         } else if (insn instanceof IincInsnNode) {
             jv.index = ((IincInsnNode) insn).var;

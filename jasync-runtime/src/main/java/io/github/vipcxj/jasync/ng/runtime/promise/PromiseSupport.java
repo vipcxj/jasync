@@ -13,10 +13,13 @@ import io.github.vipcxj.jasync.ng.spec.spi.JPromiseSupport;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 @AutoService(JPromiseSupport.class)
 public class PromiseSupport implements JPromiseSupport {
+
+    private static final AtomicInteger CURRENT_ID = new AtomicInteger();
 
     @Override
     public <T> JPromise<T> just(T value) {
@@ -66,5 +69,10 @@ public class PromiseSupport implements JPromiseSupport {
     @Override
     public <T> JPromiseTrigger<T> createTrigger() {
         return new PromiseTrigger<>();
+    }
+
+    @Override
+    public int generateId() {
+        return CURRENT_ID.getAndIncrement();
     }
 }

@@ -34,6 +34,9 @@ public class Constants {
     public static final String JASYNC_CATCH_FUNCTION0_METHOD_NAME = "apply";
     public static final Type JASYNC_CATCH_FUNCTION0_METHOD_DESC = Type.getMethodType(JPROMISE_DESC, THROWABLE_DESC);
 
+    public static final String JPROMISE_GEN_ID_NAME = "genId";
+    public static final Type JPROMISE_GEN_ID_DESC = Type.getMethodType(Type.INT_TYPE);
+
     public static final String JPROMISE_PORTAL_NAME = "portal";
     public static final Type JPROMISE_PORTAL0_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_FUNCTION0_DESC, Type.INT_TYPE, OBJECT_ARRAY_DESC);
 
