@@ -1,8 +1,10 @@
 package io.github.vipcxj.jasync.ng.asm;
 
-
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.IincInsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
 import org.objectweb.asm.tree.analysis.AnalyzerException;
 import org.objectweb.asm.tree.analysis.BasicInterpreter;
 import org.objectweb.asm.tree.analysis.BasicValue;
@@ -17,22 +19,51 @@ public class TypeInterpreter extends BasicInterpreter {
 
     @Override
     public BasicValue newValue(Type type) {
-        BasicValue value = JAsyncValue.newValue(type);
+        JAsyncValue value = JAsyncValue.newValue(type);
         return value != null ? value : super.newValue(type);
-    }
-
-    @Override
-    public BasicValue copyOperation(AbstractInsnNode insn, BasicValue value) throws AnalyzerException {
-        if (value instanceof JAsyncValue || AsmHelper.isModifyLocalInsn(insn)) {
-            return JAsyncValue.copyOperation(insn, value);
-        }
-        return super.copyOperation(insn, value);
     }
 
     @Override
     public BasicValue newOperation(AbstractInsnNode insn) throws AnalyzerException {
         BasicValue value = JAsyncValue.newOperation(insn);
         return value != null ? value : super.newOperation(insn);
+    }
+
+    public static BasicValue doCopyOperation(AbstractInsnNode insn, BasicValue value) {
+        JAsyncValue asyncValue = null;
+        if (value instanceof JAsyncValue) {
+            asyncValue = JAsyncValue.copyOperation(insn, (JAsyncValue) value);
+        } else if (AsmHelper.isStoreInsn(insn)) {
+            asyncValue = JAsyncValue.makeAsyncValue(value);
+        }
+        if (asyncValue != null && AsmHelper.isStoreInsn(insn)) {
+            asyncValue.setIndex(((VarInsnNode) insn).var);
+            return asyncValue;
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public BasicValue copyOperation(AbstractInsnNode insn, BasicValue value) throws AnalyzerException {
+        BasicValue copy = doCopyOperation(insn, value);
+        return copy != null ? copy : super.copyOperation(insn, value);
+    }
+
+    public static BasicValue doUnaryOperation(AbstractInsnNode insn, BasicValue value) {
+        if (insn.getOpcode() == Opcodes.IINC) {
+            JAsyncValue asyncValue =  JAsyncValue.makeAsyncValue(value);
+            asyncValue.setIndex(((IincInsnNode) insn).var);
+            return asyncValue;
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public BasicValue unaryOperation(AbstractInsnNode insn, BasicValue value) throws AnalyzerException {
+        BasicValue newValue = doUnaryOperation(insn, value);
+        return newValue != null ? newValue : super.unaryOperation(insn, value);
     }
 
     @Override

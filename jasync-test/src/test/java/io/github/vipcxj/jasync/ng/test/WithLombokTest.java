@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.Optional;
 
-public class WithLombok {
+public class WithLombokTest {
 
     @Data
     public static class LombokObject {
@@ -20,7 +20,7 @@ public class WithLombok {
     private final LombokObject object;
     private int sum;
 
-    public WithLombok() {
+    public WithLombokTest() {
         this.object = new LombokObject();
         this.object.setLombok(true);
         this.object.getList().add(1);

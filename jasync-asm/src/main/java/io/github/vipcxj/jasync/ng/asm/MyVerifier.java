@@ -8,7 +8,7 @@ import org.objectweb.asm.tree.analysis.BasicVerifier;
 
 import java.util.List;
 
-import static io.github.vipcxj.jasync.ng.asm.TypeInterpreter.doMerge;
+import static io.github.vipcxj.jasync.ng.asm.TypeInterpreter.*;
 
 public class MyVerifier extends BasicVerifier {
 
@@ -18,7 +18,7 @@ public class MyVerifier extends BasicVerifier {
 
     @Override
     public BasicValue newValue(Type type) {
-        BasicValue value = JAsyncValue.newValue(type);
+        JAsyncValue value = JAsyncValue.newValue(type);
         return value != null ? value : super.newValue(type);
     }
 
@@ -30,10 +30,14 @@ public class MyVerifier extends BasicVerifier {
 
     @Override
     public BasicValue copyOperation(AbstractInsnNode insn, BasicValue value) throws AnalyzerException {
-        if (value instanceof JAsyncValue || AsmHelper.isModifyLocalInsn(insn)) {
-            return JAsyncValue.copyOperation(insn, value);
-        }
-        return super.copyOperation(insn, value);
+        BasicValue copy = doCopyOperation(insn, value);
+        return copy != null ? copy : super.copyOperation(insn, value);
+    }
+
+    @Override
+    public BasicValue unaryOperation(AbstractInsnNode insn, BasicValue value) throws AnalyzerException {
+        BasicValue newValue = doUnaryOperation(insn, value);
+        return newValue != null ? newValue : super.unaryOperation(insn, value);
     }
 
     @Override

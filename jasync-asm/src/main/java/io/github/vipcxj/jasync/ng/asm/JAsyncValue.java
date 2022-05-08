@@ -3,9 +3,7 @@ package io.github.vipcxj.jasync.ng.asm;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.IincInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
-import org.objectweb.asm.tree.VarInsnNode;
 import org.objectweb.asm.tree.analysis.BasicValue;
 import org.objectweb.asm.tree.analysis.Value;
 
@@ -93,25 +91,22 @@ public class JAsyncValue extends BasicValue {
         }
     }
 
-    public static JAsyncValue copyOperation(AbstractInsnNode insn, BasicValue value) {
-        JAsyncValue jv;
+    public static JAsyncValue makeAsyncValue(BasicValue value) {
         if (value instanceof JAsyncValue) {
-            jv = (JAsyncValue) value;
-            if (jv.isUninitialized()) {
-                if (jv.copyInsnNodes == null) {
-                    jv.copyInsnNodes = new HashSet<>();
-                }
-                jv.copyInsnNodes.add(insn);
-            }
+            return (JAsyncValue) value;
         } else {
-            jv = new JAsyncValue(value.getType());
+            return new JAsyncValue(value.getType());
         }
-        if (insn instanceof VarInsnNode && AsmHelper.isStoreInsn(insn)) {
-            jv.index = ((VarInsnNode) insn).var;
-        } else if (insn instanceof IincInsnNode) {
-            jv.index = ((IincInsnNode) insn).var;
+    }
+
+    public static JAsyncValue copyOperation(AbstractInsnNode insn, JAsyncValue value) {
+        if (value.isUninitialized()) {
+            if (value.copyInsnNodes == null) {
+                value.copyInsnNodes = new HashSet<>();
+            }
+            value.copyInsnNodes.add(insn);
         }
-        return jv;
+        return value;
     }
 
     public static boolean isUninitialized(Value value) {
@@ -133,6 +128,10 @@ public class JAsyncValue extends BasicValue {
 
     public int getIndex() {
         return index;
+    }
+
+    public void setIndex(int index) {
+        this.index = index;
     }
 
     public AbstractInsnNode getNewInsnNode() {

@@ -497,14 +497,16 @@ public class MethodContext {
             }
             boolean visited = withFlag.isFlag();
             if (visited) {
-                if (label == 1) {
-                    insnNodes[index] = processAwaitLoopNode(root);
-                } else if (label == 3) {
-                    insnNodes[index] = processAwaitNode(root);
-                } else if (label == 4) {
-                    insnNodes[index] = processReturnNode(root);
-                } else {
-                    insnNodes[index] = insnNode;
+                if (insnNodes[index] == null) {
+                    if (label == 1) {
+                        insnNodes[index] = processAwaitLoopNode(root);
+                    } else if (label == 3) {
+                        insnNodes[index] = processAwaitNode(root);
+                    } else if (label == 4) {
+                        insnNodes[index] = processReturnNode(root);
+                    } else {
+                        insnNodes[index] = insnNode;
+                    }
                 }
             } else {
                 if (label == 2) {

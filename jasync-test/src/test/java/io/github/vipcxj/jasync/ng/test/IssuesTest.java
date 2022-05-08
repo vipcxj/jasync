@@ -10,7 +10,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class Issues {
+public class IssuesTest {
 
     @Async
     public <G> JPromise<G> get(Class<G> format) {

@@ -775,8 +775,4 @@ public class AsmHelper {
                 || insn.getOpcode() == Opcodes.DSTORE
                 || insn.getOpcode() == Opcodes.ASTORE;
     }
-
-    public static boolean isModifyLocalInsn(AbstractInsnNode insn) {
-        return isStoreInsn(insn) || insn.getOpcode() == Opcodes.IINC;
-    }
 }

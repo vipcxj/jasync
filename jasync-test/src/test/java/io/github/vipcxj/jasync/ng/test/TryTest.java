@@ -356,7 +356,6 @@ public class TryTest {
         Assertions.assertEquals(tryFinallyCatchReturnNoAwait(), tryFinallyCatchReturn().block());
     }
 
-    @Async(verify = true)
     private JPromise<Integer> tryFinallyWithLoop1(int target) {
         TestClosable closable = new TestClosable(target);
         try {
@@ -435,7 +434,6 @@ public class TryTest {
         void release() {}
     }
 
-    @Async(verify = true)
     public JPromise<Integer> tryFinallyWithLoop3(TestContext context, boolean storeIfRead) {
         // Here local var byteBuf is merged by null and TestBuf. The index of it should also be merged.
         // Then calcLocalVars will take byteBuf into account.

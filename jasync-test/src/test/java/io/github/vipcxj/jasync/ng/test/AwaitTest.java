@@ -64,7 +64,6 @@ public class AwaitTest {
         return ++i + 2 * ++i;
     }
 
-    @Async
     private JPromise<Integer> nestedAwait2() {
         int i = 0;
         i = plus(++i, two().await() * ++i).await();
