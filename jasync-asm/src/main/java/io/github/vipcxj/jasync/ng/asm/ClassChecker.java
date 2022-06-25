@@ -11,14 +11,14 @@ import java.util.Set;
 
 public class ClassChecker extends ClassVisitor {
 
-    private String className;
+    private final ClassNestChecker nestChecker;
     private final Set<String> fields;
     private final Set<String> methods;
     private final Set<String> asyncMethods;
 
-
-    public ClassChecker(ClassVisitor classVisitor) {
+    public ClassChecker(ClassNestChecker nestChecker, ClassVisitor classVisitor) {
         super(Constants.ASM_VERSION, classVisitor);
+        this.nestChecker = nestChecker;
         this.fields = new HashSet<>();
         this.methods = new HashSet<>();
         this.asyncMethods = new HashSet<>();
@@ -38,7 +38,6 @@ public class ClassChecker extends ClassVisitor {
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-        className = Type.getObjectType(name).getClassName();
         super.visit(version, access, name, signature, superName, interfaces);
     }
 
@@ -60,7 +59,7 @@ public class ClassChecker extends ClassVisitor {
         if (Utils.isJPromise(returnTypeName)) {
             String key = name + descriptor;
             asyncMethods.add(key);
-            Logger.info("Find async method " + key + " in class " + className);
+            Logger.info("[Scanning " + nestChecker.getClassName() + "] Find async method " + key + ".");
         }
         return mv;
     }

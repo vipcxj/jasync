@@ -9,8 +9,14 @@ public class JAsyncTransformer {
     public static byte[] transform(byte[] input) {
         try {
             ClassReader reader = new ClassReader(input);
-            ClassChecker checker = new ClassChecker(null);
-            reader.accept(checker, 0);
+            ClassNestChecker nestChecker = new ClassNestChecker(null);
+            reader.accept(nestChecker, ClassReader.SKIP_CODE);
+            if (nestChecker.isSkip()) {
+                return input;
+            }
+            nestChecker.updateTypeInfoMap();
+            ClassChecker checker = new ClassChecker(nestChecker, null);
+            reader.accept(checker, ClassReader.SKIP_CODE);
             if (checker.hasAsyncMethod()) {
                 ClassWriter writer = new JAsyncClassWriter(ClassWriter.COMPUTE_FRAMES);
                 StaticInitMerger staticInitMerger = new StaticInitMerger(writer);
