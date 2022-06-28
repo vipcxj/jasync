@@ -45,6 +45,10 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.jctools</groupId>
+            <artifactId>jctools-core</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.google.auto.service</groupId>
             <artifactId>auto-service-annotations</artifactId>
             <version>${auto-service.version}</version>
@@ -79,7 +83,6 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <release>8</release>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>com.google.auto.service</groupId>

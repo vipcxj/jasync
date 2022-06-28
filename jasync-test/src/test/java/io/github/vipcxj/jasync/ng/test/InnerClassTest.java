@@ -11,7 +11,7 @@ public class InnerClassTest {
     class InnerClass {
 
         @Async
-        private JPromise<String> fun() {
+        private JPromise<String> fun() throws InterruptedException {
             return JPromise.just(
                     JPromise.just("InnerClass").await()
             );
@@ -19,10 +19,30 @@ public class InnerClassTest {
 
         class NestInnerClass {
 
-            private JPromise<String> fun() {
+            private JPromise<String> fun() throws InterruptedException {
                 return JPromise.just(
                         JPromise.just("InnerClass").await() + "." + JPromise.just("NestInnerClass").await()
                 );
+            }
+
+            public JPromise<String> closingMethod() throws InterruptedException {
+                class AnClass {
+                    public JPromise<String> fun() {
+                        return JPromise.just("InnerClass.NestInnerClass.closingMethod.AnClass");
+                    }
+
+                    public JPromise<String> closingMethod() {
+                        class BnClass {
+                            public JPromise<String> fun() {
+                                return JPromise.just("InnerClass.NestInnerClass.closingMethod.AnClass.closingMethod.BnClass");
+                            }
+                        }
+                        return new BnClass().fun();
+                    }
+                }
+                AnClass anClass = new AnClass();
+                String result = anClass.fun().await() + " and " + anClass.closingMethod().await();
+                return JPromise.just(result);
             }
         }
     }
@@ -30,7 +50,7 @@ public class InnerClassTest {
     static class StaticInnerClass {
 
         @Async
-        private JPromise<String> fun() {
+        private JPromise<String> fun() throws InterruptedException {
             return JPromise.just(
                     JPromise.just("StaticInnerClass").await()
             );
@@ -38,7 +58,7 @@ public class InnerClassTest {
 
         class NestInnerClass {
             @Async
-            private JPromise<String> fun() {
+            private JPromise<String> fun() throws InterruptedException {
                 return JPromise.just(
                         JPromise.just("StaticInnerClass").await() + "." + JPromise.just("NestInnerClass").await()
                 );
@@ -47,7 +67,7 @@ public class InnerClassTest {
 
         static class StaticNestInnerClass {
             @Async
-            private JPromise<String> fun() {
+            private JPromise<String> fun() throws InterruptedException {
                 return JPromise.just(
                         JPromise.just("StaticInnerClass").await() + "." + JPromise.just("StaticNestInnerClass").await()
                 );
@@ -60,6 +80,7 @@ public class InnerClassTest {
         InnerClass innerClass = new InnerClass();
         Assertions.assertEquals("InnerClass", innerClass.fun().block());
         Assertions.assertEquals("InnerClass.NestInnerClass", innerClass.new NestInnerClass().fun().block());
+        Assertions.assertEquals("InnerClass.NestInnerClass.closingMethod.AnClass and InnerClass.NestInnerClass.closingMethod.AnClass.closingMethod.BnClass", innerClass.new NestInnerClass().closingMethod().block());
         StaticInnerClass staticInnerClass = new StaticInnerClass();
         Assertions.assertEquals("StaticInnerClass", staticInnerClass.fun().block());
         Assertions.assertEquals("StaticInnerClass.NestInnerClass", staticInnerClass.new NestInnerClass().fun().block());

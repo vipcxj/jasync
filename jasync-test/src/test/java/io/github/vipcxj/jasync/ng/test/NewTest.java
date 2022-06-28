@@ -67,7 +67,7 @@ public class NewTest {
         }
     }
 
-    private JPromise<String> oneStaticNew() {
+    private JPromise<String> oneStaticNew() throws InterruptedException {
         StaticClassWithArgs object = new StaticClassWithArgs(sayHello().await(), one().await() + two().await());
         return JPromise.just(object.getMessage() + object.getNumber());
     }
@@ -77,7 +77,7 @@ public class NewTest {
         Assertions.assertEquals("hello3", oneStaticNew().block());
     }
 
-    private JPromise<String> oneInnerNew() {
+    private JPromise<String> oneInnerNew() throws InterruptedException {
         InnerClass object = new InnerClass(sayHello().await(), one().await() + two().await());
         return JPromise.just(object.getMessage() + object.getNumber());
     }
@@ -87,7 +87,7 @@ public class NewTest {
         Assertions.assertEquals("hello3", oneInnerNew().block());
     }
 
-    private JPromise<String> nestNews() {
+    private JPromise<String> nestNews() throws InterruptedException {
         InnerClass object = new InnerClass(
                 new StaticClassWithArgs(sayHello().await(), 1).getMessage(),
                 new InnerClass(new StaticClassWithOutArgs().getMessage(), JPromise.just(new InnerClass()).await().getNumber()).getNumber()

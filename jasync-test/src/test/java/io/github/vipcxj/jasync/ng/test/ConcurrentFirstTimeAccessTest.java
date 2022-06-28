@@ -42,7 +42,7 @@ public class ConcurrentFirstTimeAccessTest {
     }
 
     @Async
-    private JPromise<Boolean> doSomething(){
+    private JPromise<Boolean> doSomething() throws InterruptedException {
         JPromise.sleep(100, TimeUnit.MILLISECONDS).await();
         return JPromise.just(true);
     }

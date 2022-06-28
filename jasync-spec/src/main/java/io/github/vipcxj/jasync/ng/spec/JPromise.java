@@ -246,7 +246,7 @@ public interface JPromise<T> extends JHandle<T> {
         });
     }
 
-    default T await() {
+    default T await() throws InterruptedException {
         throw new UnsupportedOperationException("The method \"await\" should be called in an async method.");
     }
     <R> JPromise<R> thenWithContext(JAsyncPromiseFunction1<T, R> mapper, boolean immediate);
@@ -429,6 +429,8 @@ public interface JPromise<T> extends JHandle<T> {
         return doCatch(catcher, true);
     }
 
+    String MULTI_CATCH_ARGS_ERROR = "The arguments exceptionTypeAndCatches composed with throwable class and JPromiseCatchFunction0 or JPromiseCatchFunction1 pairs.";
+
     /**
      * <pre>
      * JAsyncCatchFunction1 closure1 = (e, ctx) -> { ... }
@@ -457,7 +459,41 @@ public interface JPromise<T> extends JHandle<T> {
      *                                Both JAsyncCatchFunction0 and JAsyncCatchFunction1 are supported.
      * @return the promise
      */
-    JPromise<T> doMultiCatches(boolean immediate, Object... exceptionTypeAndCatches);
+    default JPromise<T> doMultiCatches(boolean immediate, Object... exceptionTypeAndCatches) {
+        if ((exceptionTypeAndCatches.length & 1) == 1) {
+            throw new IllegalArgumentException("The number of arguments exceptionTypeAndCatches must be even.");
+        }
+        for (int i = 0; i < exceptionTypeAndCatches.length;) {
+            Object arg = exceptionTypeAndCatches[i++];
+            if (!(arg instanceof Class)) {
+                throw new IllegalArgumentException(MULTI_CATCH_ARGS_ERROR);
+            }
+            Class<?> exceptionType = (Class<?>) arg;
+            if (!Throwable.class.isAssignableFrom(exceptionType)) {
+                throw new IllegalArgumentException(MULTI_CATCH_ARGS_ERROR);
+            }
+            arg = exceptionTypeAndCatches[i++];
+            if (!(arg instanceof JAsyncCatchFunction0) && !(arg instanceof JAsyncCatchFunction1)) {
+                throw new IllegalArgumentException(MULTI_CATCH_ARGS_ERROR);
+            }
+        }
+        return doCatchWithContext((e, ctx) -> {
+            for (int i = 0; i < exceptionTypeAndCatches.length;) {
+                Class<?> exceptionType = (Class<?>) exceptionTypeAndCatches[i++];
+                Object closure = exceptionTypeAndCatches[i++];
+                if (exceptionType.isInstance(e)) {
+                    if (closure instanceof JAsyncCatchFunction0) {
+                        //noinspection unchecked
+                        return ((JAsyncCatchFunction0<Throwable, T>) closure).apply(e);
+                    } else {
+                        //noinspection unchecked
+                        return ((JAsyncCatchFunction1<Throwable, T>) closure).apply(e, ctx);
+                    }
+                }
+            }
+            throw e;
+        }, immediate);
+    }
 
     /**
      * same as doMultiCatches(false, exceptionTypeAndCatches)
@@ -513,43 +549,35 @@ public interface JPromise<T> extends JHandle<T> {
         return doFinally(supplier, true);
     }
 
-    @Override
     JPromise<T> onSuccess(BiConsumer<T, JContext> resolver);
-    @Override
     default JPromise<T> onSuccess(Consumer<T> consumer) {
         return onSuccess((v, ctx) -> consumer.accept(v));
     }
-    @Override
     JPromise<T> onError(BiConsumer<Throwable, JContext> reject);
-    @Override
     default JPromise<T> onError(Consumer<Throwable> consumer) {
         return onError((error, ctx) -> consumer.accept(error));
     }
-    @Override
-    JPromise<T> onFinally(Consumer<JContext> consumer);
-    @Override
+    JPromise<T> onFinally(TriConsumer<T, Throwable, JContext> consumer);
     default JPromise<T> onFinally(Runnable runnable) {
-        return onFinally(ctx -> runnable.run());
+        return onFinally((v, e, ctx) -> runnable.run());
+    }
+    default JPromise<T> onFinally(Consumer<JContext> runnable) {
+        return onFinally((v, e, ctx) -> runnable.accept(ctx));
+    }
+    default JPromise<T> onFinally(BiConsumer<T, Throwable> runnable) {
+        return onFinally((v, e, ctx) -> runnable.accept(v, e));
     }
 
-    @Override
-    JPromise<T> onDispose(Runnable runnable);
+    JPromise<T> onCanceled(BiConsumer<InterruptedException, JContext> runnable);
+    default JPromise<T> onCanceled(Consumer<JContext> callback) {
+        return onCanceled((e, context) -> callback.accept(context));
+    }
+    default JPromise<T> onCanceled(Runnable callback) {
+        return onCanceled((e, context) -> callback.run());
+    }
 
     void schedule(JContext context);
-    @Override
-    void dispose();
 
-    boolean isResolved();
-    boolean isRejected();
-    default boolean isCompleted() {
-        return isResolved() || isRejected();
-    }
-
-    void cancel();
-    T block(JContext context) throws InterruptedException;
-    default T block() throws InterruptedException {
-        return block(JContext.defaultContext());
-    }
     JHandle<T> async(JContext context);
     default JHandle<T> async() {
         return async(JContext.defaultContext());

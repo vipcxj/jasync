@@ -45,6 +45,15 @@ public class RacePromiseTask<T> implements Task<T> {
                         }
                     }
                 }
+            }).onCanceled((e, ctx) -> {
+                if (STATE_UPDATER.compareAndSet(this, 0, -1)) {
+                    thunk.interrupt(e, ctx);
+                    for (JPromise<? extends T> promise1 : promises) {
+                        if (promise1 != promise) {
+                            promise1.cancel();
+                        }
+                    }
+                }
             }).async(context);
         }
     }

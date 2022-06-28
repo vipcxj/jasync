@@ -52,6 +52,15 @@ public class AllPromisesTask<T> implements Task<List<T>> {
                     }
                     thunk.reject(error, ctx);
                 }
+            }).onCanceled((e, ctx) -> {
+                if (REJECTED_UPDATER.compareAndSet(this, 0, 1)) {
+                    for (JPromise<? extends T> promise2 : promises) {
+                        if (promise2 != promise) {
+                            promise2.cancel();
+                        }
+                    }
+                    thunk.interrupt(e, ctx);
+                }
             }).async(context);
         }
 

@@ -1,15 +1,12 @@
 package io.github.vipcxj.jasync.ng.test;
 
 import io.github.vipcxj.jasync.ng.spec.JPromise;
-import io.github.vipcxj.jasync.ng.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.concurrent.TimeUnit;
-
 public class LongAndDoubleTest {
 
-    private JPromise<Long> simpleLong1(long n) {
+    private JPromise<Long> simpleLong1(long n) throws InterruptedException {
         long a = JPromise.just(n).await();
         return JPromise.just(a);
     }
@@ -20,7 +17,7 @@ public class LongAndDoubleTest {
         Assertions.assertEquals(2L, simpleLong1(2L).block());
     }
 
-    private JPromise<Long> simpleLong2(long n) {
+    private JPromise<Long> simpleLong2(long n) throws InterruptedException {
         long a = n + 1;
         long b = a + JPromise.just(1L).await();
         return JPromise.just(a + b);

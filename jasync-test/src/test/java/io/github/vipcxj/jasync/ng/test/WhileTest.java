@@ -1,13 +1,16 @@
 package io.github.vipcxj.jasync.ng.test;
 
+import io.github.vipcxj.jasync.ng.spec.JHandle;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.TimeUnit;
+
 public class WhileTest {
 
-    public JPromise<Integer> sum1(int to) {
+    public JPromise<Integer> sum1(int to) throws InterruptedException {
         int sum = 0;
         while (sum < to) {
             sum += JPromise.just(1).await();
@@ -16,7 +19,7 @@ public class WhileTest {
     }
 
     @Async
-    public JPromise<Integer> sum2(int to) {
+    public JPromise<Integer> sum2(int to) throws InterruptedException {
         int sum = 0;
         while (sum < JPromise.just(to).await()) {
             sum += JPromise.just(1).await();
@@ -25,7 +28,7 @@ public class WhileTest {
     }
 
     @Async
-    public JPromise<Integer> multi1(int a, int b) {
+    public JPromise<Integer> multi1(int a, int b) throws InterruptedException {
         int res = 0;
         int i = 0, j = 0;
         while (i++ < a) {
@@ -38,7 +41,7 @@ public class WhileTest {
     }
 
     @Async
-    public JPromise<Integer> multi2(int a, int b) {
+    public JPromise<Integer> multi2(int a, int b) throws InterruptedException {
         int res = 0;
         int i = 0, j = 0;
         while (i++ < JPromise.just(a).await()) {
@@ -101,7 +104,7 @@ public class WhileTest {
         }
     }
 
-    private JPromise<Integer> whileWithFinally(TestObject n, Object o) {
+    private JPromise<Integer> whileWithFinally(TestObject n, Object o) throws InterruptedException {
         try {
             if (o != null) {
                 n.consume(o).await();
@@ -124,7 +127,7 @@ public class WhileTest {
         Assertions.assertEquals(0, whileWithFinally(n, n).block());
     }
 
-    private JPromise<Integer> onlyLoopInTryBlock(TestObject n) {
+    private JPromise<Integer> onlyLoopInTryBlock(TestObject n) throws InterruptedException {
         try {
             while (n.ok()) {
                 Object obj = n.getObj().await();
@@ -141,4 +144,19 @@ public class WhileTest {
         Assertions.assertEquals(0, onlyLoopInTryBlock(new TestObject()).block());
     }
 
+    private JPromise<Void> longLoop() throws InterruptedException {
+        //noinspection InfiniteLoopStatement
+        while (true) {
+            JPromise.sleep(1, TimeUnit.SECONDS).await();
+        }
+    }
+
+    @Test
+    public void testCancelLoop() throws InterruptedException {
+        JHandle<Void> handle = longLoop().async();
+        Thread.sleep(1000);
+        handle.cancel();
+        Assertions.assertThrows(InterruptedException.class, handle::block);
+        Assertions.assertTrue(handle.isCanceled());
+    }
 }

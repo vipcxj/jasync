@@ -49,6 +49,12 @@ public class AnyPromiseTask<T> implements Task<T> {
                 if (errorNum == promises.size()) {
                     thunk.reject(new JAsyncCompositeException(errors), ctx);
                 }
+            }).onCanceled((e, ctx) -> {
+                int errorNum = ERROR_NUM_UPDATER.incrementAndGet(this);
+                errors.set(finalI, e);
+                if (errorNum == promises.size()) {
+                    thunk.reject(new JAsyncCompositeException(errors), ctx);
+                }
             }).async(context);
             ++i;
         }

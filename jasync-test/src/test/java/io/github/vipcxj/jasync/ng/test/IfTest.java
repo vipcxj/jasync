@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 public class IfTest {
 
     @Async(verify = true)
-    private JPromise<String> ifTest1(int toTest) {
+    private JPromise<String> ifTest1(int toTest) throws InterruptedException {
         if (JPromise.just(3).await().equals(toTest)) {
             return JPromise.just("yes");
         }
@@ -22,7 +22,7 @@ public class IfTest {
     }
 
     @Async(verify = true)
-    private JPromise<String> ifTest2(int toTest) {
+    private JPromise<String> ifTest2(int toTest) throws InterruptedException {
         JPromise<Integer> three = JPromise.just(3);
         if (three.await().equals(toTest)) {
             return JPromise.just("yes");
@@ -38,7 +38,7 @@ public class IfTest {
     }
 
     @Async(verify = true)
-    private JPromise<String> ifTest3(String message) {
+    private JPromise<String> ifTest3(String message) throws InterruptedException {
         if (message != null) {
             String hello = JPromise.just("hello ").await();
             return JPromise.just(hello + message);
@@ -53,7 +53,7 @@ public class IfTest {
     }
 
     @Async(verify = true)
-    private JPromise<String> ifTest4(int i) {
+    private JPromise<String> ifTest4(int i) throws InterruptedException {
         if (i == 0) {
             return JPromise.just("0");
         } else if (i == JPromise.just(1).await()) {
@@ -83,7 +83,7 @@ public class IfTest {
     }
 
     @Async(verify = true)
-    private JPromise<Integer> ifTest5(int i) {
+    private JPromise<Integer> ifTest5(int i) throws InterruptedException {
         int result = 0;
         if (i == 0) result = JPromise.just(i).await() + 1;
         if (i == 1) result = JPromise.just(i).await() + 2;

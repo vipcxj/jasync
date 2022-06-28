@@ -1,9 +1,7 @@
 package io.github.vipcxj.jasync.ng.runtime.promise;
 
 import com.google.auto.service.AutoService;
-import io.github.vipcxj.jasync.ng.runtime.schedule.DelayTask;
-import io.github.vipcxj.jasync.ng.runtime.schedule.ImmediateTask;
-import io.github.vipcxj.jasync.ng.runtime.schedule.LazyTask;
+import io.github.vipcxj.jasync.ng.runtime.schedule.*;
 import io.github.vipcxj.jasync.ng.spec.JContext;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.JPromiseTrigger;
@@ -33,7 +31,7 @@ public class PromiseSupport implements JPromiseSupport {
 
     @Override
     public JPromise<Void> sleep(long time, TimeUnit unit) {
-        return new BasePromise<>(new DelayTask(time, unit));
+        return new GeneralPromise<>(new DelayTask(time, unit));
     }
 
     @Override
@@ -43,27 +41,27 @@ public class PromiseSupport implements JPromiseSupport {
 
     @Override
     public <T> JPromise<T> any(List<JPromise<? extends T>> promises) {
-        return new AnyPromise<>(promises);
+        return new GeneralPromise<>(new AnyPromiseTask<>(promises));
     }
 
     @Override
     public <T> JPromise<T> race(List<JPromise<? extends T>> promises) {
-        return new RacePromise<>(promises);
+        return new GeneralPromise<>(new RacePromiseTask<>(promises));
     }
 
     @Override
     public <T> JPromise<List<T>> all(List<JPromise<? extends T>> promises) {
-        return new AllPromise<>(promises);
+        return new GeneralPromise<>(new AllPromisesTask<>(promises));
     }
 
     @Override
     public <T> JPromise<T> create(BiConsumer<JThunk<T>, JContext> handler) {
-        return new BasePromise<>(new LazyTask<>(handler));
+        return new GeneralPromise<>(new LazyTask<>(handler));
     }
 
     @Override
     public <T> JPromise<T> generate(BiConsumer<JThunk<T>, JContext> handler) {
-        return new BasePromise<>(new ImmediateTask<>(handler));
+        return new GeneralPromise<>(new ImmediateTask<>(handler));
     }
 
     @Override

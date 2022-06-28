@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit;
 
 public class PromiseTriggerTest {
 
-    private JPromise<Integer> triggerSuccess(int expect) {
+    private JPromise<Integer> triggerSuccess(int expect) throws InterruptedException {
         JPromiseTrigger<Integer> trigger = JPromise.createTrigger();
         JPromise.sleep(300, TimeUnit.MILLISECONDS)
                 .onFinally(() -> {
@@ -26,7 +26,7 @@ public class PromiseTriggerTest {
         Assertions.assertEquals(132, triggerSuccess(132).block());
     }
 
-    private JPromise<Integer> triggerError(Throwable t) {
+    private JPromise<Integer> triggerError(Throwable t) throws InterruptedException {
         JPromiseTrigger<Integer> trigger = JPromise.createTrigger();
         JPromise.sleep(300, TimeUnit.MILLISECONDS)
                 .onFinally(() -> {
@@ -41,7 +41,7 @@ public class PromiseTriggerTest {
         Utils.assertError(RuntimeException.class, () -> triggerError(new RuntimeException()).block());
     }
 
-    private JPromise<Integer> triggerCancel() {
+    private JPromise<Integer> triggerCancel() throws InterruptedException {
         JPromiseTrigger<Integer> trigger = JPromise.createTrigger();
         JPromise.sleep(300, TimeUnit.MILLISECONDS)
                 .onFinally(trigger::cancel).await();

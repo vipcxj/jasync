@@ -7,15 +7,18 @@ import io.github.vipcxj.jasync.ng.spec.JThunk;
 
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 
 public class LazyTask<T> implements Task<T> {
 
-    private boolean disposed;
+    private volatile boolean disposed;
     private final long delay;
     private final TimeUnit timeUnit;
     private final BiConsumer<JThunk<T>, JContext> handler;
     private volatile JDisposable disposable;
+    @SuppressWarnings("rawtypes")
+    private final static AtomicReferenceFieldUpdater<LazyTask, JDisposable> DISPOSABLE = AtomicReferenceFieldUpdater.newUpdater(LazyTask.class, JDisposable.class, "disposable");
 
     public LazyTask(BiConsumer<JThunk<T>, JContext> handler) {
         this(handler, 0, TimeUnit.MILLISECONDS);
@@ -36,8 +39,15 @@ public class LazyTask<T> implements Task<T> {
         }
     }
 
+    private void dispose() {
+        JDisposable disposable = this.disposable;
+        if (DISPOSABLE.compareAndSet(this, disposable, null)) {
+            disposable.dispose();
+        }
+    }
+
     @Override
-    public synchronized void schedule(JThunk<T> thunk, JContext context) {
+    public void schedule(JThunk<T> thunk, JContext context) {
         if (!disposed) {
             JScheduler scheduler = context.getScheduler();
             if (delay > 0) {
@@ -48,7 +58,8 @@ public class LazyTask<T> implements Task<T> {
                         try {
                             timeUnit.sleep(delay);
                             return scheduler.schedule(() -> doSchedule(thunk, context));
-                        } catch (InterruptedException ignored) {
+                        } catch (InterruptedException e) {
+                            thunk.interrupt(e, context);
                             return null;
                         }
                     });
@@ -58,16 +69,17 @@ public class LazyTask<T> implements Task<T> {
             } else {
                 disposable = scheduler.schedule(() -> doSchedule(thunk, context));
             }
+            if (disposed) {
+                dispose();
+            }
         }
     }
 
     @Override
-    public synchronized void cancel() {
+    public void cancel() {
         if (!disposed) {
             disposed = true;
-            if (disposable != null) {
-                disposable.dispose();
-            }
+            dispose();
         }
     }
 }

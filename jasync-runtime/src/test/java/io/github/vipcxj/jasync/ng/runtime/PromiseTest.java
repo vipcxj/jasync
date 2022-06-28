@@ -15,6 +15,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class PromiseTest {
 
     @Test
+    public void test0() throws InterruptedException {
+        JPromise.just(1).thenMap(v -> v + 1).thenMap(v -> v + 1).block();
+    }
+
+    @Test
     public void test() throws InterruptedException {
         for (int i = 0; i < 1; ++i) {
             JPromise.sleep(1, TimeUnit.SECONDS)

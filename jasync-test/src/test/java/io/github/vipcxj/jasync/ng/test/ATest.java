@@ -17,7 +17,7 @@ public class ATest {
     }
 
     @Async
-    public JPromise<Integer> a(int input) {
+    public JPromise<Integer> a(int input) throws InterruptedException {
         Number a = 5;
         @LocalAnn
         Integer one = one().await();
@@ -50,7 +50,7 @@ public class ATest {
 
     @Async
     @SuppressWarnings({"BoxingBoxedValue", "CachedNumberConstructorCall"})
-    public JPromise<Integer> aaa() {
+    public JPromise<Integer> aaa() throws InterruptedException {
         Integer one = new Integer(JPromise.just(1).await());
         Integer two = new Integer(JPromise.just(2).await());
         return JPromise.just(one + two);
@@ -62,7 +62,7 @@ public class ATest {
     }
 
     @Async
-    public JPromise<Integer> aa() {
+    public JPromise<Integer> aa() throws InterruptedException {
         Integer one = JPromise.just(1).await();
         Integer two = JPromise.just(2).await();
         return JPromise.just(one + two);

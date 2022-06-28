@@ -1,20 +1,17 @@
 package io.github.vipcxj.jasync.ng.spec;
 
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-
-public interface JHandle<T> extends JDisposable {
-    JHandle<T> onSuccess(BiConsumer<T, JContext> consumer);
-    default JHandle<T> onSuccess(Consumer<T> consumer) {
-        return onSuccess((v, ctx) -> consumer.accept(v));
+public interface JHandle<T> {
+    boolean isResolved();
+    boolean isRejected();
+    default boolean isCompleted() {
+        return isResolved() || isRejected();
     }
-    JHandle<T> onError(BiConsumer<Throwable, JContext> consumer);
-    default JHandle<T> onError(Consumer<Throwable> consumer) {
-        return onError((error, ctx) -> consumer.accept(error));
+    void cancel();
+    boolean isCanceled();
+    T block(JContext context) throws InterruptedException;
+    default T block() throws InterruptedException {
+        return block(JContext.defaultContext());
     }
-    JHandle<T> onFinally(Consumer<JContext> runnable);
-    default JHandle<T> onFinally(Runnable runnable) {
-        return onFinally(ctx -> runnable.run());
-    }
-    JHandle<T> onDispose(Runnable runnable);
+    T getValue();
+    Throwable getError();
 }

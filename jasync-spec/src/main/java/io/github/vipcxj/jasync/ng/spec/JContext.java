@@ -16,7 +16,6 @@ public interface JContext {
     static JContext create(JScheduler scheduler) {
         return provider.create(scheduler);
     }
-
     <T> T get(Object key);
     JContext set(Object key, Object value);
     JContext remove(Object key);
@@ -40,6 +39,7 @@ public interface JContext {
     default boolean isEmpty() {
         return size() == 0;
     }
+
     @Internal
     Object[] getLocals();
     @Internal

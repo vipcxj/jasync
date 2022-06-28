@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.ng.test;
 
+import io.github.vipcxj.jasync.ng.spec.JHandle;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.exceptions.JAsyncCompositeException;
 import io.github.vipcxj.jasync.ng.spec.exceptions.JAsyncWrapException;
@@ -75,23 +76,21 @@ public class CompositePromiseTest {
     @Test
     public void testAllCancel() {
         JPromise<List<Integer>> promise1 = allSuccess(input);
-        promise1.async();
+        JHandle<List<Integer>> handle = promise1.async();
         JPromise.sleep(100, TimeUnit.MILLISECONDS)
-                .onFinally(() -> {
-                    promise1.cancel();
-                    Assertions.assertTrue(promise1.isDisposed());
-                    Assertions.assertFalse(promise1.isCompleted());
-                }).async();
-        Assertions.assertThrows(InterruptedException.class, promise1::block);
+                .onFinally(handle::cancel).async();
+        Assertions.assertThrows(InterruptedException.class, handle::block);
+        Assertions.assertTrue(handle.isCompleted());
+        Assertions.assertTrue(handle.isRejected());
+        Assertions.assertTrue(handle.isCanceled());
         JPromise<List<Integer>> promise2 = allError(input, new IOException(), 300);
-        promise2.async();
+        handle = promise2.async();
         JPromise.sleep(100, TimeUnit.MILLISECONDS)
-                .onFinally(() -> {
-                    promise2.cancel();
-                    Assertions.assertTrue(promise2.isDisposed());
-                    Assertions.assertFalse(promise2.isCompleted());
-                }).async();
-        Assertions.assertThrows(InterruptedException.class, promise2::block);
+                .onFinally(handle::cancel).async();
+        Assertions.assertThrows(InterruptedException.class, handle::block);
+        Assertions.assertTrue(handle.isCompleted());
+        Assertions.assertTrue(handle.isRejected());
+        Assertions.assertTrue(handle.isCanceled());
     }
 
     private JPromise<Integer> anySuccess(List<Integer> input, int expect) {
@@ -177,23 +176,21 @@ public class CompositePromiseTest {
     @Test
     public void testAnyCancel() {
         JPromise<Integer> promise1 = anySuccess(input, 56);
-        promise1.async();
+        JHandle<Integer> handle = promise1.async();
         JPromise.sleep(100, TimeUnit.MILLISECONDS)
-                .onFinally(() -> {
-                    promise1.cancel();
-                    Assertions.assertTrue(promise1.isDisposed());
-                    Assertions.assertFalse(promise1.isCompleted());
-                }).async();
-        Assertions.assertThrows(InterruptedException.class, promise1::block);
+                .onFinally(handle::cancel).async();
+        Assertions.assertThrows(InterruptedException.class, handle::block);
+        Assertions.assertTrue(handle.isCompleted());
+        Assertions.assertTrue(handle.isRejected());
+        Assertions.assertTrue(handle.isCanceled());
         JPromise<Integer> promise2 = anyError(input, new RuntimeException(), 100, new IOException(), 33);
-        promise2.async();
+        handle = promise2.async();
         JPromise.sleep(100, TimeUnit.MILLISECONDS)
-                .onFinally(() -> {
-                    promise2.cancel();
-                    Assertions.assertTrue(promise2.isDisposed());
-                    Assertions.assertFalse(promise2.isCompleted());
-                }).async();
-        Assertions.assertThrows(InterruptedException.class, promise2::block);
+                .onFinally(handle::cancel).async();
+        Assertions.assertThrows(InterruptedException.class, handle::block);
+        Assertions.assertTrue(handle.isCompleted());
+        Assertions.assertTrue(handle.isRejected());
+        Assertions.assertTrue(handle.isCanceled());
     }
 
     private JPromise<Integer> raceSuccess(List<Integer> input, int expect) {
@@ -236,22 +233,20 @@ public class CompositePromiseTest {
     @Test
     public void testRaceCancel() {
         JPromise<Integer> promise1 = raceSuccess(input, 56);
-        promise1.async();
+        JHandle<Integer> handle = promise1.async();
         JPromise.sleep(100, TimeUnit.MILLISECONDS)
-                .onFinally(() -> {
-                    promise1.cancel();
-                    Assertions.assertTrue(promise1.isDisposed());
-                    Assertions.assertFalse(promise1.isCompleted());
-                }).async();
-        Assertions.assertThrows(InterruptedException.class, promise1::block);
+                .onFinally(handle::cancel).async();
+        Assertions.assertThrows(InterruptedException.class, handle::block);
+        Assertions.assertTrue(handle.isCompleted());
+        Assertions.assertTrue(handle.isRejected());
+        Assertions.assertTrue(handle.isCanceled());
         JPromise<Integer> promise2 = raceError(input, new RuntimeException(), 300);
-        promise2.async();
+        handle = promise2.async();
         JPromise.sleep(100, TimeUnit.MILLISECONDS)
-                .onFinally(() -> {
-                    promise2.cancel();
-                    Assertions.assertTrue(promise2.isDisposed());
-                    Assertions.assertFalse(promise2.isCompleted());
-                }).async();
-        Assertions.assertThrows(InterruptedException.class, promise2::block);
+                .onFinally(handle::cancel).async();
+        Assertions.assertThrows(InterruptedException.class, handle::block);
+        Assertions.assertTrue(handle.isCompleted());
+        Assertions.assertTrue(handle.isRejected());
+        Assertions.assertTrue(handle.isCanceled());
     }
 }

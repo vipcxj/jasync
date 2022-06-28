@@ -33,7 +33,7 @@ public class AwaitTest {
     }
 
     @Async
-    private JPromise<String> simpleAwait() {
+    private JPromise<String> simpleAwait() throws InterruptedException {
         JPromise<String> helloWorld = JPromise.just("hello world");
         return JPromise.just(helloWorld.await());
     }
@@ -47,7 +47,7 @@ public class AwaitTest {
         return 1 + (1 + (3 + 2)) + 3 * 4;
     }
 
-    private JPromise<Integer> nestedAwait1() {
+    private JPromise<Integer> nestedAwait1() throws InterruptedException {
         int res = 1 + plus(one().await(), plus(3, two().await()).await()).await()
                 + zero().await()
                 +  mul(three().await(), 4).await();
@@ -64,7 +64,7 @@ public class AwaitTest {
         return ++i + 2 * ++i;
     }
 
-    private JPromise<Integer> nestedAwait2() {
+    private JPromise<Integer> nestedAwait2() throws InterruptedException {
         int i = 0;
         i = plus(++i, two().await() * ++i).await();
         return JPromise.just(i);
