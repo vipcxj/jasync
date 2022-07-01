@@ -3,28 +3,44 @@ package io.github.vipcxj.jasync.ng.asm;
 import java.util.*;
 
 public class ClassContext {
-    private final String name;
     private final ClassChecker checker;
     private final Map<MethodContext, List<MethodContext>> lambdaContexts;
     private final Map<MethodContext, List<FieldContext>> fieldContexts;
 
-    /**
-     *
-     * @param name class internal name
-     */
-    public ClassContext(String name, ClassChecker checker) {
-        this.name = name;
+    public ClassContext(ClassChecker checker) {
         this.checker = checker;
         this.lambdaContexts = new HashMap<>();
         this.fieldContexts = new HashMap<>();
+    }
+
+    public ClassChecker getChecker() {
+        return checker;
     }
 
     public boolean containMethod(String name) {
         return checker.getMethods().contains(name);
     }
 
-    public String getName() {
+    public static String createLambdaName(String base, int index) {
+        return "lambda$" + base + "$" + index;
+    }
+
+    public String nextLambdaName(String base) {
+        int index = 0;
+        String name = createLambdaName(base, index++);
+        while (containMethod(name)) {
+            name = createLambdaName(base, index++);
+        }
+        checker.getMethods().add(name);
         return name;
+    }
+
+    public String getInternalName() {
+        return checker.getNestChecker().getClassInternalName();
+    }
+
+    public String getQualifiedName() {
+        return checker.getNestChecker().getClassQualifiedName();
     }
 
     public void addLambda(MethodContext methodContext, MethodContext lambdaContext) {

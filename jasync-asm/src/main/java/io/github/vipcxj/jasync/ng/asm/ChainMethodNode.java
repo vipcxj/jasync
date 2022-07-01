@@ -2,10 +2,9 @@ package io.github.vipcxj.jasync.ng.asm;
 
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.LabelNode;
-import org.objectweb.asm.tree.MethodNode;
-import org.objectweb.asm.tree.TryCatchBlockNode;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.*;
 import org.objectweb.asm.tree.analysis.Analyzer;
 import org.objectweb.asm.tree.analysis.AnalyzerException;
 import org.objectweb.asm.tree.analysis.BasicValue;
@@ -53,13 +52,13 @@ public class ChainMethodNode extends MethodVisitor {
 
     private void verifyMethod(MethodContext methodContext) {
         BasicVerifier verifier = new MyVerifier();
-        Analyzer<BasicValue> analyzer = new BranchAnalyzer(verifier);
+        Analyzer<BasicValue> analyzer = new BranchAnalyzer(verifier, false);
         MethodNode methodNode = methodContext.getMv();
         try {
-            analyzer.analyzeAndComputeMaxs(classContext.getName(), methodNode);
+            analyzer.analyzeAndComputeMaxs(classContext.getInternalName(), methodNode);
         } catch (AnalyzerException e) {
             AsmHelper.printFrameProblem(
-                    classContext.getName(),
+                    classContext.getInternalName(),
                     methodNode,
                     analyzer.getFrames(),
                     methodContext.getMap(),
@@ -82,7 +81,7 @@ public class ChainMethodNode extends MethodVisitor {
      * The state after the last insn node executed in the try block is not merged to the try handler.
      * So we add a label node just before try end, so the last state is always merged to try handler.
      */
-    private void patchTryCatchFrame() {
+    private void patchTryCatchFrame(MethodNode methodNode) {
         if (methodNode.tryCatchBlocks != null && !methodNode.tryCatchBlocks.isEmpty()) {
             Set<LabelNode> labels = new HashSet<>();
             for (TryCatchBlockNode tryCatchBlock : methodNode.tryCatchBlocks) {
@@ -102,36 +101,128 @@ public class ChainMethodNode extends MethodVisitor {
         }
     }
 
+    private int calcRealMethodAccess(int access) {
+        int outAccess = Opcodes.ACC_PRIVATE | Opcodes.ACC_SYNTHETIC;
+        if ((access & Opcodes.ACC_STATIC) != 0) {
+            outAccess |= Opcodes.ACC_STATIC;
+        }
+        return outAccess;
+    }
+
+    private void toBridgeMethod(MethodNode mv, String realMethodName) {
+        mv.instructions = new InsnList();
+        if (mv.localVariables != null) {
+            mv.localVariables.clear();
+        }
+        if (mv.tryCatchBlocks != null) {
+            mv.tryCatchBlocks.clear();
+        }
+        boolean isStatic = (mv.access & Opcodes.ACC_STATIC) != 0;
+        Type methodType = Type.getMethodType(mv.desc);
+        mv.maxLocals = AsmHelper.calcMethodArgLocals(mv);
+        mv.maxStack = 4;
+        if (!isStatic) {
+            mv.visitVarInsn(Opcodes.ALOAD, 0);
+        }
+        int i = isStatic ? 0 : 1;
+        Type[] argumentTypes = methodType.getArgumentTypes();
+        for (Type argumentType : argumentTypes) {
+            mv.visitVarInsn(argumentType.getOpcode(Opcodes.ILOAD), i);
+            i += argumentType.getSize();
+        }
+        Type ownerType = Type.getObjectType(classContext.getInternalName());
+        InvokeDynamicInsnNode invokeDynamicInsnNode = LambdaUtils.invokeJAsyncPromiseSupplier1(
+                ownerType,
+                realMethodName,
+                isStatic,
+                argumentTypes
+        );
+        invokeDynamicInsnNode.accept(mv);
+        mv.visitLdcInsn(classContext.getQualifiedName());
+        mv.visitLdcInsn(mv.name);
+        String source = classContext.getChecker().getSource();
+        if (source != null) {
+            mv.visitLdcInsn(source);
+        } else {
+            mv.visitInsn(Opcodes.ACONST_NULL);
+        }
+        mv.visitMethodInsn(
+                Opcodes.INVOKESTATIC,
+                Constants.JPROMISE_NAME,
+                Constants.JPROMISE_METHOD_DEBUG_INFO_NAME,
+                Constants.JPROMISE_METHOD_DEBUG_INFO_DESC.getDescriptor(),
+                true);
+        mv.visitInsn(Opcodes.ARETURN);
+    }
+
+    private String toBridgeMethodDesc(String desc) {
+        if (desc == null) {
+            return null;
+        }
+        Type methodType = Type.getMethodType(desc);
+        Type[] argumentTypes = methodType.getArgumentTypes();
+        Type[] newArgumentTypes = new Type[argumentTypes.length + 1];
+        System.arraycopy(argumentTypes, 0, newArgumentTypes, 0, argumentTypes.length);
+        newArgumentTypes[argumentTypes.length] = Constants.JCONTEXT_DESC;
+        return Type.getMethodDescriptor(methodType.getReturnType(), newArgumentTypes);
+    }
+
+    private String toBridgeMethodSignature(String signature) {
+        if (signature == null) {
+            return null;
+        }
+        int i = signature.indexOf(")");
+        if (i == -1) {
+            return signature;
+        }
+        return signature.substring(0, i) + Constants.JCONTEXT_DESC.getDescriptor() + signature.substring(i);
+    }
+
     @Override
     public void visitEnd() {
         super.visitEnd();
-        patchTryCatchFrame();
-        MethodContext methodContext = new MethodContext(classContext, methodNode);
+        patchTryCatchFrame(methodNode);
+        String realMethodName = classContext.nextLambdaName(methodNode.name);
+        MethodNode realMethod = new MethodNode(
+                Constants.ASM_VERSION,
+                calcRealMethodAccess(methodNode.access),
+                realMethodName,
+                toBridgeMethodDesc(methodNode.desc),
+                toBridgeMethodSignature(methodNode.signature),
+                new String[] { Constants.THROWABLE_NAME }
+        );
+        methodNode.accept(realMethod);
+        toBridgeMethod(methodNode, realMethodName);
+        if (nextVisitor != null) {
+            methodNode.accept(nextVisitor);
+        }
+
+        MethodContext methodContext = new MethodContext(classContext, realMethod, methodNode.name);
         JAsyncInfo info = methodContext.getInfo();
         AsmHelper.printFrameProblem(
-                classContext.getName(),
-                methodNode,
+                classContext.getInternalName(),
+                realMethod,
                 methodContext.getFrames(),
                 null,
                 info.getLogOriginalByteCode()
         );
         methodContext.process();
         AsmHelper.printFrameProblem(
-                classContext.getName(),
-                methodNode,
+                classContext.getInternalName(),
+                realMethod,
                 null,
                 methodContext.getMap(),
                 info.getLogResultByteCode()
         );
         if (info.isLogResultAsm()) {
-            log(methodNode, new ASMifier());
+            log(realMethod, new ASMifier());
         }
         if (info.isVerify()) {
             verifyMethod(methodContext);
         }
-        if (nextVisitor != null) {
+        if (nextClassVisitor != null) {
             try {
-                methodNode.accept(nextVisitor);
+                realMethod.accept(nextClassVisitor);
             } catch (RuntimeException t) {
                 verifyMethod(methodContext);
                 throw t;
@@ -146,7 +237,7 @@ public class ChainMethodNode extends MethodVisitor {
 
         for (MethodContext lambdaContext : classContext.getLambdaContexts(methodContext)) {
             AsmHelper.printFrameProblem(
-                    classContext.getName(),
+                    classContext.getInternalName(),
                     lambdaContext.getMv(),
                     null,
                     lambdaContext.getMap(),

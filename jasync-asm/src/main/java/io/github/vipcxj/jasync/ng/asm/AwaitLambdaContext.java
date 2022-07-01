@@ -38,7 +38,7 @@ public class AwaitLambdaContext extends AbstractLambdaContext {
         updateTcbAndLocal(startLabelNode, node);
         boolean isStatic = methodContext.isStatic();
         // arguments: x, y, z, a, b, await result, await error
-        int errorOffset = arguments.argumentLocalOffset(isStatic, -1);
+        int errorOffset = arguments.argumentLocalOffset(isStatic, -2);
         Label errorRethrowEndLabel = new Label();
         // load error to stack
         lambdaNode.visitVarInsn(Opcodes.ALOAD, errorOffset);
@@ -56,8 +56,8 @@ public class AwaitLambdaContext extends AbstractLambdaContext {
         lambdaNode.visitLabel(errorRethrowEndLabel);
         lambdaMap.add(mappedIndex);
 
-        // arguments: x, y, z, a, b, await result, await error -> stack: a, b, await result
-        // locals: this?, x, y, z, a, b, await type, error type
+        // arguments: x, y, z, a, b, await result, await error, context -> stack: a, b, await result
+        // locals: this?, x, y, z, a, b, await type, error type, context
         int j = isStatic ? 0 : 1;
         for (Arguments.ExtendType extendType : arguments.getTypes()) {
             // arguments 的构成恰好同构于 locals + stack，

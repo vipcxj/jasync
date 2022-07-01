@@ -134,7 +134,7 @@ public class AsmHelper {
         StringWriter sw = new StringWriter();
         PrintWriter printWriter = new PrintWriter(sw);
         if (frames == null && owner != null) {
-            BranchAnalyzer analyzer = new BranchAnalyzer();
+            BranchAnalyzer analyzer = new BranchAnalyzer(false);
             try {
                 analyzer.analyzeAndComputeMaxs(owner, methodNode);
             } catch (AnalyzerException e) {
@@ -428,8 +428,54 @@ public class AsmHelper {
         }
     }
 
+    /**
+     * calc method init local size. include this (for non static method) and arguments.
+     * @param methodNode method node
+     * @return the init local size.
+     */
     public static int calcMethodArgLocals(MethodNode methodNode) {
-        return Type.getMethodType(methodNode.desc).getArgumentsAndReturnSizes() >> 2;
+        return (Type.getMethodType(methodNode.desc).getArgumentsAndReturnSizes() >> 2) - (isStatic(methodNode.access) ? 1 : 0);
+    }
+
+    public static int calcFreeVarIndex(MethodNode methodNode, int start, int size) {
+        if (size != 1 && size != 2) {
+            throw new IllegalArgumentException("size must be 1 or 2.");
+        }
+        Set<Integer> used = new HashSet<>();
+        for (AbstractInsnNode insnNode : methodNode.instructions) {
+            if (insnNode instanceof VarInsnNode) {
+                VarInsnNode varInsnNode = (VarInsnNode) insnNode;
+                if (varInsnNode.var >= 0) {
+                    used.add(varInsnNode.var);
+                    switch (varInsnNode.getOpcode()) {
+                        case Opcodes.LLOAD:
+                        case Opcodes.LSTORE:
+                        case Opcodes.DLOAD:
+                        case Opcodes.DSTORE:
+                            used.add(varInsnNode.var + 1);
+                    }
+                }
+            } else if (insnNode instanceof IincInsnNode) {
+                IincInsnNode iincInsnNode = (IincInsnNode) insnNode;
+                if (iincInsnNode.var >= 0) {
+                    used.add(iincInsnNode.var);
+                }
+            }
+        }
+        int max = used.stream().mapToInt(Integer::intValue).max().orElse(-1) + 1;
+        int j = start;
+        for (; j < max; ++j) {
+            if (!used.contains(j)) {
+                if (size == 1 || !used.contains(j + 1)) {
+                    return j;
+                }
+            }
+        }
+        return j;
+    }
+
+    public static boolean isStatic(int access) {
+        return (access & Opcodes.ACC_STATIC) != 0;
     }
 
     // Used for debug. Because asm package is sharded, so the get method can not be invoked by the debugger.

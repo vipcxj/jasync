@@ -11,7 +11,8 @@ import java.util.Map;
 
 public class ClassNestChecker extends ClassVisitor {
 
-    private String className;
+    private String classInternalName;
+    private String classBinaryName;
     private String superName;
     private String[] interfaces;
     private String closingClassName;
@@ -24,7 +25,8 @@ public class ClassNestChecker extends ClassVisitor {
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-        this.className = Type.getObjectType(name).getClassName();
+        this.classInternalName = name;
+        this.classBinaryName = Type.getObjectType(name).getClassName();
         this.superName = superName != null ? Type.getObjectType(superName).getClassName() : null;
         this.interfaces = Arrays.stream(interfaces).map(i -> Type.getObjectType(i).getClassName()).toArray(String[]::new);
         super.visit(version, access, name, signature, superName, interfaces);
@@ -35,7 +37,7 @@ public class ClassNestChecker extends ClassVisitor {
         if (outerName == null) {
             int i = name.lastIndexOf('$', innerName != null ? (name.length() - innerName.length() - 1) : (name.length() - 1));
             if (i < 0) {
-                throw new IllegalArgumentException("[Scanning " + className + "] Unable to calculate the outer class name of class " + name + ".");
+                throw new IllegalArgumentException("[Scanning " + classBinaryName + "] Unable to calculate the outer class name of class " + name + ".");
             }
             outerName = name.substring(0, i);
         }
@@ -63,12 +65,31 @@ public class ClassNestChecker extends ClassVisitor {
         return name;
     }
 
-    public String getClassName() {
-        return className;
+    public String getClassInternalName() {
+        return classInternalName;
+    }
+
+    public String getClassBinaryName() {
+        return classBinaryName;
+    }
+
+    private String getClassQualifiedName(String binaryName) {
+        if (innerClassesMap == null || !innerClassesMap.containsKey(binaryName)) {
+            return binaryName;
+        } else {
+            String outBinaryName = innerClassesMap.get(binaryName);
+            String outQualifiedName = getClassQualifiedName(outBinaryName);
+            String simpleName = binaryName.substring(outBinaryName.length() + 1);
+            return outQualifiedName + "." + simpleName;
+        }
+    }
+
+    public String getClassQualifiedName() {
+        return getClassQualifiedName(classBinaryName);
     }
 
     public String getTopBinaryName() {
-        return findTopClassName(closingClassName != null ? closingClassName : className);
+        return findTopClassName(closingClassName != null ? closingClassName : classBinaryName);
     }
 
     private Map<String, String[]> getTypeInfoMap() {
@@ -81,12 +102,12 @@ public class ClassNestChecker extends ClassVisitor {
     public boolean isSkip() {
         Map<String, String[]> typeInfoMap = getTypeInfoMap();
         if (typeInfoMap == null) {
-            Logger.warn("[Scanning " + className + "] Unable to find type info map. So skipped.");
+            Logger.warn("[Scanning " + classBinaryName + "] Unable to find type info map. So skipped.");
             return true;
         }
         String topBinaryName = getTopBinaryName();
         if (!typeInfoMap.containsKey(topBinaryName)) {
-            Logger.warn("[Scanning " + className + "] The containing class " + topBinaryName + " is not listed in the type info map. It seems that the source file is not processed by the jasync annotation processor. So skipped.");
+            Logger.warn("[Scanning " + classBinaryName + "] The containing class " + topBinaryName + " is not listed in the type info map. It seems that the source file is not processed by the jasync annotation processor. So skipped.");
             return true;
         }
         return false;
@@ -96,9 +117,9 @@ public class ClassNestChecker extends ClassVisitor {
         Map<String, String[]> typeInfoMap = getTypeInfoMap();
         // call after test isSkip. So it should always that typeInfoMap is not null.
         assert typeInfoMap != null;
-        if (!typeInfoMap.containsKey(className)) {
+        if (!typeInfoMap.containsKey(classBinaryName)) {
             String[] typeInfo = TypeInfoHelper.typeInfo(superName, interfaces);
-            typeInfoMap.put(className, typeInfo);
+            typeInfoMap.put(classBinaryName, typeInfo);
         }
     }
 }

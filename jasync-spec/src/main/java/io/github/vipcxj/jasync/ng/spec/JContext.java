@@ -13,8 +13,14 @@ public interface JContext {
     static JContext defaultContext() {
         return provider.defaultContext();
     }
-    static JContext create(JScheduler scheduler) {
-        return provider.create(scheduler);
+    static JContext create(JScheduler scheduler, boolean supportStackTrace) {
+        return provider.create(scheduler, supportStackTrace);
+    }
+    default JContext create(JScheduler scheduler) {
+        return create(scheduler, true);
+    }
+    default JContext create(boolean supportStackTrace) {
+        return create(JScheduler.defaultScheduler(), supportStackTrace);
     }
     <T> T get(Object key);
     JContext set(Object key, Object value);
@@ -54,4 +60,13 @@ public interface JContext {
     JContext removePortal(int jumpIndex);
     JScheduler getScheduler();
     JContext setScheduler(JScheduler scheduler);
+    @Internal
+    JContext pushStackFrame(String declaringClass, String method, String fileName);
+    @Internal
+    JContext setLineNumber(int lineNumber);
+    @Internal
+    JContext popStackFrame();
+    @Internal
+    JContext cloneMutable();
+    void fixException(Throwable throwable);
 }

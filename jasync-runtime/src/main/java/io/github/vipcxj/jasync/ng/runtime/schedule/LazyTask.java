@@ -41,7 +41,7 @@ public class LazyTask<T> implements Task<T> {
 
     private void dispose() {
         JDisposable disposable = this.disposable;
-        if (DISPOSABLE.compareAndSet(this, disposable, null)) {
+        if (disposable != null && DISPOSABLE.compareAndSet(this, disposable, null)) {
             disposable.dispose();
         }
     }

@@ -97,7 +97,7 @@ public class LoopLambdaContext extends AbstractLambdaContext {
     private void restoreLocalAndStack() {
         boolean isStatic = methodContext.isStatic();
         int offset = isStatic ? 0 : 1;
-        // locals: this?, localVars
+        // locals: this?, localVars, context
         // push localVars
         // stack: [] -> localVars
         lambdaNode.visitVarInsn(Opcodes.ALOAD, offset);

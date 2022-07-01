@@ -54,7 +54,7 @@ public class RacePromiseTask<T> implements Task<T> {
                         }
                     }
                 }
-            }).async(context);
+            }).async(context.cloneMutable());
         }
     }
 

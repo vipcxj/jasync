@@ -9,6 +9,8 @@ public class Constants {
     public static final Type NULL_DESC = Type.getObjectType(NULL_NAME);
     public static final String OBJECT_NAME = "java/lang/Object";
     public static final Type OBJECT_DESC = Type.getObjectType(OBJECT_NAME);
+    public static final String STRING_NAME = "java/lang/String";
+    public static final Type STRING_DESC = Type.getObjectType(STRING_NAME);
     public static final Type OBJECT_ARRAY_DESC = AsmHelper.getArrayType(OBJECT_DESC, 1);
     public static final String CLONEABLE_NAME = "java/lang/Cloneable";
     public static final Type CLONEABLE_DESC = Type.getObjectType(CLONEABLE_NAME);
@@ -18,33 +20,46 @@ public class Constants {
     public static final Type THROWABLE_DESC = Type.getObjectType(THROWABLE_NAME);
     public static final String JPROMISE_NAME = "io/github/vipcxj/jasync/ng/spec/JPromise";
     public static final Type JPROMISE_DESC = Type.getObjectType(JPROMISE_NAME);
+    public static final String JCONTEXT_NAME = "io/github/vipcxj/jasync/ng/spec/JContext";
+    public static final Type JCONTEXT_DESC = Type.getObjectType(JCONTEXT_NAME);
 
-    public static final String JASYNC_PROMISE_FUNCTION0_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncPromiseFunction0";
-    public static final Type JASYNC_PROMISE_FUNCTION0_DESC = Type.getObjectType(JASYNC_PROMISE_FUNCTION0_NAME);
-    public static final String JASYNC_PROMISE_FUNCTION0_METHOD_NAME = "apply";
-    public static final Type JASYNC_PROMISE_FUNCTION0_METHOD_DESC = Type.getMethodType(JPROMISE_DESC, OBJECT_DESC);
+    public static final String JASYNC_PROMISE_SUPPLIER1_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncPromiseSupplier1";
+    public static final Type JASYNC_PROMISE_SUPPLIER1_DESC = Type.getObjectType(JASYNC_PROMISE_SUPPLIER1_NAME);
+    public static final String JASYNC_PROMISE_SUPPLIER1_METHOD_NAME = "get";
+    public static final Type JASYNC_PROMISE_SUPPLIER1_METHOD_DESC = Type.getMethodType(JPROMISE_DESC, JCONTEXT_DESC);
 
-    public static final String JASYNC_PROMISE_FUNCTION2_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncPromiseFunction2";
-    public static final Type JASYNC_PROMISE_FUNCTION2_DESC = Type.getObjectType(JASYNC_PROMISE_FUNCTION2_NAME);
-    public static final String JASYNC_PROMISE_FUNCTION2_METHOD_NAME = "apply";
-    public static final Type JASYNC_PROMISE_FUNCTION2_METHOD_DESC = Type.getMethodType(JPROMISE_DESC, OBJECT_DESC, THROWABLE_DESC);
+    public static final String JASYNC_PROMISE_FUNCTION1_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncPromiseFunction1";
+    public static final Type JASYNC_PROMISE_FUNCTION1_DESC = Type.getObjectType(JASYNC_PROMISE_FUNCTION1_NAME);
+    public static final String JASYNC_PROMISE_FUNCTION1_METHOD_NAME = "apply";
+    public static final Type JASYNC_PROMISE_FUNCTION1_METHOD_DESC = Type.getMethodType(JPROMISE_DESC, OBJECT_DESC, JCONTEXT_DESC);
 
-    public static final String JASYNC_CATCH_FUNCTION0_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncCatchFunction0";
-    public static final Type JASYNC_CATCH_FUNCTION0_DESC = Type.getObjectType(JASYNC_CATCH_FUNCTION0_NAME);
-    public static final String JASYNC_CATCH_FUNCTION0_METHOD_NAME = "apply";
-    public static final Type JASYNC_CATCH_FUNCTION0_METHOD_DESC = Type.getMethodType(JPROMISE_DESC, THROWABLE_DESC);
+    public static final String JASYNC_PROMISE_FUNCTION3_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncPromiseFunction3";
+    public static final Type JASYNC_PROMISE_FUNCTION3_DESC = Type.getObjectType(JASYNC_PROMISE_FUNCTION3_NAME);
+    public static final String JASYNC_PROMISE_FUNCTION3_METHOD_NAME = "apply";
+    public static final Type JASYNC_PROMISE_FUNCTION3_METHOD_DESC = Type.getMethodType(JPROMISE_DESC, OBJECT_DESC, THROWABLE_DESC, JCONTEXT_DESC);
+
+    public static final String JASYNC_CATCH_FUNCTION1_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncCatchFunction1";
+    public static final Type JASYNC_CATCH_FUNCTION1_DESC = Type.getObjectType(JASYNC_CATCH_FUNCTION1_NAME);
+    public static final String JASYNC_CATCH_FUNCTION1_METHOD_NAME = "apply";
+    public static final Type JASYNC_CATCH_FUNCTION1_METHOD_DESC = Type.getMethodType(JPROMISE_DESC, THROWABLE_DESC, JCONTEXT_DESC);
 
     public static final String JPROMISE_GEN_ID_NAME = "genId";
     public static final Type JPROMISE_GEN_ID_DESC = Type.getMethodType(Type.INT_TYPE);
 
     public static final String JPROMISE_PORTAL_NAME = "portal";
-    public static final Type JPROMISE_PORTAL0_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_FUNCTION0_DESC, Type.INT_TYPE, OBJECT_ARRAY_DESC);
+    public static final Type JPROMISE_PORTAL0_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_FUNCTION1_DESC, Type.INT_TYPE, OBJECT_ARRAY_DESC);
 
     public static final String JPROMISE_JUMP_NAME = "jump";
     public static final Type JPROMISE_JUMP_DESC = Type.getMethodType(JPROMISE_DESC, Type.INT_TYPE, OBJECT_ARRAY_DESC);
 
-    public static final String JPROMISE_THEN_OR_CATCH_NAME = "thenOrCatch";
-    public static final Type JPROMISE_THEN_OR_CATCH1_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_FUNCTION2_DESC);
+    public static final String JCONTEXT_SET_LINE_NUMBER_NAME = "setLineNumber";
+    public static final Type JCONTEXT_SET_LINE_NUMBER_DESC = Type.getMethodType(JCONTEXT_DESC, Type.INT_TYPE);
+
+    public static final String JPROMISE_METHOD_DEBUG_INFO_NAME = "methodDebugInfo";
+    public static final Type JPROMISE_METHOD_DEBUG_INFO_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_SUPPLIER1_DESC, STRING_DESC, STRING_DESC, STRING_DESC);
+
+    public static final String JPROMISE_THEN_OR_CATCH_NAME = "thenOrCatchWithContext";
+    public static final Type JPROMISE_THEN_OR_CATCH1_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_FUNCTION3_DESC);
 
     public static final String JPROMISE_DO_MULTI_CATCHES_NAME = "doMultiCatches";
     public static final Type JPROMISE_DO_MULTI_CATCHES1_DESC = Type.getMethodType(JPROMISE_DESC, OBJECT_ARRAY_DESC);

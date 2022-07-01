@@ -4,6 +4,8 @@ import io.github.vipcxj.jasync.ng.spec.JContext;
 import io.github.vipcxj.jasync.ng.spec.JScheduler;
 
 public interface JContextProvider extends PrioritySupport {
-    JContext defaultContext();
-    JContext create(JScheduler scheduler);
+    default JContext defaultContext() {
+        return create(JScheduler.defaultScheduler(), true);
+    }
+    JContext create(JScheduler scheduler, boolean supportStackTrace);
 }

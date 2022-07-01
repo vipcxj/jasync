@@ -45,8 +45,22 @@ public interface JPromise<T> extends JHandle<T> {
                         ));
         return promise.withUpdateContext(ctx -> ctx.removePortal(jumpIndex));
     }
+    static <T> JPromise<T> portal(JAsyncPromiseFunction1<Object[], T> task, int jumpIndex, Object... locals) {
+        JPromise<T> promise = updateContext(ctx -> ctx.pushLocals(locals))
+                .thenImmediate(() ->
+                        portal((factory, context) -> {
+                                    Object[] theLocals = context.getLocals();
+                                    return updateContext(ctx -> ctx.popLocals().setPortal(jumpIndex, factory))
+                                            .thenWithContextImmediate(ctx -> task.apply(theLocals, ctx));
+                                }
+                        ));
+        return promise.withUpdateContext(ctx -> ctx.removePortal(jumpIndex));
+    }
     static <T> JPromise<T> jump(int jumpIndex, Object... localVars) {
         return updateContext(ctx -> ctx.pushLocals(localVars)).thenImmediate(ctx -> ctx.jump(jumpIndex));
+    }
+    static <T> JPromise<T> methodDebugInfo(JAsyncPromiseSupplier1<T> supplier, String declaringClassQualifiedName, String method, String fileName) {
+        return updateContext(ctx -> ctx.pushStackFrame(declaringClassQualifiedName, method, fileName)).thenWithContextImmediate(supplier).withUpdateContext(JContext::popStackFrame);
     }
     static <T> JPromise<T> wrap(JAsyncPromiseSupplier0<T> supplier) {
         return JPromise.empty().thenImmediate(supplier);

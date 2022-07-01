@@ -6,5 +6,6 @@ import java.util.concurrent.ExecutorService;
 
 public interface JSchedulerSupport extends PrioritySupport {
 
+    JScheduler defaultScheduler();
     JScheduler fromExecutorService(ExecutorService executorService);
 }

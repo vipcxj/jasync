@@ -11,23 +11,36 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
 
     private Node<BasicValue>[] nodes;
     private MethodNode methodNode;
+    private final boolean ignoreContextVar;
 
     /**
      * Constructs a new {@link Analyzer}.
      *
      */
-    public BranchAnalyzer() {
+    public BranchAnalyzer(boolean ignoreContextVar) {
         super(new TypeInterpreter());
+        this.ignoreContextVar = ignoreContextVar;
     }
 
-    public BranchAnalyzer(Interpreter<BasicValue> interpreter) {
+    public BranchAnalyzer(Interpreter<BasicValue> interpreter, boolean ignoreContextVar) {
         super(interpreter);
+        this.ignoreContextVar = ignoreContextVar;
     }
 
     @Override
     public Frame<BasicValue>[] analyze(String owner, MethodNode method) throws AnalyzerException {
         this.methodNode = method;
         return super.analyze(owner, method);
+    }
+
+    @Override
+    protected void init(String owner, MethodNode method) {
+        if (ignoreContextVar) {
+            Frame<BasicValue> initFame = getFrames()[0];
+            // all method processed have a last argument JContext. It should be ignored when processing.
+            int contextIndex = AsmHelper.calcMethodArgLocals(method) - 1;
+            initFame.setLocal(contextIndex, BasicValue.UNINITIALIZED_VALUE);
+        }
     }
 
     @Override
@@ -104,7 +117,7 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
     }
 
     private void checkCast(Node<? extends BasicValue> node) {
-        if (node.insnNode instanceof MethodInsnNode || node.insnNode instanceof  InvokeDynamicInsnNode) {
+        if (node.insnNode instanceof MethodInsnNode || node.insnNode instanceof InvokeDynamicInsnNode) {
             String desc;
             String owner;
             if (node.insnNode instanceof MethodInsnNode) {
@@ -145,7 +158,7 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
     private List<Node<? extends BasicValue>> flagCast(Node<? extends BasicValue> node, Type type, int stack) {
         List<Node<? extends BasicValue>> results = new ArrayList<>();
         int stackSize = node.getStackSize();
-        if (stackSize - 1 == stack) {
+        if (stackSize - 1 == stack) { // stack top
             BasicValue value = node.getStack(stack);
             if (value == null) {
                 throw new NullPointerException();

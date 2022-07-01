@@ -18,9 +18,10 @@ public class JAsyncTransformer {
             ClassChecker checker = new ClassChecker(nestChecker, null);
             reader.accept(checker, ClassReader.SKIP_CODE);
             if (checker.hasAsyncMethod()) {
+                ClassContext classContext = new ClassContext(checker);
                 ClassWriter writer = new JAsyncClassWriter(ClassWriter.COMPUTE_FRAMES);
                 StaticInitMerger staticInitMerger = new StaticInitMerger(writer);
-                ClassAnalyzer classAnalyzer = new ClassAnalyzer(checker, staticInitMerger);
+                ClassAnalyzer classAnalyzer = new ClassAnalyzer(classContext, staticInitMerger);
                 reader.accept(classAnalyzer, 0);
                 return writer.toByteArray();
             } else {

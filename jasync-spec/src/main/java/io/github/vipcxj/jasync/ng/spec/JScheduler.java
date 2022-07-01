@@ -8,6 +8,9 @@ import java.util.concurrent.TimeUnit;
 
 public interface JScheduler {
     JSchedulerSupport provider = Utils.getProvider(JSchedulerSupport.class);
+    static JScheduler defaultScheduler() {
+        return provider.defaultScheduler();
+    }
     JDisposable schedule(Runnable task);
     default JDisposable schedule(Runnable task, long delay, TimeUnit unit) {
         throw new JAsyncExecutionException("Scheduler is not capable of time-based scheduling");

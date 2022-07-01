@@ -538,4 +538,57 @@ public class TryTest {
             Assertions.assertEquals(tryCatchAndFinallyNoAwait(i), tryCatchAndFinally(i).block());
         }
     }
+
+    private JPromise<Integer> nest0() {
+        throw new RuntimeException();
+    }
+
+    private JPromise<Integer> nest1() throws InterruptedException {
+        int out = nest0().await() + 1;
+        return JPromise.just(out);
+    }
+
+    private JPromise<Integer> nest2() throws InterruptedException {
+        int out = nest1().await() + 1;
+        return JPromise.just(out);
+    }
+
+    private JPromise<Void> catchNestError() throws InterruptedException {
+        RuntimeException exception = null;
+        try {
+            try {
+                nest2().await();
+            } catch (RuntimeException e) {
+                exception = e;
+                throw e;
+            }
+        } catch (RuntimeException e) {
+            Assertions.assertSame(exception, e);
+            StackTraceElement[] stackTrace = e.getStackTrace();
+            Assertions.assertEquals(4, stackTrace.length);
+            Assertions.assertEquals("nest0", stackTrace[0].getMethodName());
+            Assertions.assertEquals("nest1", stackTrace[1].getMethodName());
+            Assertions.assertEquals("nest2", stackTrace[2].getMethodName());
+            Assertions.assertEquals("catchNestError", stackTrace[3].getMethodName());
+            Assertions.assertEquals("io.github.vipcxj.jasync.ng.test.TryTest", stackTrace[0].getClassName());
+            Assertions.assertEquals("io.github.vipcxj.jasync.ng.test.TryTest", stackTrace[1].getClassName());
+            Assertions.assertEquals("io.github.vipcxj.jasync.ng.test.TryTest", stackTrace[2].getClassName());
+            Assertions.assertEquals("io.github.vipcxj.jasync.ng.test.TryTest", stackTrace[3].getClassName());
+            Assertions.assertEquals("TryTest.java", stackTrace[0].getFileName());
+            Assertions.assertEquals("TryTest.java", stackTrace[1].getFileName());
+            Assertions.assertEquals("TryTest.java", stackTrace[2].getFileName());
+            Assertions.assertEquals("TryTest.java", stackTrace[3].getFileName());
+            Assertions.assertEquals(543, stackTrace[0].getLineNumber());
+            Assertions.assertEquals(547, stackTrace[1].getLineNumber());
+            Assertions.assertEquals(552, stackTrace[2].getLineNumber());
+            Assertions.assertEquals(560, stackTrace[3].getLineNumber());
+            e.printStackTrace();
+        }
+        return JPromise.empty();
+    }
+
+    @Test
+    public void testCatchNestError() throws InterruptedException {
+        catchNestError().block();
+    }
 }

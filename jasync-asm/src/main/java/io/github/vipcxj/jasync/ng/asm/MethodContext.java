@@ -12,7 +12,6 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static io.github.vipcxj.jasync.ng.asm.AsmHelper.primitiveToObject;
-import static io.github.vipcxj.jasync.ng.asm.Constants.THROWABLE_DESC;
 
 public class MethodContext {
     private final ClassContext classContext;
@@ -23,17 +22,20 @@ public class MethodContext {
     private final List<Integer> stacksToUpdate;
     private final MethodType type;
     private final int head;
-    private int index = 0;
     private List<Integer> map;
 
     protected final MethodContext parent;
+    private final String rootMethodName;
     private final int baseValidLocals;
     private final List<MethodContext> children;
     private final AbstractInsnNode[] insnNodes;
     private List<Set<Integer>> loops;
+    private int contextVarIndex;
 
-    public MethodContext(ClassContext classContext, MethodNode mv) {
-        this(classContext, mv, null, MethodType.TOP, null, AsmHelper.calcMethodArgLocals(mv));
+    public MethodContext(ClassContext classContext, MethodNode mv, String rootMethodName) {
+        // The root baseValidLocals = AsmHelper.calcMethodArgLocals(mv) - 1
+        // Because the last argument is JContext which should be ignored.
+        this(classContext, mv, null, MethodType.TOP, null, rootMethodName, AsmHelper.calcMethodArgLocals(mv) - 1);
     }
 
     public MethodContext(
@@ -42,23 +44,25 @@ public class MethodContext {
             List<Integer> map,
             MethodType type,
             MethodContext parent,
+            String rootMethodName,
             int baseValidLocals
     ) {
         this.classContext = classContext;
         this.mv = mv;
+        this.contextVarIndex = AsmHelper.calcMethodArgLocals(mv) - 1;
         this.map = map;
         this.info = parent != null ? parent.getInfo() : JAsyncInfo.of(mv);
         this.localsToUpdate = new ArrayList<>();
         this.stacksToUpdate = new ArrayList<>();
         this.type = type;
         this.head = mapped(0);
-        BranchAnalyzer analyzer = new BranchAnalyzer();
+        BranchAnalyzer analyzer = new BranchAnalyzer(true);
         try {
-            analyzer.analyzeAndComputeMaxs(classContext.getName(), mv);
+            analyzer.analyzeAndComputeMaxs(classContext.getInternalName(), mv);
             this.frames = analyzer.getNodes();
         } catch (AnalyzerException e) {
             AsmHelper.printFrameProblem(
-                    classContext.getName(),
+                    classContext.getInternalName(),
                     mv,
                     analyzer.getFrames(),
                     map,
@@ -70,13 +74,14 @@ public class MethodContext {
             throw new RuntimeException(e);
         }
         this.parent = parent;
+        this.rootMethodName = rootMethodName;
         this.baseValidLocals = baseValidLocals;
         this.children = new ArrayList<>();
-        insnNodes = new AbstractInsnNode[this.frames.length];
+        this.insnNodes = new AbstractInsnNode[this.frames.length];
     }
 
     public MethodContext createChild(MethodNode methodNode, List<Integer> map, MethodType type, int parentLocals) {
-        return new MethodContext(classContext, methodNode, map, type, this, parentLocals);
+        return new MethodContext(classContext, methodNode, map, type, this, rootMethodName, parentLocals);
     }
 
     public MethodNode getMv() {
@@ -111,24 +116,8 @@ public class MethodContext {
         return parent != null ? parent.getRootMethodContext() : this;
     }
 
-    public String nextLambdaName() {
-        if (parent != null) {
-            return parent.nextLambdaName();
-        } else {
-            String name = createLambdaName();
-            while (classContext.containMethod(name)) {
-                name = createLambdaName();
-            }
-            return name;
-        }
-    }
-
-    private String createLambdaName() {
-        return "lambda$" + getMv().name + "$" + index++;
-    }
-
     public Type classType() {
-        return Type.getObjectType(classContext.getName());
+        return Type.getObjectType(classContext.getInternalName());
     }
 
     public void updateLocals(int locals) {
@@ -227,6 +216,50 @@ public class MethodContext {
             updateMax();
             for (MethodContext child : children) {
                 child.process();
+            }
+            restoreContextVar();
+            recordLineNumbers();
+        }
+    }
+
+    private void restoreContextVar() {
+        int newContextVarIndex = AsmHelper.calcFreeVarIndex(mv, contextVarIndex, 1);
+        if (newContextVarIndex != contextVarIndex) {
+            mv.instructions.insertBefore(mv.instructions.getFirst(), new VarInsnNode(Opcodes.ASTORE, newContextVarIndex));
+            mv.instructions.insertBefore(mv.instructions.getFirst(), new VarInsnNode(Opcodes.ALOAD, contextVarIndex));
+            AsmHelper.updateLocal(mv, newContextVarIndex);
+            AsmHelper.updateStack(mv, 1);
+            this.contextVarIndex = newContextVarIndex;
+        }
+    }
+
+    private void recordLineNumbers() {
+        LineNumberNode lastLineNumberNode = null;
+        AbstractInsnNode lastPositionNode = null;
+        for (AbstractInsnNode insnNode : mv.instructions) {
+            if (insnNode instanceof LineNumberNode) {
+                lastLineNumberNode = (LineNumberNode) insnNode;
+                lastPositionNode = lastLineNumberNode;
+            } else if (insnNode.getOpcode() == Opcodes.ARETURN && lastLineNumberNode != null) {
+                AbstractInsnNode node = new VarInsnNode(Opcodes.ALOAD, contextVarIndex);
+                mv.instructions.insert(lastPositionNode, node);
+                lastPositionNode = node;
+                node = AsmHelper.loadConstantInt(lastLineNumberNode.line);
+                mv.instructions.insert(lastPositionNode, node);
+                lastPositionNode = node;
+                node = new MethodInsnNode(
+                        Opcodes.INVOKEINTERFACE,
+                        Constants.JCONTEXT_NAME,
+                        Constants.JCONTEXT_SET_LINE_NUMBER_NAME,
+                        Constants.JCONTEXT_SET_LINE_NUMBER_DESC.getDescriptor(),
+                        true
+                );
+                mv.instructions.insert(lastPositionNode, node);
+                lastPositionNode = node;
+                node = new InsnNode(Opcodes.POP);
+                mv.instructions.insert(lastPositionNode, node);
+            } else if (insnNode instanceof FrameNode){
+                lastPositionNode = insnNode;
             }
         }
     }
@@ -573,7 +606,7 @@ public class MethodContext {
         MethodNode methodNode = new MethodNode(
                 Constants.ASM_VERSION,
                 access,
-                nextLambdaName(),
+                classContext.nextLambdaName(rootMethodName),
                 Type.getMethodDescriptor(Constants.JPROMISE_DESC, arguments.argTypes(0)),
                 null,
                 new String[] { Constants.THROWABLE_NAME }
@@ -643,8 +676,9 @@ public class MethodContext {
         calcExtraAwaitArgumentsType(validLocals, frame, arguments);
         // await type, throwable type -> arguments
         arguments.addArgument(Constants.OBJECT_DESC);
-        arguments.addArgument(THROWABLE_DESC);
-        // x, y, z, a, b, await type, throwable type
+        arguments.addArgument(Constants.THROWABLE_DESC);
+        arguments.addArgument(Constants.JCONTEXT_DESC);
+        // x, y, z, a, b, await type, throwable type, JContext
         return arguments;
     }
 
@@ -712,7 +746,7 @@ public class MethodContext {
             insnList.add(AsmHelper.loadConstantInt(i++));
             // push exception type to stack
             // stack: ..., JPromise, Object[], Object[], int -> ..., JPromise, Object[], Object[], int, Class
-            Type exceptionType = tcbNode.type != null ? Type.getObjectType(tcbNode.type) : THROWABLE_DESC;
+            Type exceptionType = tcbNode.type != null ? Type.getObjectType(tcbNode.type) : Constants.THROWABLE_DESC;
             insnList.add(new LdcInsnNode(exceptionType));
             // store the exception type to array
             // stack: ..., JPromise, Object[], Object[], int, Class -> ..., JPromise, Object[]
@@ -743,6 +777,7 @@ public class MethodContext {
             Arguments arguments = new Arguments();
             localsToArguments(validLocals, node, arguments);
             arguments.addArgument(exceptionType);
+            arguments.addArgument(Constants.JCONTEXT_DESC);
             String lambdaName = findLambdaName(handlerNode, arguments, MethodType.CATCH_BODY);
             if (lambdaName == null) {
                 CatchLambdaContext lambdaContext = new CatchLambdaContext(this, arguments, handlerNode, validLocals);
@@ -750,12 +785,12 @@ public class MethodContext {
                 lambdaName = lambdaContext.getLambdaNode().name;
             }
             // stack: ..., JPromise, Object[], Object[], int, this?, x, y, z -> ..., JPromise, Object[], Object[], int, JAsyncCatchFunction0
-            insnList.add(LambdaUtils.invokeJAsyncCatchFunction0(
+            insnList.add(LambdaUtils.invokeJAsyncCatchFunction1(
                     classType(),
                     lambdaName,
                     exceptionType,
                     isStatic(),
-                    arguments.argTypes(1)
+                    arguments.argTypes(2)
             ));
             updateStacks(returnNode.getStackSize() + 4);
             // stack: ..., JPromise, Object[], Object[], int, JAsyncCatchFunction0 -> ..., JPromise, Object[]
@@ -811,7 +846,7 @@ public class MethodContext {
             restoreStack(insnList, node, maxLocals, stackSize - 1);
         }
         updateStacks(stackSize + validLocals);
-        // thenOrCatchLambda: JAsyncPromiseFunction2 = (x, y, z, a, b, Object, throwable) -> JPromise
+        // thenOrCatchLambda: JAsyncPromiseFunction3 = (x, y, z, a, b, Object, throwable, context) -> JPromise
         Arguments arguments = calcAwaitArgumentsType(validLocals, node);
         String lambdaName = findLambdaName(node, arguments, MethodType.AWAIT_BODY);
         if (lambdaName == null) {
@@ -819,12 +854,12 @@ public class MethodContext {
             lambdaContext.buildLambda();
             lambdaName = lambdaContext.getLambdaNode().name;
         }
-        insnList.add(LambdaUtils.invokeJAsyncPromiseFunction2(
+        insnList.add(LambdaUtils.invokeJAsyncPromiseFunction3(
                 classType(),
                 lambdaName,
                 Constants.OBJECT_DESC,
                 isStatic(),
-                arguments.argTypes(2)
+                arguments.argTypes(3)
         ));
         insnList.add(new MethodInsnNode(
                 Opcodes.INVOKEINTERFACE,
@@ -1022,7 +1057,7 @@ public class MethodContext {
     }
 
     String genJumpIndexField(int mappedIndex) {
-        String fieldName = classContext.generateUniqueFieldName("JUMP_TARGET_" + getRootMethodContext().getMv().name + "_" + mappedIndex);
+        String fieldName = classContext.generateUniqueFieldName("JUMP_TARGET_" + rootMethodName + "_" + mappedIndex);
         if (classContext.hasFieldContext(getRootMethodContext(), fieldName)) {
             return fieldName;
         }
@@ -1034,7 +1069,7 @@ public class MethodContext {
                 Constants.JPROMISE_GEN_ID_DESC.getDescriptor(),
                 true)
         );
-        fieldContext.addInitInsnNode(new FieldInsnNode(Opcodes.PUTSTATIC, classContext.getName(), fieldName, fieldContext.getDescriptor()));
+        fieldContext.addInitInsnNode(new FieldInsnNode(Opcodes.PUTSTATIC, classContext.getInternalName(), fieldName, fieldContext.getDescriptor()));
         fieldContext.addInitInsnNode(new InsnNode(Opcodes.RETURN));
         fieldContext.updateMaxStack(1);
         classContext.addFieldContext(getRootMethodContext(), fieldContext);
@@ -1042,7 +1077,7 @@ public class MethodContext {
     }
 
     AbstractInsnNode loadJumpTarget(String jumpTargetFieldName) {
-        return new FieldInsnNode(Opcodes.GETSTATIC, classContext.getName(), jumpTargetFieldName, Type.INT_TYPE.getDescriptor());
+        return new FieldInsnNode(Opcodes.GETSTATIC, classContext.getInternalName(), jumpTargetFieldName, Type.INT_TYPE.getDescriptor());
     }
 
     private PackageInsnNode processAwaitLoopNode(BranchAnalyzer.Node<? extends BasicValue> node) {
@@ -1059,7 +1094,7 @@ public class MethodContext {
             AsmHelper.appendStack(getMv(), node, 1);
         }
         String jumpTargetFieldName = genJumpIndexField(mappedIndex);
-        Arguments arguments = Arguments.of(Constants.OBJECT_ARRAY_DESC);
+        Arguments arguments = Arguments.of(Constants.OBJECT_ARRAY_DESC, Constants.JCONTEXT_DESC);
         String lambdaName = findLambdaName(node, arguments, MethodType.LOOP_BODY);
         if (lambdaName == null) {
             LoopLambdaContext loopLambdaContext = new LoopLambdaContext(this, arguments, node, jumpTargetFieldName);

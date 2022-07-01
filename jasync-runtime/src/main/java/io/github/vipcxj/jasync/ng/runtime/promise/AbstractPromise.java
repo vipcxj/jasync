@@ -655,6 +655,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         if (state < ST_RUNNING) {
             throw new IllegalStateException("Call async first.");
         }
+        context.fixException(error);
         boolean processed = false;
         while (state < ST_UNCOMPLETED) {
             if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_RUNNING_WRITE)) {

@@ -61,7 +61,7 @@ public class AllPromisesTask<T> implements Task<List<T>> {
                     }
                     thunk.interrupt(e, ctx);
                 }
-            }).async(context);
+            }).async(context.cloneMutable());
         }
 
     }

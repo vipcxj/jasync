@@ -42,6 +42,7 @@
         <module>jasync-runtime</module>
         <module>jasync-utils</module>
         <module>jasync-asm</module>
+        <module>jasync-reactive</module>
     </modules>
 
     <properties>

@@ -31,7 +31,7 @@ public class CatchLambdaContext extends AbstractLambdaContext {
 
     @Override
     protected void addInitCodes() {
-        int errorOffset = arguments.argumentLocalOffset(methodContext.isStatic(), -1);
+        int errorOffset = arguments.argumentLocalOffset(methodContext.isStatic(), -2);
         // load error to stack
         // stack: [] -> error
         lambdaNode.visitVarInsn(Opcodes.ALOAD, errorOffset);
