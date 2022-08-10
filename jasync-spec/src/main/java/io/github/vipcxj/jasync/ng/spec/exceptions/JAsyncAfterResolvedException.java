@@ -2,6 +2,7 @@ package io.github.vipcxj.jasync.ng.spec.exceptions;
 
 public class JAsyncAfterResolvedException extends JAsyncException {
 
+    private static final long serialVersionUID = 5005851755253594929L;
     private final Object value;
 
     public JAsyncAfterResolvedException(Object value, String message) {

@@ -6,7 +6,7 @@ import io.github.vipcxj.jasync.ng.spec.spi.JContextProvider;
 import java.util.Optional;
 import java.util.Set;
 
-public interface JContext {
+public interface JContext extends JAsyncRoutine {
 
     JContextProvider provider = Utils.getProvider(JContextProvider.class);
 
@@ -67,6 +67,7 @@ public interface JContext {
     @Internal
     JContext popStackFrame();
     @Internal
-    JContext cloneMutable();
+    @Override
+    JContext fork();
     void fixException(Throwable throwable);
 }

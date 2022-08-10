@@ -2,15 +2,20 @@ package io.github.vipcxj.jasync.ng.runtime.promise;
 
 import io.github.vipcxj.jasync.ng.runtime.schedule.ImmediateTask;
 import io.github.vipcxj.jasync.ng.runtime.schedule.LazyTask;
-import io.github.vipcxj.jasync.ng.runtime.utils.UnPaddedLockFreeArrayQueue0;
+import io.github.vipcxj.jasync.ng.runtime.utils.ImmutableDisposableStack;
 import io.github.vipcxj.jasync.ng.spec.JContext;
 import io.github.vipcxj.jasync.ng.spec.JHandle;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.JThunk;
-import io.github.vipcxj.jasync.ng.spec.exceptions.*;
+import io.github.vipcxj.jasync.ng.spec.exceptions.JAsyncAfterRejectedException;
+import io.github.vipcxj.jasync.ng.spec.exceptions.JAsyncAfterResolvedException;
+import io.github.vipcxj.jasync.ng.spec.exceptions.JAsyncException;
+import io.github.vipcxj.jasync.ng.spec.exceptions.JAsyncWrapException;
 import io.github.vipcxj.jasync.ng.spec.functional.*;
 
-import java.util.Queue;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -21,24 +26,17 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
 
     protected T value;
     protected Throwable error;
-    protected volatile int state;
+    protected volatile int state = ST_INIT;
     @SuppressWarnings("rawtypes")
     private static final AtomicIntegerFieldUpdater<AbstractPromise> STATE = AtomicIntegerFieldUpdater.newUpdater(AbstractPromise.class, "state");
-    protected static final int ST_INIT = 0;
-    protected static final int ST_INIT_READ = 1;
+    protected static final int ST_LOCK = 0;
+    protected static final int ST_INIT = 1;
     protected static final int ST_INIT_TERMING = 2;
     protected static final int ST_RUNNING = 3;
-    protected static final int ST_RUNNING_READ = 4;
-    protected static final int ST_RUNNING_TERMING = 5;
-    protected static final int ST_RUNNING_WRITE = 6;
-    protected static final int ST_COMPLETING = 7;
-    protected static final int ST_RESOLVING = 8;
-    protected static final int ST_RESOLVING_BUSY = 9;
-    protected static final int ST_REJECTING = 10;
-    protected static final int ST_REJECTING_BUSY = 11;
-    protected static final int ST_UNCOMPLETED = 12;
-    protected static final int ST_RESOLVED = 13;
-    protected static final int ST_REJECTED = 14;
+    protected static final int ST_COMPLETING = 4;
+    protected static final int ST_UNCOMPLETED = 5;
+    protected static final int ST_RESOLVED = 6;
+    protected static final int ST_REJECTED = 7;
 
     private final AbstractPromise<?> parent;
     private volatile Object children;
@@ -50,15 +48,16 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
     private volatile Object errorCallbacks;
     @SuppressWarnings("rawtypes")
     private static final AtomicReferenceFieldUpdater<AbstractPromise, Object> ERROR_CALLBACKS = AtomicReferenceFieldUpdater.newUpdater(AbstractPromise.class, Object.class, "errorCallbacks");
-    private volatile Object canceledCallbacks;
-    @SuppressWarnings("rawtypes")
-    private static final AtomicReferenceFieldUpdater<AbstractPromise, Object> CANCELED_CALLBACKS = AtomicReferenceFieldUpdater.newUpdater(AbstractPromise.class, Object.class, "canceledCallbacks");
     private volatile Object finallyCallbacks;
     @SuppressWarnings("rawtypes")
     private static final AtomicReferenceFieldUpdater<AbstractPromise, Object> FINALLY_CALLBACKS = AtomicReferenceFieldUpdater.newUpdater(AbstractPromise.class, Object.class, "finallyCallbacks");
     private volatile Object requestCancelCallback;
     @SuppressWarnings("rawtypes")
     private static final AtomicReferenceFieldUpdater<AbstractPromise, Object> REQUEST_CANCEL_CALLBACK = AtomicReferenceFieldUpdater.newUpdater(AbstractPromise.class, Object.class, "requestCancelCallback");
+    private volatile Object suspendExceptions;
+    @SuppressWarnings("rawtypes")
+    private static final AtomicReferenceFieldUpdater<AbstractPromise, Object> SUSPEND_EXCEPTIONS = AtomicReferenceFieldUpdater.newUpdater(AbstractPromise.class, Object.class, "suspendExceptions");
+    private volatile JContext context;
 
 
     public AbstractPromise(AbstractPromise<?> parent) {
@@ -84,35 +83,41 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         while (true) {
             Object children = this.children;
             if (children instanceof JPromise) {
-                Queue<JPromise<?>> childrenQueue = new UnPaddedLockFreeArrayQueue0<>(2);
-                if (this.children == children && CHILDREN.weakCompareAndSet(this, children, childrenQueue)) {
-                    childrenQueue.offer((JPromise<?>) children);
-                    childrenQueue.offer(child);
+                ImmutableDisposableStack<? extends JPromise<?>> childrenContainer = ImmutableDisposableStack.create(child, (JPromise<?>) children);
+                if (this.children == children && CHILDREN.weakCompareAndSet(this, children, childrenContainer)) {
                     return;
                 }
-            } else if (children instanceof Queue) {
+            } else if (children instanceof ImmutableDisposableStack) {
                 //noinspection unchecked
-                Queue<JPromise<?>> childrenQueue = (Queue<JPromise<?>>) children;
-                childrenQueue.offer(child);
-                return;
-            } else if (children == null && CHILDREN.weakCompareAndSet(this, null, child)) {
-                return;
+                ImmutableDisposableStack<JPromise<?>> childrenContainer = (ImmutableDisposableStack<JPromise<?>>) children;
+                if (this.children == children && CHILDREN.weakCompareAndSet(this, children, childrenContainer.push(child))) {
+                    return;
+                }
+            } else if (children == null) {
+                if (CHILDREN.weakCompareAndSet(this, null, child)) {
+                    return;
+                }
             }
         }
     }
 
-    protected JPromise<?> pollChildren() {
-        while (true) {
-            Object children = this.children;
+    protected void consumeChildren(JContext context) {
+        Object children;
+        do {
+            children = this.children;
             if (children == null) {
-                return null;
-            } else if (children instanceof JPromise && CHILDREN.weakCompareAndSet(this, children ,null)) {
-                return (JPromise<?>) children;
-            } else if (children instanceof Queue) {
-                //noinspection unchecked
-                Queue<JPromise<?>> childrenQueue = (Queue<JPromise<?>>) children;
-                return childrenQueue.poll();
+                return;
             }
+        } while (!CHILDREN.weakCompareAndSet(this, children, null));
+        if (children instanceof JPromise) {
+            ((JPromise<?>) children).schedule(context);
+        } else if (children instanceof ImmutableDisposableStack) {
+            //noinspection unchecked
+            ImmutableDisposableStack<JPromise<?>> stack = (ImmutableDisposableStack<JPromise<?>>) children;
+            do {
+                JPromise<?> promise = stack.top();
+                promise.schedule(context);
+            } while ((stack = stack.pop()) != null);
         }
     }
 
@@ -120,37 +125,59 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         while (true) {
             Object successCallbacks = this.successCallbacks;
             if (successCallbacks instanceof BiConsumer) {
-                Queue<BiConsumer<T, JContext>> callbacks = new UnPaddedLockFreeArrayQueue0<>(2);
+                //noinspection unchecked
+                ImmutableDisposableStack<BiConsumer<T, JContext>> callbacks = ImmutableDisposableStack.create(callback, (BiConsumer<T, JContext>) successCallbacks);
                 if (this.successCallbacks == successCallbacks && SUCCESS_CALLBACKS.weakCompareAndSet(this, successCallbacks, callbacks)) {
-                    //noinspection unchecked
-                    callbacks.offer((BiConsumer<T, JContext>) successCallbacks);
-                    callbacks.offer(callback);
                     return;
                 }
-            } else if (successCallbacks instanceof Queue) {
+            } else if (successCallbacks instanceof ImmutableDisposableStack) {
                 //noinspection unchecked
-                Queue<BiConsumer<T, JContext>> callbacks = (Queue<BiConsumer<T, JContext>>) successCallbacks;
-                callbacks.offer(callback);
-                return;
-            } else if (successCallbacks == null && SUCCESS_CALLBACKS.weakCompareAndSet(this, null, callback)) {
-                return;
+                ImmutableDisposableStack<BiConsumer<T, JContext>> callbacks = (ImmutableDisposableStack<BiConsumer<T, JContext>>) successCallbacks;
+                if (this.successCallbacks == successCallbacks && SUCCESS_CALLBACKS.weakCompareAndSet(this, successCallbacks, callbacks.push(callback))) {
+                    return;
+                }
+            } else if (successCallbacks == null) {
+                if (SUCCESS_CALLBACKS.weakCompareAndSet(this, null, callback)) {
+                    return;
+                }
             }
         }
     }
 
-    protected BiConsumer<T, JContext> pollSuccessCallback() {
-        while (true) {
-            Object successCallbacks = this.successCallbacks;
+    protected void consumeSuccessCallbacks(T value, JContext context) {
+        Object successCallbacks;
+        do {
+            successCallbacks = this.successCallbacks;
             if (successCallbacks == null) {
-                return null;
-            } else if (successCallbacks instanceof BiConsumer && SUCCESS_CALLBACKS.weakCompareAndSet(this, successCallbacks ,null)) {
-                //noinspection unchecked
-                return (BiConsumer<T, JContext>) successCallbacks;
-            } else if (successCallbacks instanceof Queue) {
-                //noinspection unchecked
-                Queue<BiConsumer<T, JContext>> callbacks = (Queue<BiConsumer<T, JContext>>) successCallbacks;
-                return callbacks.poll();
+                return;
             }
+        } while (!SUCCESS_CALLBACKS.weakCompareAndSet(this, successCallbacks, null));
+        JAsyncAfterResolvedException exception = null;
+        if (successCallbacks instanceof BiConsumer) {
+            try {
+                //noinspection unchecked
+                ((BiConsumer<T, JContext>) successCallbacks).accept(value, context);
+            } catch (Throwable t) {
+                exception = new JAsyncAfterResolvedException(value);
+                exception.addSuppressed(t);
+            }
+        } else if (successCallbacks instanceof ImmutableDisposableStack) {
+            //noinspection unchecked
+            ImmutableDisposableStack<BiConsumer<T, JContext>> stack = (ImmutableDisposableStack<BiConsumer<T, JContext>>) successCallbacks;
+            do {
+                BiConsumer<T, JContext> callback = stack.top();
+                try {
+                    callback.accept(value, context);
+                } catch (Throwable t) {
+                    if (exception == null) {
+                        exception = new JAsyncAfterResolvedException(value);
+                    }
+                    exception.addSuppressed(t);
+                }
+            } while ((stack = stack.pop()) != null);
+        }
+        if (exception != null) {
+            throw exception;
         }
     }
 
@@ -158,75 +185,59 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         while (true) {
             Object errorCallbacks = this.errorCallbacks;
             if (errorCallbacks instanceof BiConsumer) {
-                Queue<BiConsumer<Throwable, JContext>> callbacks = new UnPaddedLockFreeArrayQueue0<>(2);
+                //noinspection unchecked
+                ImmutableDisposableStack<BiConsumer<Throwable, JContext>> callbacks = ImmutableDisposableStack.create(callback, (BiConsumer<Throwable, JContext>) errorCallbacks);
                 if (this.errorCallbacks == errorCallbacks && ERROR_CALLBACKS.weakCompareAndSet(this, errorCallbacks, callbacks)) {
-                    //noinspection unchecked
-                    callbacks.offer((BiConsumer<Throwable, JContext>) errorCallbacks);
-                    callbacks.offer(callback);
                     return;
                 }
-            } else if (errorCallbacks instanceof Queue) {
+            } else if (errorCallbacks instanceof ImmutableDisposableStack) {
                 //noinspection unchecked
-                Queue<BiConsumer<Throwable, JContext>> callbacks = (Queue<BiConsumer<Throwable, JContext>>) errorCallbacks;
-                callbacks.offer(callback);
-                return;
-            } else if (errorCallbacks == null && ERROR_CALLBACKS.weakCompareAndSet(this, null, callback)) {
-                return;
+                ImmutableDisposableStack<BiConsumer<Throwable, JContext>> callbacks = (ImmutableDisposableStack<BiConsumer<Throwable, JContext>>) errorCallbacks;
+                if (this.errorCallbacks == errorCallbacks && ERROR_CALLBACKS.weakCompareAndSet(this, errorCallbacks, callbacks.push(callback))) {
+                    return;
+                }
+            } else if (errorCallbacks == null) {
+                if (ERROR_CALLBACKS.weakCompareAndSet(this, null, callback)) {
+                    return;
+                }
             }
         }
     }
 
-    protected BiConsumer<Throwable, JContext> pollErrorCallback() {
-        while (true) {
-            Object errorCallbacks = this.errorCallbacks;
+    protected void consumeErrorCallbacks(Throwable error, JContext context) {
+        Object errorCallbacks;
+        do {
+            errorCallbacks = this.errorCallbacks;
             if (errorCallbacks == null) {
-                return null;
-            } else if (errorCallbacks instanceof BiConsumer && ERROR_CALLBACKS.weakCompareAndSet(this, errorCallbacks ,null)) {
-                //noinspection unchecked
-                return (BiConsumer<Throwable, JContext>) errorCallbacks;
-            } else if (errorCallbacks instanceof Queue) {
-                //noinspection unchecked
-                Queue<BiConsumer<Throwable, JContext>> callbacks = (Queue<BiConsumer<Throwable, JContext>>) errorCallbacks;
-                return callbacks.poll();
+                return;
             }
-        }
-    }
-
-    protected void offerCanceledCallbacks(BiConsumer<InterruptedException, JContext> callback) {
-        while (true) {
-            Object canceledCallbacks = this.canceledCallbacks;
-            if (canceledCallbacks instanceof BiConsumer) {
-                Queue<BiConsumer<InterruptedException, JContext>> callbacks = new UnPaddedLockFreeArrayQueue0<>(2);
-                if (this.canceledCallbacks == canceledCallbacks && CANCELED_CALLBACKS.weakCompareAndSet(this, canceledCallbacks, callbacks)) {
-                    //noinspection unchecked
-                    callbacks.offer((BiConsumer<InterruptedException, JContext>) canceledCallbacks);
-                    callbacks.offer(callback);
-                    return;
+        } while (!ERROR_CALLBACKS.weakCompareAndSet(this, errorCallbacks, null));
+        JAsyncAfterRejectedException exception = null;
+        if (errorCallbacks instanceof BiConsumer) {
+            try {
+                //noinspection unchecked
+                ((BiConsumer<Throwable, JContext>) errorCallbacks).accept(error, context);
+            } catch (Throwable t) {
+                exception = new JAsyncAfterRejectedException(error);
+                exception.addSuppressed(t);
+            }
+        } else if (errorCallbacks instanceof ImmutableDisposableStack) {
+            //noinspection unchecked
+            ImmutableDisposableStack<BiConsumer<Throwable, JContext>> stack = (ImmutableDisposableStack<BiConsumer<Throwable, JContext>>) errorCallbacks;
+            do {
+                BiConsumer<Throwable, JContext> callback = stack.top();
+                try {
+                    callback.accept(error, context);
+                } catch (Throwable t) {
+                    if (exception == null) {
+                        exception = new JAsyncAfterRejectedException(error);
+                    }
+                    exception.addSuppressed(t);
                 }
-            } else if (canceledCallbacks instanceof Queue) {
-                //noinspection unchecked
-                Queue<BiConsumer<InterruptedException, JContext>> callbacks = (Queue<BiConsumer<InterruptedException, JContext>>) canceledCallbacks;
-                callbacks.offer(callback);
-                return;
-            } else if (canceledCallbacks == null && CANCELED_CALLBACKS.weakCompareAndSet(this, null, callback)) {
-                return;
-            }
+            } while ((stack = stack.pop()) != null);
         }
-    }
-
-    protected BiConsumer<InterruptedException, JContext> pollCancelCallback() {
-        while (true) {
-            Object canceledCallbacks = this.canceledCallbacks;
-            if (canceledCallbacks == null) {
-                return null;
-            } else if (canceledCallbacks instanceof BiConsumer && CANCELED_CALLBACKS.weakCompareAndSet(this, canceledCallbacks ,null)) {
-                //noinspection unchecked
-                return (BiConsumer<InterruptedException, JContext>) canceledCallbacks;
-            } else if (canceledCallbacks instanceof Queue) {
-                //noinspection unchecked
-                Queue<BiConsumer<InterruptedException, JContext>> callbacks = (Queue<BiConsumer<InterruptedException, JContext>>) canceledCallbacks;
-                return callbacks.poll();
-            }
+        if (exception != null) {
+            throw exception;
         }
     }
 
@@ -234,37 +245,60 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         while (true) {
             Object finallyCallbacks = this.finallyCallbacks;
             if (finallyCallbacks instanceof TriConsumer) {
-                Queue<TriConsumer<T, Throwable, JContext>> callbacks = new UnPaddedLockFreeArrayQueue0<>(2);
+                //noinspection unchecked
+                ImmutableDisposableStack<TriConsumer<T, Throwable, JContext>> callbacks = ImmutableDisposableStack.create(callback, (TriConsumer<T, Throwable, JContext>) finallyCallbacks);
                 if (this.finallyCallbacks == finallyCallbacks && FINALLY_CALLBACKS.weakCompareAndSet(this, finallyCallbacks, callbacks)) {
-                    //noinspection unchecked
-                    callbacks.offer((TriConsumer<T, Throwable, JContext>) finallyCallbacks);
-                    callbacks.offer(callback);
                     return;
                 }
-            } else if (finallyCallbacks instanceof Queue) {
+            } else if (finallyCallbacks instanceof ImmutableDisposableStack) {
                 //noinspection unchecked
-                Queue<TriConsumer<T, Throwable, JContext>> callbacks = (Queue<TriConsumer<T, Throwable, JContext>>) finallyCallbacks;
-                callbacks.offer(callback);
-                return;
-            } else if (finallyCallbacks == null && FINALLY_CALLBACKS.weakCompareAndSet(this, null, callback)) {
-                return;
+                ImmutableDisposableStack<TriConsumer<T, Throwable, JContext>> callbacks = (ImmutableDisposableStack<TriConsumer<T, Throwable, JContext>>) finallyCallbacks;
+                if (this.finallyCallbacks == finallyCallbacks && FINALLY_CALLBACKS.weakCompareAndSet(this, finallyCallbacks, callbacks.push(callback))) {
+                    return;
+                }
+            } else if (finallyCallbacks == null) {
+                if (FINALLY_CALLBACKS.weakCompareAndSet(this, null, callback)) {
+                    return;
+                }
             }
         }
     }
 
-    protected TriConsumer<T, Throwable, JContext> pollFinallyCallback() {
-        while (true) {
-            Object finallyCallbacks = this.finallyCallbacks;
+    protected void consumeFinallyCallbacks(T value, Throwable error, JContext context, JAsyncException exception) {
+        Object finallyCallbacks;
+        do {
+            finallyCallbacks = this.finallyCallbacks;
             if (finallyCallbacks == null) {
-                return null;
-            } else if (finallyCallbacks instanceof TriConsumer && FINALLY_CALLBACKS.weakCompareAndSet(this, finallyCallbacks ,null)) {
-                //noinspection unchecked
-                return (TriConsumer<T, Throwable, JContext>) finallyCallbacks;
-            } else if (finallyCallbacks instanceof Queue) {
-                //noinspection unchecked
-                Queue<TriConsumer<T, Throwable, JContext>> callbacks = (Queue<TriConsumer<T, Throwable, JContext>>) finallyCallbacks;
-                return callbacks.poll();
+                return;
             }
+        } while (!FINALLY_CALLBACKS.weakCompareAndSet(this, finallyCallbacks, null));
+        if (finallyCallbacks instanceof TriConsumer) {
+            try {
+                //noinspection unchecked
+                ((TriConsumer<T, Throwable, JContext>) finallyCallbacks).accept(value, error, context);
+            } catch (Throwable t) {
+                if (exception == null) {
+                    exception = error == null ? new JAsyncAfterResolvedException(value) : new JAsyncAfterRejectedException(error);
+                }
+                exception.addSuppressed(t);
+            }
+        } else if (finallyCallbacks instanceof ImmutableDisposableStack) {
+            //noinspection unchecked
+            ImmutableDisposableStack<TriConsumer<T, Throwable, JContext>> stack = (ImmutableDisposableStack<TriConsumer<T, Throwable, JContext>>) finallyCallbacks;
+            do {
+                TriConsumer<T, Throwable, JContext> callback = stack.top();
+                try {
+                    callback.accept(value, error, context);
+                } catch (Throwable t) {
+                    if (exception == null) {
+                        exception = error == null ? new JAsyncAfterResolvedException(value) : new JAsyncAfterRejectedException(error);
+                    }
+                    exception.addSuppressed(t);
+                }
+            } while ((stack = stack.pop()) != null);
+        }
+        if (exception != null) {
+            throw exception;
         }
     }
 
@@ -272,35 +306,49 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         while (true) {
             Object requestCancelCallback = this.requestCancelCallback;
             if (requestCancelCallback instanceof Runnable) {
-                Queue<Runnable> callbacks = new UnPaddedLockFreeArrayQueue0<>(2);
+                ImmutableDisposableStack<Runnable> callbacks = ImmutableDisposableStack.create(callback, (Runnable) requestCancelCallback);
                 if (this.requestCancelCallback == requestCancelCallback && REQUEST_CANCEL_CALLBACK.weakCompareAndSet(this, requestCancelCallback, callbacks)) {
-                    callbacks.offer((Runnable) requestCancelCallback);
-                    callbacks.offer(callback);
                     return;
                 }
-            } else if (requestCancelCallback instanceof Queue) {
+            } else if (requestCancelCallback instanceof ImmutableDisposableStack) {
                 //noinspection unchecked
-                Queue<Runnable> callbacks = (Queue<Runnable>) requestCancelCallback;
-                callbacks.offer(callback);
-                return;
-            } else if (requestCancelCallback == null && REQUEST_CANCEL_CALLBACK.weakCompareAndSet(this, null, callback)) {
-                return;
+                ImmutableDisposableStack<Runnable> callbacks = (ImmutableDisposableStack<Runnable>) requestCancelCallback;
+                if (this.requestCancelCallback == requestCancelCallback && REQUEST_CANCEL_CALLBACK.weakCompareAndSet(this, requestCancelCallback, callbacks.push(callback))) {
+                    return;
+                }
+            } else if (requestCancelCallback == null) {
+                if (REQUEST_CANCEL_CALLBACK.weakCompareAndSet(this, null, callback)) {
+                    return;
+                }
             }
         }
     }
 
-    protected Runnable pollRequestCancelCallback() {
-        while (true) {
-            Object requestCancelCallback = this.requestCancelCallback;
+    protected void consumeRequestCancelCallbacks() {
+        Object requestCancelCallback;
+        do {
+            requestCancelCallback = this.requestCancelCallback;
             if (requestCancelCallback == null) {
-                return null;
-            } else if (requestCancelCallback instanceof Runnable && REQUEST_CANCEL_CALLBACK.weakCompareAndSet(this, requestCancelCallback ,null)) {
-                return (Runnable) requestCancelCallback;
-            } else if (requestCancelCallback instanceof Queue) {
-                //noinspection unchecked
-                Queue<Runnable> callbacks = (Queue<Runnable>) requestCancelCallback;
-                return callbacks.poll();
+                return;
             }
+        } while (!REQUEST_CANCEL_CALLBACK.weakCompareAndSet(this, requestCancelCallback, null));
+        if (requestCancelCallback instanceof Runnable) {
+            try {
+                ((Runnable) requestCancelCallback).run();
+            } catch (Throwable t) {
+                t.printStackTrace();
+            }
+        } else if (requestCancelCallback instanceof ImmutableDisposableStack) {
+            //noinspection unchecked
+            ImmutableDisposableStack<Runnable> stack = (ImmutableDisposableStack<Runnable>) requestCancelCallback;
+            do {
+                Runnable callback = stack.top();
+                try {
+                    callback.run();
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                }
+            } while ((stack = stack.pop()) != null);
         }
     }
 
@@ -319,54 +367,6 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         return state == ST_REJECTED && error instanceof InterruptedException;
     }
 
-    private <R> void queueNextPromise(JPromise<R> nextPromise) {
-        while (state < ST_UNCOMPLETED) {
-            if (state == ST_INIT && STATE.weakCompareAndSet(this, ST_INIT, ST_INIT_READ)) {
-                try {
-                    offerChild(nextPromise);
-                    return;
-                } finally {
-                    state = ST_INIT;
-                }
-            } else if (state == ST_INIT_TERMING && STATE.weakCompareAndSet(this, ST_INIT_TERMING, ST_INIT_READ)) {
-                try {
-                    offerChild(nextPromise);
-                    return;
-                } finally {
-                    state = ST_INIT_TERMING;
-                }
-            } else if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_RUNNING_READ)) {
-                try {
-                    offerChild(nextPromise);
-                    return;
-                } finally {
-                    state = ST_RUNNING;
-                }
-            } else if (state == ST_RUNNING_TERMING && STATE.weakCompareAndSet(this, ST_RUNNING_TERMING, ST_RUNNING_READ)) {
-                try {
-                    offerChild(nextPromise);
-                    return;
-                } finally {
-                    state = ST_RUNNING_TERMING;
-                }
-            } else if (state == ST_RESOLVING && STATE.weakCompareAndSet(this, ST_RESOLVING, ST_RESOLVING_BUSY)) {
-                try {
-                    offerChild(nextPromise);
-                    return;
-                } finally {
-                    state = ST_RESOLVING;
-                }
-            } else if (state == ST_REJECTING && STATE.weakCompareAndSet(this, ST_REJECTING, ST_REJECTING_BUSY)) {
-                try {
-                    offerChild(nextPromise);
-                    return;
-                } finally {
-                    state = ST_REJECTING;
-                }
-            }
-        }
-    }
-
     private <R> void thenCreator(JThunk<R> thunk, JContext context, JAsyncPromiseFunction1<T, R> mapper) {
         if (isResolved()) {
             try {
@@ -374,7 +374,6 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
                 next = next != null ? next : JPromise.empty();
                 next.onError(thunk::reject)
                         .onSuccess(thunk::resolve)
-                        .onCanceled((BiConsumer<InterruptedException, JContext>) thunk::interrupt)
                         .async(context);
                 thunk.onRequestCancel(next::cancel);
             } catch (Throwable throwable) {
@@ -392,7 +391,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         JPromise<R> nextPromise = immediate
                 ? generate((thunk, context) -> thenCreator(thunk, context, mapper), this)
                 : create((jThunk, context) -> thenCreator(jThunk, context, mapper), delay, timeUnit, this);
-        queueNextPromise(nextPromise);
+        offerChild(nextPromise);
         assert state != ST_UNCOMPLETED;
         return nextPromise;
     }
@@ -416,7 +415,6 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
                 next = next != null ? next : JPromise.empty();
                 next.onError(thunk::reject)
                         .onSuccess(thunk::resolve)
-                        .onCanceled((BiConsumer<InterruptedException, JContext>) thunk::interrupt)
                         .async(context);
                 thunk.onRequestCancel(next::cancel);
             } catch (Throwable t) {
@@ -433,7 +431,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         JPromise<T> nextPromise = immediate
                 ? generate((jThunk, context) -> catchCreator(jThunk, context, catcher), this)
                 : create((jThunk, context) -> catchCreator(jThunk, context, catcher), this);
-        queueNextPromise(nextPromise);
+        offerChild(nextPromise);
         assert state != ST_UNCOMPLETED;
         return nextPromise;
     }
@@ -446,7 +444,6 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
             next = next != null ? next : JPromise.empty();
             next.onError(thunk::reject)
                     .onSuccess(thunk::resolve)
-                    .onCanceled((BiConsumer<InterruptedException, JContext>) thunk::interrupt)
                     .async(context);
             thunk.onRequestCancel(next::cancel);
         } catch (Throwable throwable) {
@@ -462,7 +459,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         JPromise<R> nextPromise = immediate
                 ? generate((thunk, context) -> thenOrCatchCreator(thunk, context, handler), this)
                 : create((jThunk, context) -> thenOrCatchCreator(jThunk, context, handler), this);
-        queueNextPromise(nextPromise);
+        offerChild(nextPromise);
         assert state != ST_UNCOMPLETED;
         return nextPromise;
     }
@@ -474,12 +471,10 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
             if (isResolved()) {
                 next.onSuccess((ignored, ctx) -> thunk.resolve(value, ctx))
                         .onError(thunk::reject)
-                        .onCanceled((BiConsumer<InterruptedException, JContext>) thunk::interrupt)
                         .async(context);
             } else {
                 next.onSuccess((ignored, ctx) -> thunk.reject(error, ctx))
                         .onError(thunk::reject)
-                        .onCanceled((BiConsumer<InterruptedException, JContext>) thunk::interrupt)
                         .async(context);
             }
             thunk.onRequestCancel(next::cancel);
@@ -496,46 +491,26 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         JPromise<T> nextPromise = immediate
                 ? generate((jThunk, context) -> finallyCreator(jThunk, context, supplier), this)
                 : create((jThunk, context) -> finallyCreator(jThunk, context, supplier), this);
-        queueNextPromise(nextPromise);
+        offerChild(nextPromise);
         assert state != ST_UNCOMPLETED;
         return nextPromise;
     }
 
-    private void checkUncompleted(String errorMessage) {
-        if (state > ST_COMPLETING) {
-            throw new IllegalStateException(errorMessage);
-        }
-    }
-
     @Override
     public JPromise<T> onSuccess(BiConsumer<T, JContext> callback) {
-        checkUncompleted("onSuccess must called before promise completed.");
         offerSuccessCallbacks(callback);
-        checkUncompleted("onSuccess must called before promise completed.");
         return this;
     }
 
     @Override
     public JPromise<T> onError(BiConsumer<Throwable, JContext> callback) {
-        checkUncompleted("onError must called before promise completed.");
         offerErrorCallbacks(callback);
-        checkUncompleted("onError must called before promise completed.");
         return this;
     }
 
     @Override
     public JPromise<T> onFinally(TriConsumer<T, Throwable, JContext> callback) {
-        checkUncompleted("onFinally must called before promise completed.");
         offerFinallyCallbacks(callback);
-        checkUncompleted("onFinally must called before promise completed.");
-        return this;
-    }
-
-    @Override
-    public JPromise<T> onCanceled(BiConsumer<InterruptedException, JContext> callback) {
-        checkUncompleted("onCanceled must called before promise completed.");
-        offerCanceledCallbacks(callback);
-        checkUncompleted("onCanceled must called before promise completed.");
         return this;
     }
 
@@ -544,31 +519,26 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         offerRequestCancelCallback(runnable);
     }
 
-    /**
-     * try to schedule if has not scheduled.
-     * @param context promise context
-     * @return false if success, true if not.
-     */
-    protected boolean trySchedule(JContext context) {
-        while (true) {
-            if (state == ST_INIT && STATE.weakCompareAndSet(this, ST_INIT, ST_RUNNING)) {
-                run(context);
-                return false;
-            } else if (state == ST_INIT_TERMING && STATE.weakCompareAndSet(this, ST_INIT_TERMING, ST_RUNNING_TERMING)) {
-                reject(new InterruptedException(), context);
-                return false;
-            } else if (state == ST_RUNNING || state == ST_RUNNING_TERMING) {
-                return false;
-            } else if (state > ST_COMPLETING) {
-                return true;
-            }
-        }
-    }
-
     @Override
     public void schedule(JContext context) {
-        if (trySchedule(context)) {
-            throw new IllegalStateException("The promise has already been scheduled.");
+        while (true) {
+            if (state == ST_INIT && STATE.weakCompareAndSet(this, ST_INIT, ST_RUNNING)) {
+                this.context = context;
+                run(context);
+                break;
+            } else if (state == ST_INIT_TERMING && STATE.weakCompareAndSet(this, ST_INIT_TERMING, ST_RUNNING)) {
+                this.context = context;
+                reject(new InterruptedException(), context);
+                break;
+            } else if (state == ST_RUNNING) {
+                break;
+            } else if (state == ST_RESOLVED) {
+                afterResolved(context);
+                break;
+            } else if (state == ST_REJECTED) {
+                afterRejected(context);
+                break;
+            }
         }
     }
 
@@ -582,6 +552,25 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         return state == ST_REJECTED;
     }
 
+    private void afterResolved(JContext context) {
+        JAsyncAfterResolvedException exception = null;
+        try {
+            consumeSuccessCallbacks(value, context);
+        } catch (JAsyncAfterResolvedException e) {
+            exception = e;
+        } finally {
+            try {
+                consumeFinallyCallbacks(value, null, context, exception);
+            } catch (JAsyncAfterResolvedException e) {
+                exception = e;
+            }
+        }
+        if (exception != null) {
+            offerSuspendException(exception);
+        }
+        consumeChildren(context);
+    }
+
     @Override
     public void resolve(T result, JContext context) {
         if (state < ST_RUNNING) {
@@ -589,65 +578,39 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         }
         boolean processed = false;
         while (state < ST_UNCOMPLETED) {
-            if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_RUNNING_WRITE)) {
+            if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_LOCK)) {
                 try {
                     this.value = result;
+                    this.context = null;
                     processed = true;
                     break;
                 } finally {
-                    state = ST_RESOLVING;
+                    state = ST_RESOLVED;
                 }
-            } else if (state == ST_RUNNING_TERMING) {
-                reject(new InterruptedException(), context);
-            } else if (state == ST_RESOLVING || state == ST_REJECTING) {
-                break;
             }
         }
         if (processed) {
-            BiConsumer<T, JContext> successCallback;
-            JAsyncAfterResolvedException exception = null;
-            while ((successCallback = pollSuccessCallback()) != null) {
-                try {
-                    successCallback.accept(value, context);
-                } catch (Throwable t) {
-                    if (exception == null) {
-                        exception = new JAsyncAfterResolvedException(value);
-                    }
-                    exception.addSuppressed(t);
-                }
-            }
-            TriConsumer<T, Throwable, JContext> finallyCallback;
-            while ((finallyCallback = pollFinallyCallback()) != null) {
-                try {
-                    finallyCallback.accept(value, null, context);
-                } catch (Throwable t) {
-                    if (exception == null) {
-                        exception = new JAsyncAfterResolvedException(value);
-                    }
-                    exception.addSuppressed(t);
-                }
-            }
-            if (exception != null) {
-                value = null;
-                error = exception;
-                while (true) {
-                    if (state == ST_RESOLVING && STATE.weakCompareAndSet(this, ST_RESOLVING, ST_REJECTED)) {
-                        break;
-                    }
-                }
-                exception.printStackTrace();
-            } else {
-                while (true) {
-                    if (state == ST_RESOLVING && STATE.weakCompareAndSet(this, ST_RESOLVING, ST_RESOLVED)) {
-                        break;
-                    }
-                }
-            }
-            JPromise<?> promise;
-            while ((promise = pollChildren()) != null) {
-                promise.schedule(context);
+            afterResolved(context);
+        }
+    }
+
+    private void afterRejected(JContext context) {
+        JAsyncAfterRejectedException exception = null;
+        try {
+            consumeErrorCallbacks(error, context);
+        } catch (JAsyncAfterRejectedException e) {
+            exception = e;
+        } finally {
+            try {
+                consumeFinallyCallbacks(null, error, context, exception);
+            } catch (JAsyncAfterRejectedException e) {
+                exception = e;
             }
         }
+        if (exception != null) {
+            offerSuspendException(exception);
+        }
+        consumeChildren(context);
     }
 
     @Override
@@ -658,82 +621,69 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         context.fixException(error);
         boolean processed = false;
         while (state < ST_UNCOMPLETED) {
-            if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_RUNNING_WRITE)) {
+            if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_LOCK)) {
                 try {
                     this.error = error;
+                    this.context = null;
                     processed = true;
                     break;
                 } finally {
-                    state = ST_REJECTING;
+                    state = ST_REJECTED;
                 }
-            } else if (state == ST_RUNNING_TERMING && STATE.weakCompareAndSet(this, ST_RUNNING_TERMING, ST_RUNNING_WRITE)) {
-                try {
-                    if (!(error instanceof InterruptedException)) {
-                        InterruptedException newError = new InterruptedException();
-                        newError.addSuppressed(error);
-                        error = newError;
-                    }
-                    this.error = error;
-                    processed = true;
-                    break;
-                } finally {
-                    state = ST_REJECTING;
-                }
-            } else if (state == ST_RESOLVING || state == ST_REJECTING) {
-                break;
             }
         }
         if (processed) {
-            JAsyncException exception = null;
-            if (this.error instanceof InterruptedException) {
-                BiConsumer<InterruptedException, JContext> cancelCallback;
-                while ((cancelCallback = pollCancelCallback()) != null) {
-                    try {
-                        cancelCallback.accept((InterruptedException) this.error, context);
-                    } catch (Throwable t) {
-                        if (exception == null) {
-                            exception = new JAsyncAfterCanceledException();
-                        }
-                        exception.addSuppressed(t);
-                    }
-                }
-            } else {
-                BiConsumer<Throwable, JContext> errorCallback;
-                while ((errorCallback = pollErrorCallback()) != null) {
-                    try {
-                        errorCallback.accept(this.error, context);
-                    } catch (Throwable t) {
-                        if (exception == null) {
-                            exception = new JAsyncAfterRejectedException(this.error);
-                        }
-                        exception.addSuppressed(t);
-                    }
-                }
-            }
-            TriConsumer<T, Throwable, JContext> finallyCallback;
-            while ((finallyCallback = pollFinallyCallback()) != null) {
-                try {
-                    finallyCallback.accept(null, this.error, context);
-                } catch (Throwable t) {
-                    if (exception == null) {
-                        exception = new JAsyncAfterRejectedException(this.error);
-                    }
-                    exception.addSuppressed(t);
-                }
-            }
-            if (exception != null) {
-                this.error = exception;
-            }
-            while (true) {
-                if (state == ST_REJECTING && STATE.weakCompareAndSet(this, ST_REJECTING, ST_REJECTED)) {
-                    break;
-                }
-            }
-            JPromise<?> promise;
-            while ((promise = pollChildren()) != null) {
-                promise.schedule(context);
-            }
+            afterRejected(context);
         }
+    }
+
+    private void offerSuspendException(Throwable t) {
+        if (parent == null) {
+            while (true) {
+                Object suspendExceptions = this.suspendExceptions;
+                if (suspendExceptions instanceof Throwable) {
+                    ImmutableDisposableStack<Throwable> throwables = ImmutableDisposableStack.create(t, (Throwable) suspendExceptions);
+                    if (this.suspendExceptions == suspendExceptions && SUSPEND_EXCEPTIONS.weakCompareAndSet(this, suspendExceptions, throwables)) {
+                        return;
+                    }
+                } else if (suspendExceptions instanceof ImmutableDisposableStack) {
+                    //noinspection unchecked
+                    ImmutableDisposableStack<Throwable> throwables = (ImmutableDisposableStack<Throwable>) suspendExceptions;
+                    if (this.suspendExceptions == suspendExceptions && SUSPEND_EXCEPTIONS.weakCompareAndSet(this, suspendExceptions, throwables.push(t))) {
+                        return;
+                    }
+                } else if (suspendExceptions == null) {
+                    if (SUSPEND_EXCEPTIONS.weakCompareAndSet(this, null, t)) {
+                        return;
+                    }
+                }
+            }
+        } else {
+            parent.offerSuspendException(t);
+        }
+    }
+
+    @Override
+    public List<Throwable> getSuspendThrowables() {
+        Object suspendExceptions;
+        do {
+            suspendExceptions = this.suspendExceptions;
+            if (suspendExceptions == null) {
+                return Collections.emptyList();
+            }
+        } while (!SUSPEND_EXCEPTIONS.weakCompareAndSet(this, suspendExceptions, null));
+        List<Throwable> throwables = new ArrayList<>();
+        if (suspendExceptions instanceof Throwable) {
+            throwables.add((Throwable) suspendExceptions);
+        } else {
+            //noinspection unchecked
+            ImmutableDisposableStack<Throwable> stack = (ImmutableDisposableStack<Throwable>) suspendExceptions;
+            do {
+                Throwable throwable = stack.top();
+                throwables.add(throwable);
+            } while ((stack = stack.pop()) != null);
+        }
+        return throwables;
     }
 
     protected abstract void dispose();
@@ -743,14 +693,28 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
             boolean running = false;
             boolean processed = false;
             while (true) {
+                int state = this.state;
                 if (state == ST_INIT && STATE.weakCompareAndSet(this, ST_INIT, ST_INIT_TERMING)) {
                     processed = parent == null;
                     break;
-                } else if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_RUNNING_TERMING)) {
-                    running = true;
-                    processed = true;
+                } else if (state == ST_RUNNING) {
+                    while (true) {
+                        JContext context = this.context;
+                        if (context != null) {
+                            InterruptedException exception = new InterruptedException();
+                            reject(exception, context);
+                            if (error == exception) {
+                                running = true;
+                                processed = true;
+                                break;
+                            }
+                        }
+                        if (this.state > ST_COMPLETING) {
+                            break;
+                        }
+                    }
                     break;
-                } else if (state == ST_INIT_TERMING || state == ST_RUNNING_TERMING) {
+                } else if (state == ST_INIT_TERMING) {
                     processed = true;
                     break;
                 } else if (state > ST_COMPLETING) {
@@ -759,14 +723,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
             }
             if (running) {
                 dispose();
-                Runnable callback;
-                while ((callback = pollRequestCancelCallback()) != null) {
-                    try {
-                        callback.run();
-                    } catch (Throwable t) {
-                        t.printStackTrace();
-                    }
-                }
+                consumeRequestCancelCallbacks();
             }
             return !processed;
         } else {
@@ -783,7 +740,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
     public T block(JContext context) throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(1);
         while (state < ST_COMPLETING) {
-            if (state == ST_INIT && STATE.weakCompareAndSet(this, ST_INIT, ST_INIT_READ)) {
+            if (state == ST_INIT && STATE.weakCompareAndSet(this, ST_INIT, ST_LOCK)) {
                 try {
                     onFinally((v, e, ctx) -> {
                         latch.countDown();
@@ -794,7 +751,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
                     async(context);
                     latch.await();
                 }
-            } else if (state == ST_INIT_TERMING && STATE.weakCompareAndSet(this, ST_INIT_TERMING, ST_INIT_READ)) {
+            } else if (state == ST_INIT_TERMING && STATE.weakCompareAndSet(this, ST_INIT_TERMING, ST_LOCK)) {
                 try {
                     onFinally((v, e, ctx) -> {
                         latch.countDown();
@@ -805,7 +762,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
                     async(context);
                     latch.await();
                 }
-            } else if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_RUNNING_READ)) {
+            } else if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_LOCK)) {
                 try {
                     onFinally((v, e, ctx) -> {
                         latch.countDown();
@@ -813,16 +770,6 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
                     break;
                 } finally {
                     state = ST_RUNNING;
-                    latch.await();
-                }
-            } else if (state == ST_RUNNING_TERMING && STATE.weakCompareAndSet(this, ST_RUNNING_TERMING, ST_RUNNING_READ)) {
-                try {
-                    onFinally((v, e, ctx) -> {
-                        latch.countDown();
-                    });
-                    break;
-                } finally {
-                    state = ST_RUNNING_TERMING;
                     latch.await();
                 }
             }
@@ -848,17 +795,13 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         return value;
     }
 
-    protected boolean tryAsync(JContext context) {
-        if (parent == null || parent.tryAsync(context)) {
-            return trySchedule(context);
-        } else {
-            return false;
-        }
-    }
-
     @Override
     public JHandle<T> async(JContext context) {
-        tryAsync(context);
+        if (parent == null) {
+            schedule(context);
+        } else {
+            parent.async(context);
+        }
         return this;
     }
 }

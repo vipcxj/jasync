@@ -1,9 +1,6 @@
 package io.github.vipcxj.jasync.ng.spec.spi;
 
-import io.github.vipcxj.jasync.ng.spec.JContext;
-import io.github.vipcxj.jasync.ng.spec.JPromise;
-import io.github.vipcxj.jasync.ng.spec.JPromiseTrigger;
-import io.github.vipcxj.jasync.ng.spec.JThunk;
+import io.github.vipcxj.jasync.ng.spec.*;
 import io.github.vipcxj.jasync.ng.spec.functional.JAsyncPortalTask1;
 
 import java.util.Arrays;
@@ -35,4 +32,5 @@ public interface JPromiseSupport extends PrioritySupport {
     <T> JPromise<T> generate(BiConsumer<JThunk<T>, JContext> handler);
     <T>JPromiseTrigger<T> createTrigger();
     int generateId();
+    JAsyncReadWriteLock readWriteLock();
 }

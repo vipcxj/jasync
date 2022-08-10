@@ -37,6 +37,11 @@ public class Context implements JContext {
     }
 
     @Override
+    public long id() {
+        return mutable.getId();
+    }
+
+    @Override
     public <T> T get(Object key) {
         return contextMap.get(key);
     }
@@ -183,8 +188,23 @@ public class Context implements JContext {
     }
 
     @Override
-    public JContext cloneMutable() {
+    public JContext fork() {
         return new Context(mutable.copy(), contextMap, scheduler, localsStack, portalMap);
+    }
+
+    @Override
+    public int getSharedLockCount() {
+        return mutable.getSharedLockCount();
+    }
+
+    @Override
+    public void incSharedLockCount() {
+        mutable.incSharedLockCount();
+    }
+
+    @Override
+    public void decSharedLockCount() {
+        mutable.decSharedLockCount();
     }
 
     @Override
@@ -218,6 +238,4 @@ public class Context implements JContext {
             throwable.setStackTrace(newStackTrace);
         }
     }
-
-
 }

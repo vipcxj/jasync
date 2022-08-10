@@ -29,7 +29,7 @@ public class RacePromiseTask<T> implements Task<T> {
         for (JPromise<? extends T> promise : promises) {
             promise.onSuccess((v, ctx) -> {
                 if (STATE_UPDATER.compareAndSet(this, 0, 1)) {
-                    thunk.resolve(v, ctx);
+                    thunk.resolve(v, context);
                     for (JPromise<? extends T> promise1 : promises) {
                         if (promise1 != promise) {
                             promise1.cancel();
@@ -38,23 +38,14 @@ public class RacePromiseTask<T> implements Task<T> {
                 }
             }).onError((error, ctx) -> {
                 if (STATE_UPDATER.compareAndSet(this, 0, -1)) {
-                    thunk.reject(error, ctx);
+                    thunk.reject(error, context);
                     for (JPromise<? extends T> promise1 : promises) {
                         if (promise1 != promise) {
                             promise1.cancel();
                         }
                     }
                 }
-            }).onCanceled((e, ctx) -> {
-                if (STATE_UPDATER.compareAndSet(this, 0, -1)) {
-                    thunk.interrupt(e, ctx);
-                    for (JPromise<? extends T> promise1 : promises) {
-                        if (promise1 != promise) {
-                            promise1.cancel();
-                        }
-                    }
-                }
-            }).async(context.cloneMutable());
+            }).async(context.fork());
         }
     }
 

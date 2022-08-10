@@ -41,21 +41,15 @@ public class AnyPromiseTask<T> implements Task<T> {
                             promise2.cancel();
                         }
                     }
-                    thunk.resolve(v, ctx);
+                    thunk.resolve(v, context);
                 }
             }).onError((error, ctx) -> {
                 int errorNum = ERROR_NUM_UPDATER.incrementAndGet(this);
                 errors.set(finalI, error);
                 if (errorNum == promises.size()) {
-                    thunk.reject(new JAsyncCompositeException(errors), ctx);
+                    thunk.reject(new JAsyncCompositeException(errors), context);
                 }
-            }).onCanceled((e, ctx) -> {
-                int errorNum = ERROR_NUM_UPDATER.incrementAndGet(this);
-                errors.set(finalI, e);
-                if (errorNum == promises.size()) {
-                    thunk.reject(new JAsyncCompositeException(errors), ctx);
-                }
-            }).async(context.cloneMutable());
+            }).async(context.fork());
             ++i;
         }
     }

@@ -59,6 +59,9 @@ public interface JPromise<T> extends JHandle<T> {
     static <T> JPromise<T> jump(int jumpIndex, Object... localVars) {
         return updateContext(ctx -> ctx.pushLocals(localVars)).thenImmediate(ctx -> ctx.jump(jumpIndex));
     }
+    static JAsyncReadWriteLock readWriteLock() {
+        return provider.readWriteLock();
+    }
     static <T> JPromise<T> methodDebugInfo(JAsyncPromiseSupplier1<T> supplier, String declaringClassQualifiedName, String method, String fileName) {
         return updateContext(ctx -> ctx.pushStackFrame(declaringClassQualifiedName, method, fileName)).thenWithContextImmediate(supplier).withUpdateContext(JContext::popStackFrame);
     }
@@ -580,14 +583,6 @@ public interface JPromise<T> extends JHandle<T> {
     }
     default JPromise<T> onFinally(BiConsumer<T, Throwable> runnable) {
         return onFinally((v, e, ctx) -> runnable.accept(v, e));
-    }
-
-    JPromise<T> onCanceled(BiConsumer<InterruptedException, JContext> runnable);
-    default JPromise<T> onCanceled(Consumer<JContext> callback) {
-        return onCanceled((e, context) -> callback.accept(context));
-    }
-    default JPromise<T> onCanceled(Runnable callback) {
-        return onCanceled((e, context) -> callback.run());
     }
 
     void schedule(JContext context);

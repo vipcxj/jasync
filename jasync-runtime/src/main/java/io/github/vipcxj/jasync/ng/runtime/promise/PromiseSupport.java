@@ -1,11 +1,9 @@
 package io.github.vipcxj.jasync.ng.runtime.promise;
 
 import com.google.auto.service.AutoService;
+import io.github.vipcxj.jasync.ng.runtime.concurrent.ReentrantReadWriteLock;
 import io.github.vipcxj.jasync.ng.runtime.schedule.*;
-import io.github.vipcxj.jasync.ng.spec.JContext;
-import io.github.vipcxj.jasync.ng.spec.JPromise;
-import io.github.vipcxj.jasync.ng.spec.JPromiseTrigger;
-import io.github.vipcxj.jasync.ng.spec.JThunk;
+import io.github.vipcxj.jasync.ng.spec.*;
 import io.github.vipcxj.jasync.ng.spec.functional.JAsyncPortalTask1;
 import io.github.vipcxj.jasync.ng.spec.spi.JPromiseSupport;
 
@@ -72,5 +70,10 @@ public class PromiseSupport implements JPromiseSupport {
     @Override
     public int generateId() {
         return CURRENT_ID.getAndIncrement();
+    }
+
+    @Override
+    public JAsyncReadWriteLock readWriteLock() {
+        return new ReentrantReadWriteLock();
     }
 }

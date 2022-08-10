@@ -185,7 +185,7 @@ public class PromiseTest {
             new Thread(() -> {
                 try {
                     Thread.sleep(1000);
-                    one.cancel();
+                    delay.cancel();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -204,13 +204,14 @@ public class PromiseTest {
             sleep(1000, thunk, context);
             System.out.println("Sleep 1000");
         });
-        sleep3.async();
-        sleep1.async();
+        JHandle<Object> handle3 = sleep3.then(() -> sleep1).then(() -> {
+            System.out.println("After sleep 1000");
+            return JPromise.empty();
+        }).async();
+        JHandle<Void> handle1 = sleep1.async();
         try {
-            sleep3.then(() -> sleep1).then(() -> {
-                System.out.println("After sleep 1000");
-                return JPromise.empty();
-            }).block();
+            handle3.block();
+            handle1.block();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -349,5 +350,90 @@ public class PromiseTest {
         } catch (InterruptedException e) {
             thunk.reject(e, context);
         }
+    }
+
+    JPromise<Void> task(JAsyncReadWriteLock lock, AtomicInteger iter, int target) {
+        return lock.readLock().lock().then(() -> {
+            iter.incrementAndGet();
+            return JPromise.sleep(2, TimeUnit.SECONDS).thenWithContext((ctx) -> {
+                Assertions.assertEquals(target, iter.get());
+                Assertions.assertFalse(lock.writeLock().tryLock(ctx));
+                lock.readLock().unlock(ctx);
+                return JPromise.empty();
+            });
+        });
+    }
+
+    @Test
+    void testReadLock() throws InterruptedException {
+        JAsyncReadWriteLock lock = JPromise.readWriteLock();
+        AtomicInteger iter = new AtomicInteger();
+        List<JHandle<Void>> handles = new ArrayList<>();
+        for (int i = 0; i < 10; ++i) {
+            JHandle<Void> handle = task(lock, iter, 10).async();
+            handles.add(handle);
+        }
+        for (JHandle<Void> handle : handles) {
+            handle.block();
+        }
+    }
+
+    @Test
+    void testWriteLock() throws InterruptedException {
+        JAsyncReadWriteLock lock = JPromise.readWriteLock();
+        AtomicInteger iter = new AtomicInteger();
+        List<JHandle<Void>> handles = new ArrayList<>();
+        for (int i = 0; i < 5; ++i) {
+            JHandle<Void> handle = task(lock, iter, 5).async();
+            handles.add(handle);
+        }
+        JPromise.sleep(500, TimeUnit.MILLISECONDS).thenWithContextImmediate((ctx1) -> {
+            System.out.println(ctx1.id());
+            return lock.writeLock().lock().then(() -> {
+                int i = iter.incrementAndGet();
+                return JPromise.sleep(1, TimeUnit.SECONDS).thenWithContext(ctx2 -> {
+                    Assertions.assertEquals(i, iter.get());
+                    lock.writeLock().unlock(ctx2);
+                    return JPromise.empty();
+                });
+            });
+        }).block();
+        for (JHandle<Void> handle : handles) {
+            Assertions.assertTrue(handle.isResolved());
+        }
+    }
+
+    @Test
+    void testLock() throws InterruptedException {
+        JAsyncReadWriteLock lock = JPromise.readWriteLock();
+        List<JHandle<Void>> handles = new ArrayList<>();
+        long[] res = new long[1];
+        for (int i = 0; i < 10000; ++i) {
+            JPromise<Void> promise = lock.writeLock().lock().thenWithContextImmediate((ctx) -> {
+                for (int j = 0; j < 100000; ++j) {
+                    ++res[0];
+                }
+                lock.writeLock().unlock(ctx);
+                return JPromise.empty();
+            });
+            handles.add(promise.async());
+        }
+        for (JHandle<Void> handle : handles) {
+            handle.block();
+        }
+        Assertions.assertEquals(10000L * 100000L, res[0]);
+        for (int i = 0; i < 10000; ++i) {
+            JPromise<Void> promise = JPromise.empty().then(() -> {
+                for (int j = 0; j < 100000L; ++j) {
+                    ++res[0];
+                }
+                return JPromise.empty();
+            });
+            handles.add(promise.async());
+        }
+        for (JHandle<Void> handle : handles) {
+            handle.block();
+        }
+        System.out.println(res[0]);
     }
 }

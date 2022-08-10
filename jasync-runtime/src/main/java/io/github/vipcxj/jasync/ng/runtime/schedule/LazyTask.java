@@ -4,6 +4,8 @@ import io.github.vipcxj.jasync.ng.spec.JContext;
 import io.github.vipcxj.jasync.ng.spec.JDisposable;
 import io.github.vipcxj.jasync.ng.spec.JScheduler;
 import io.github.vipcxj.jasync.ng.spec.JThunk;
+import io.github.vipcxj.schedule.EventHandle;
+import io.github.vipcxj.schedule.Schedule;
 
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -54,17 +56,12 @@ public class LazyTask<T> implements Task<T> {
                 if (scheduler.supportDelay()) {
                     disposable = scheduler.schedule(() -> doSchedule(thunk, context), delay, timeUnit);
                 } else {
-                    FutureTask<JDisposable> futureTask = new FutureTask<>(() -> {
-                        try {
-                            timeUnit.sleep(delay);
-                            return scheduler.schedule(() -> doSchedule(thunk, context));
-                        } catch (InterruptedException e) {
-                            thunk.interrupt(e, context);
-                            return null;
-                        }
+                    final EventHandlerDisposable disposable = new EventHandlerDisposable();
+                    EventHandle handle = Schedule.instance().addEvent(delay, timeUnit, () -> {
+                        scheduler.schedule(() -> doSchedule(thunk, context));
                     });
-                    new Thread(futureTask).start();
-                    disposable = new DisposableDisposable(futureTask);
+                    disposable.updateHandle(handle);
+                    this.disposable = disposable;
                 }
             } else {
                 disposable = scheduler.schedule(() -> doSchedule(thunk, context));

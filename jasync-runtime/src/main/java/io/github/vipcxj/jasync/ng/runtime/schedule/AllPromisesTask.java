@@ -41,7 +41,7 @@ public class AllPromisesTask<T> implements Task<List<T>> {
                         //noinspection unchecked
                         result.add((T) value);
                     }
-                    thunk.resolve(result, ctx);
+                    thunk.resolve(result, context);
                 }
             }).onError((error, ctx) -> {
                 if (REJECTED_UPDATER.compareAndSet(this, 0, 1)) {
@@ -50,18 +50,9 @@ public class AllPromisesTask<T> implements Task<List<T>> {
                             promise2.cancel();
                         }
                     }
-                    thunk.reject(error, ctx);
+                    thunk.reject(error, context);
                 }
-            }).onCanceled((e, ctx) -> {
-                if (REJECTED_UPDATER.compareAndSet(this, 0, 1)) {
-                    for (JPromise<? extends T> promise2 : promises) {
-                        if (promise2 != promise) {
-                            promise2.cancel();
-                        }
-                    }
-                    thunk.interrupt(e, ctx);
-                }
-            }).async(context.cloneMutable());
+            }).async(context.fork());
         }
 
     }

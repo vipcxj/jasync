@@ -1,21 +1,43 @@
 package io.github.vipcxj.jasync.ng.runtime.context;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public class ContextMutable {
+    private static final AtomicLong ROUTINE_ID_GEN = new AtomicLong();
     private final ArrayStack<StackFrame> stackTraces;
     private Throwable lastError;
+    private final long id;
+    private int sharedLockCount;
 
     public ContextMutable(boolean supportStackTrace) {
+        this.id = ROUTINE_ID_GEN.incrementAndGet();
         this.stackTraces = supportStackTrace ? new ArrayStack<>(12) : null;
         this.lastError = null;
     }
 
     private ContextMutable(ContextMutable mutable) {
+        this.id = ROUTINE_ID_GEN.incrementAndGet();
         this.stackTraces = mutable.stackTraces != null ? mutable.stackTraces.copy() : null;
         this.lastError = mutable.lastError;
+        this.sharedLockCount = 0;
     }
 
     public ContextMutable copy() {
         return new ContextMutable(this);
+    }
+
+    public long getId() {
+        return id;
+    }
+
+    public int getSharedLockCount() {
+        return sharedLockCount;
+    }
+    public void incSharedLockCount() {
+        ++sharedLockCount;
+    }
+    public void decSharedLockCount() {
+        --sharedLockCount;
     }
 
     public boolean supportStackTrace() {

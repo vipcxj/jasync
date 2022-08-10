@@ -1,5 +1,7 @@
 package io.github.vipcxj.jasync.ng.spec;
 
+import java.util.List;
+
 public interface JHandle<T> {
     boolean isResolved();
     boolean isRejected();
@@ -14,4 +16,5 @@ public interface JHandle<T> {
     }
     T getValue();
     Throwable getError();
+    List<Throwable> getSuspendThrowables();
 }
