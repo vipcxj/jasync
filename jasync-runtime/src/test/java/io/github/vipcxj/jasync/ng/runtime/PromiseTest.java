@@ -163,6 +163,7 @@ public class PromiseTest {
 
     @Test
     public void test5() throws InterruptedException {
+        System.out.println("test5 starting");
         JPromise<Integer> one = JPromise.just(1);
         Integer two = one.then(v0 -> one.thenMap(v1 -> v0 + v1)).block();
         Assertions.assertEquals(2, two);
@@ -171,12 +172,14 @@ public class PromiseTest {
 
     @Test
     public void test6() throws InterruptedException {
+        System.out.println("test6 starting");
         Assertions.assertEquals(1, JPromise.just(1).block());
         System.out.println("test6 completed");
     }
 
     @Test
     public void test7() {
+        System.out.println("test7 starting");
         Assertions.assertThrows(InterruptedException.class, () -> {
             JPromise<Integer> delay = JPromise.just(1).delay(30, TimeUnit.SECONDS);
             new Thread(() -> {
@@ -195,6 +198,7 @@ public class PromiseTest {
     @Test
     public void test8() {
         Assertions.assertThrows(InterruptedException.class, () -> {
+            System.out.println("test8 starting");
             JPromise<Integer> one = JPromise.just(1);
             JPromise<Integer> delay = one.delay(30, TimeUnit.SECONDS);
             new Thread(() -> {
@@ -212,6 +216,7 @@ public class PromiseTest {
 
     @Test
     public void testOrder() {
+        System.out.println("testOrder starting");
         JPromise<Void> sleep3 = JPromise.create((jThunk, context) -> {
             sleep(3000, jThunk, context);
             System.out.println("Sleep 3000");
@@ -236,6 +241,7 @@ public class PromiseTest {
 
     @Test
     public void testTwoFinally() throws InterruptedException {
+        System.out.println("testTwoFinally starting");
         AtomicInteger i = new AtomicInteger();
         JPromise.empty().doFinally(() -> {
             i.incrementAndGet();
@@ -250,6 +256,7 @@ public class PromiseTest {
 
     @Test
     public void testCancelLoop() throws InterruptedException {
+        System.out.println("testCancelLoop starting");
         JPromise<Object> loop = JPromise.portal(portal -> {
             return JPromise.sleep(1, TimeUnit.SECONDS)
                     .onFinally(() -> System.out.println("ping"))
@@ -265,6 +272,7 @@ public class PromiseTest {
 
     @Test
     void testMultiThread() throws InterruptedException {
+        System.out.println("testMultiThread starting");
         JPromiseTrigger<Integer> trigger = JPromise.createTrigger();
         List<Thread> threads = new ArrayList<>();
         AtomicInteger counter = new AtomicInteger(0);
@@ -299,6 +307,7 @@ public class PromiseTest {
 
     @Test
     void testLoop0() throws InterruptedException {
+        System.out.println("testLoop0 starting");
         long res = JPromise.portal(locals -> {
             String var0 = (String) locals[0];
             int var1 = (Integer) locals[1];
@@ -317,6 +326,7 @@ public class PromiseTest {
 
     @Test
     void testLoop1() throws InterruptedException {
+        System.out.println("testLoop1 starting");
         long res = JPromise.portal(locals -> {
             String var0 = (String) locals[0];
             int i = (Integer) locals[1];
@@ -348,6 +358,7 @@ public class PromiseTest {
 
     @Test
     void testLoop2() throws InterruptedException {
+        System.out.println("testLoop2 starting");
         JPromiseTrigger<Integer> trigger = JPromise.createTrigger();
         trigger.resolve(10);
         Integer res = JPromise.portal(locals -> {
@@ -389,6 +400,7 @@ public class PromiseTest {
 
     @Test
     void testReadLock() throws InterruptedException {
+        System.out.println("testReadLock starting");
         JAsyncReadWriteLock lock = JPromise.readWriteLock();
         AtomicInteger iter = new AtomicInteger();
         List<JHandle<Void>> handles = new ArrayList<>();
@@ -404,6 +416,7 @@ public class PromiseTest {
 
     @Test
     void testWriteLock() throws InterruptedException {
+        System.out.println("testWriteLock starting");
         JAsyncReadWriteLock lock = JPromise.readWriteLock();
         AtomicInteger iter = new AtomicInteger();
         List<JHandle<Void>> handles = new ArrayList<>();
@@ -429,6 +442,7 @@ public class PromiseTest {
 
     @Test
     void testLock() throws InterruptedException {
+        System.out.println("testLock starting");
         JAsyncReadWriteLock lock = JPromise.readWriteLock();
         List<JHandle<Void>> handles = new ArrayList<>();
         long[] res = new long[1];
