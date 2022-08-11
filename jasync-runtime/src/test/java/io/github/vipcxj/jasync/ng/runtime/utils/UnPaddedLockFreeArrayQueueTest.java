@@ -269,15 +269,15 @@ public class UnPaddedLockFreeArrayQueueTest {
     public void testOfferAndPollMultiThreadPerformance() throws InterruptedException {
         int size = 1000 * 100;
         System.gc();
-        doOfferAndPollMultiThreadPerformance(new UnPaddedLockFreeArrayQueue0<>(size), 1000, "UnPaddedLockFreeArrayQueue0");
+        doOfferAndPollMultiThreadPerformance(new UnPaddedLockFreeArrayQueue0<>(size), 100, "UnPaddedLockFreeArrayQueue0");
         System.gc();
-        doOfferAndPollMultiThreadPerformance(new UnPaddedLockFreeArrayQueue1<>(size), 1000, "UnPaddedLockFreeArrayQueue1");
+        doOfferAndPollMultiThreadPerformance(new UnPaddedLockFreeArrayQueue1<>(size), 100, "UnPaddedLockFreeArrayQueue1");
         System.gc();
-        doOfferAndPollMultiThreadPerformance(new PaddedLockFreeArrayQueue<>(size), 1000, "PaddedLockFreeArrayQueue");
+        doOfferAndPollMultiThreadPerformance(new PaddedLockFreeArrayQueue<>(size), 100, "PaddedLockFreeArrayQueue");
         System.gc();
-        doOfferAndPollMultiThreadPerformance(new ComparedArrayQueue<>(size), 1000, "ComparedArrayQueue");
+        doOfferAndPollMultiThreadPerformance(new ComparedArrayQueue<>(size), 100, "ComparedArrayQueue");
         System.gc();
-        doOfferAndPollMultiThreadPerformance(new MpmcUnboundedXaddArrayQueue<>(256), 1000, "MpmcUnboundedXaddArrayQueue");
+        doOfferAndPollMultiThreadPerformance(new MpmcUnboundedXaddArrayQueue<>(256), 100, "MpmcUnboundedXaddArrayQueue");
     }
 
     private void doMixedMultiThreadPerformance(Queue<Integer> queue, String tag) throws InterruptedException {
@@ -286,7 +286,7 @@ public class UnPaddedLockFreeArrayQueueTest {
         AtomicInteger sum = new AtomicInteger();
         AtomicLong timerHolder = new AtomicLong();
         for (int i = 0; i < 1000; ++i) {
-            threads.add(new Thread(multiThreadMixedRunner(queue, 5000, i, num, sum, timerHolder)));
+            threads.add(new Thread(multiThreadMixedRunner(queue, 500, i, num, sum, timerHolder)));
         }
         for (Thread thread : threads) {
             thread.start();

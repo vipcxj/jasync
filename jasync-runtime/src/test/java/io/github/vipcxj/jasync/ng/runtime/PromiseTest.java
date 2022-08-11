@@ -16,11 +16,14 @@ public class PromiseTest {
 
     @Test
     public void test0() throws InterruptedException {
+        System.out.println("test0 starting");
         JPromise.just(1).thenMap(v -> v + 1).thenMap(v -> v + 1).block();
+        System.out.println("test0 completed");
     }
 
     @Test
     public void test() throws InterruptedException {
+        System.out.println("test starting");
         for (int i = 0; i < 1; ++i) {
             JPromise.sleep(1, TimeUnit.SECONDS)
                     .thenReturn(3)
@@ -48,10 +51,12 @@ public class PromiseTest {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        System.out.println("test completed");
     }
 
     @Test
     public void test1() throws InterruptedException {
+        System.out.println("test1 starting");
         Integer value = JPromise.portal((JPortal<Integer> portal, JContext ignored) ->
                 JPromise.updateContextValue("index", j -> j + 1, 0)
                         .thenMapWithContextImmediate(ctx -> ctx.<Integer>get("index"))
@@ -74,10 +79,12 @@ public class PromiseTest {
                 .onSuccess(v -> System.out.println("ok"))
                 .block();
         System.out.println(value);
+        System.out.println("test1 completed");
     }
 
     @Test
     public void test2() throws InterruptedException {
+        System.out.println("test2 starting");
         ScheduledExecutorService service = Executors.newScheduledThreadPool(4);
         for (int i = 0; i < 8; ++i) {
             service.submit(() -> {
@@ -93,10 +100,12 @@ public class PromiseTest {
             });
         }
         Thread.sleep(10000);
+        System.out.println("test2 completed");
     }
 
     @Test
     public void test3() throws InterruptedException {
+        System.out.println("test3 starting");
         ExecutorService service = Executors.newWorkStealingPool(4);
         for (int i = 0; i < 8; ++i) {
             service.submit(() -> {
@@ -117,10 +126,12 @@ public class PromiseTest {
             });
         }
         Thread.sleep(10000);
+        System.out.println("test3 completed");
     }
 
     @Test
     public void test4() throws InterruptedException {
+        System.out.println("test4 starting");
         int i = 0;
         String msg = "a";
         JPromise<String> task = JPromise.portal(locals0 -> {
@@ -147,6 +158,7 @@ public class PromiseTest {
         }, 0, msg, i);
         String result = task.block();
         Assertions.assertEquals("aaaaaaaaaa", result);
+        System.out.println("test4 completed");
     }
 
     @Test
@@ -154,11 +166,13 @@ public class PromiseTest {
         JPromise<Integer> one = JPromise.just(1);
         Integer two = one.then(v0 -> one.thenMap(v1 -> v0 + v1)).block();
         Assertions.assertEquals(2, two);
+        System.out.println("test5 completed");
     }
 
     @Test
     public void test6() throws InterruptedException {
         Assertions.assertEquals(1, JPromise.just(1).block());
+        System.out.println("test6 completed");
     }
 
     @Test
@@ -175,6 +189,7 @@ public class PromiseTest {
             }).start();
             delay.block();
         });
+        System.out.println("test7 completed");
     }
 
     @Test
@@ -192,6 +207,7 @@ public class PromiseTest {
             }).start();
             delay.block();
         });
+        System.out.println("test8 completed");
     }
 
     @Test
@@ -215,6 +231,7 @@ public class PromiseTest {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        System.out.println("testOrder completed");
     }
 
     @Test
@@ -228,6 +245,7 @@ public class PromiseTest {
             return JPromise.empty();
         }).block();
         Assertions.assertEquals(2, i.get());
+        System.out.println("testTwoFinally completed");
     }
 
     @Test
@@ -242,6 +260,7 @@ public class PromiseTest {
                 JPromise.sleep(3010, TimeUnit.MILLISECONDS).onFinally(loop::cancel),
                 loop
         ).block();
+        System.out.println("testCancelLoop completed");
     }
 
     @Test
@@ -275,6 +294,7 @@ public class PromiseTest {
         }
         t.join();
         Assertions.assertEquals(60, counter.get());
+        System.out.println("testMultiThread completed");
     }
 
     @Test
@@ -292,6 +312,7 @@ public class PromiseTest {
             }
         }, 0, "a", 0, 0L).block();
         Assertions.assertEquals(45, res);
+        System.out.println("testLoop0 completed");
     }
 
     @Test
@@ -322,6 +343,7 @@ public class PromiseTest {
             }
         }, 0, "a", 0, 0, 0L).block();
         Assertions.assertEquals(100, res);
+        System.out.println("testLoop1 completed");
     }
 
     @Test
@@ -341,6 +363,7 @@ public class PromiseTest {
             });
         }, 0, 0).block();
         Assertions.assertEquals(10, res);
+        System.out.println("testLoop2 completed");
     }
 
     private void sleep(long time, JThunk<Void> thunk, JContext context) {
@@ -376,6 +399,7 @@ public class PromiseTest {
         for (JHandle<Void> handle : handles) {
             handle.block();
         }
+        System.out.println("testReadLock completed");
     }
 
     @Test
@@ -388,7 +412,6 @@ public class PromiseTest {
             handles.add(handle);
         }
         JPromise.sleep(500, TimeUnit.MILLISECONDS).thenWithContextImmediate((ctx1) -> {
-            System.out.println(ctx1.id());
             return lock.writeLock().lock().then(() -> {
                 int i = iter.incrementAndGet();
                 return JPromise.sleep(1, TimeUnit.SECONDS).thenWithContext(ctx2 -> {
@@ -401,6 +424,7 @@ public class PromiseTest {
         for (JHandle<Void> handle : handles) {
             Assertions.assertTrue(handle.isResolved());
         }
+        System.out.println("testWriteLock completed");
     }
 
     @Test
@@ -435,5 +459,6 @@ public class PromiseTest {
             handle.block();
         }
         System.out.println(res[0]);
+        System.out.println("testLock completed");
     }
 }
