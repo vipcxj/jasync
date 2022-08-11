@@ -375,11 +375,11 @@ public class AbstractJasyncQueuedSynchronizer implements java.io.Serializable {
             node.setHandle(SCHEDULE.addEvent(timeout, node::willRemovedAndResume));
         }
         if (node == head.next) {
-            signal(waiter.getRoutine(), arg);
+            signal(arg);
         }
     }
 
-    final void signal(JAsyncRoutine current, int arg) {
+    final void signal(int arg) {
         RoutineNode node = this.head.next;
         while (node != TAIL_NEXT) {
             if (node.status == WAITING) {
@@ -594,7 +594,7 @@ public class AbstractJasyncQueuedSynchronizer implements java.io.Serializable {
      */
     public final boolean release(JAsyncRoutine current, int arg) {
         if (tryRelease(current, arg)) {
-            signal(current, arg);
+            signal(arg);
             return true;
         }
         return false;
@@ -687,7 +687,7 @@ public class AbstractJasyncQueuedSynchronizer implements java.io.Serializable {
      */
     public final boolean releaseShared(JAsyncRoutine current, int arg) {
         if (tryReleaseShared(current, arg)) {
-            signal(current, arg);
+            signal(arg);
             return true;
         }
         return false;
