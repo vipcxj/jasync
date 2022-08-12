@@ -387,12 +387,14 @@ public class PromiseTest {
     }
 
     JPromise<Void> task(JAsyncReadWriteLock lock, AtomicInteger iter, int target) {
-        return lock.readLock().lock().then(() -> {
+        return lock.readLock().lock().thenWithContext((ctx1) -> {
+            System.out.println("[" + Thread.currentThread().getName() + "](ctx " + ctx1.id() + "): After shared locked, shared lock count " + ctx1.getSharedLockCount());
             iter.incrementAndGet();
-            return JPromise.sleep(2, TimeUnit.SECONDS).thenWithContext((ctx) -> {
+            return JPromise.sleep(2, TimeUnit.SECONDS).thenWithContext((ctx2) -> {
                 Assertions.assertEquals(target, iter.get());
-                Assertions.assertFalse(lock.writeLock().tryLock(ctx));
-                lock.readLock().unlock(ctx);
+                Assertions.assertFalse(lock.writeLock().tryLock(ctx2));
+                lock.readLock().unlock(ctx2);
+                System.out.println("[" + Thread.currentThread().getName() + "](ctx " + ctx2.id() + "): After shared unlocked, shared lock count " + ctx2.getSharedLockCount());
                 return JPromise.empty();
             });
         });
@@ -426,10 +428,12 @@ public class PromiseTest {
         }
         JPromise.sleep(500, TimeUnit.MILLISECONDS).thenWithContextImmediate((ctx1) -> {
             return lock.writeLock().lock().then(() -> {
+                System.out.println("[" + Thread.currentThread().getName() + "](ctx " + ctx1.id() + "): After ex locked, shared lock count " + ctx1.getSharedLockCount());
                 int i = iter.incrementAndGet();
                 return JPromise.sleep(1, TimeUnit.SECONDS).thenWithContext(ctx2 -> {
                     Assertions.assertEquals(i, iter.get());
                     lock.writeLock().unlock(ctx2);
+                    System.out.println("[" + Thread.currentThread().getName() + "](ctx " + ctx2.id() + "): After ex unlocked, shared lock count " + ctx2.getSharedLockCount());
                     return JPromise.empty();
                 });
             });
@@ -438,6 +442,29 @@ public class PromiseTest {
             Assertions.assertTrue(handle.isResolved());
         }
         System.out.println("testWriteLock completed");
+    }
+
+    @Test
+    void testReadWriteLock() throws InterruptedException {
+        Thread thread1 = new Thread(() -> {
+            try {
+                testWriteLock();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+        thread1.start();
+        Thread thread2 = new Thread(() -> {
+            try {
+                Thread.sleep(500);
+                testReadLock();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+        thread2.start();
+        thread1.join();
+        thread2.join();
     }
 
     @Test
