@@ -29,14 +29,15 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
     protected volatile int state = ST_INIT;
     @SuppressWarnings("rawtypes")
     private static final AtomicIntegerFieldUpdater<AbstractPromise> STATE = AtomicIntegerFieldUpdater.newUpdater(AbstractPromise.class, "state");
-    protected static final int ST_LOCK = 0;
     protected static final int ST_INIT = 1;
     protected static final int ST_INIT_TERMING = 2;
-    protected static final int ST_RUNNING = 3;
-    protected static final int ST_COMPLETING = 4;
-    protected static final int ST_UNCOMPLETED = 5;
-    protected static final int ST_RESOLVED = 6;
-    protected static final int ST_REJECTED = 7;
+    protected static final int ST_INIT_LOCK = 3;
+    protected static final int ST_RUNNING = 4;
+    protected static final int ST_RUNNING_LOCK = 5;
+    protected static final int ST_COMPLETING = 6;
+    protected static final int ST_UNCOMPLETED = 7;
+    protected static final int ST_RESOLVED = 8;
+    protected static final int ST_REJECTED = 9;
 
     private final AbstractPromise<?> parent;
     private volatile Object children;
@@ -578,7 +579,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         }
         boolean processed = false;
         while (state < ST_UNCOMPLETED) {
-            if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_LOCK)) {
+            if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_RUNNING_LOCK)) {
                 try {
                     this.value = result;
                     this.context = null;
@@ -621,7 +622,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         context.fixException(error);
         boolean processed = false;
         while (state < ST_UNCOMPLETED) {
-            if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_LOCK)) {
+            if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_RUNNING_LOCK)) {
                 try {
                     this.error = error;
                     this.context = null;
@@ -740,7 +741,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
     public T block(JContext context) throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(1);
         while (state < ST_COMPLETING) {
-            if (state == ST_INIT && STATE.weakCompareAndSet(this, ST_INIT, ST_LOCK)) {
+            if (state == ST_INIT && STATE.weakCompareAndSet(this, ST_INIT, ST_INIT_LOCK)) {
                 try {
                     onFinally((v, e, ctx) -> {
                         latch.countDown();
@@ -751,7 +752,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
                     async(context);
                     latch.await();
                 }
-            } else if (state == ST_INIT_TERMING && STATE.weakCompareAndSet(this, ST_INIT_TERMING, ST_LOCK)) {
+            } else if (state == ST_INIT_TERMING && STATE.weakCompareAndSet(this, ST_INIT_TERMING, ST_INIT_LOCK)) {
                 try {
                     onFinally((v, e, ctx) -> {
                         latch.countDown();
@@ -762,7 +763,7 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
                     async(context);
                     latch.await();
                 }
-            } else if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_LOCK)) {
+            } else if (state == ST_RUNNING && STATE.weakCompareAndSet(this, ST_RUNNING, ST_RUNNING_LOCK)) {
                 try {
                     onFinally((v, e, ctx) -> {
                         latch.countDown();
