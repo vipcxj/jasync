@@ -26,10 +26,7 @@ import javax.lang.model.util.ElementScanner8;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
 import java.io.*;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
+import java.lang.reflect.*;
 import java.nio.file.Paths;
 import java.security.cert.Certificate;
 import java.util.*;
@@ -54,7 +51,17 @@ public class JAsyncProcessor extends AbstractProcessor {
                     "com.sun.tools.javac.jvm",
                     "com.sun.tools.javac.main"
             });
+
+            // For gradle, jdk.attach.allowAttachSelf is true, but VM.getSavedProperty("jdk.attach.allowAttachSelf") is null
+            // This cause ByteBuddy always not use the external accessor, and then failed to attach the vm.
+            boolean allowAttachSelf = Boolean.getBoolean("jdk.attach.allowAttachSelf");
+            if (allowAttachSelf) {
+                System.setProperty("jdk.attach.allowAttachSelf", "false");
+            }
             ByteBuddyAgent.install();
+            if (allowAttachSelf) {
+                System.setProperty("jdk.attach.allowAttachSelf", "true");
+            }
             TypePool typePool;
             boolean success = false;
             try {
