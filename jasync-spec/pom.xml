@@ -3,7 +3,7 @@
     <parent>
         <artifactId>jasync-parent</artifactId>
         <groupId>io.github.vipcxj</groupId>
-        <version>0.1.11-SNAPSHOT</version>
+        <version>0.1.12</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>jasync-spec</artifactId>
@@ -24,7 +24,7 @@
         <url>https://github.com/vipcxj/jasync</url>
         <connection>scm:git:git://github.com/vipcxj/jasync.git</connection>
         <developerConnection>scm:git:https://github.com/vipcxj/jasync.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>v0.1.12</tag>
     </scm>
     <developers>
         <developer>
