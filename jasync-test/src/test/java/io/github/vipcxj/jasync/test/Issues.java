@@ -101,4 +101,24 @@ public class Issues {
     public void issue8() {
         Assertions.assertEquals("b", testIssue8("abc").block());
     }
+
+    @Async(logResultTree = true)
+    private JPromise<Integer> issue15() {
+        int i = 0;
+        int sum = 0;
+        //noinspection ConditionalBreakInInfiniteLoop
+        for (;;) {
+            sum += JAsync.just(i).await();
+            if (i++ == 10) {
+                break;
+            }
+        }
+        return JAsync.just(sum);
+    }
+
+    @Test
+    public void testIssue15() {
+        Integer sum = issue15().block();
+        Assertions.assertEquals(55, sum);
+    }
 }
