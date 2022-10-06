@@ -373,6 +373,11 @@ public class JAsyncSymbols {
         return symPromise;
     }
 
+    public Type getBooleanSupplierType() {
+        Type.MethodType type = (Type.MethodType) symJAsyncDoFor.asType();
+        return type.getParameterTypes().get(1);
+    }
+
     public JCTree.JCExpression makeJust() {
         return makeJust(maker.Literal(TypeTag.BOT, null));
     }

@@ -122,7 +122,10 @@ public class TransForContext extends AbstractTransStatementContext<JCTree.JCForL
                         : symbols.makeJAsyncDoFor();
                 JCTree.JCExpression condArg = condContext != null
                         ? methodContext.makeCondSupplier(condContext)
-                        : safeMaker().Literal(TypeTag.BOT, null);
+                        : safeMaker().TypeCast(
+                                safeMaker().Type(symbols.getBooleanSupplierType()),
+                                safeMaker().Literal(TypeTag.BOT, null)
+                        );
                 JCTree.JCExpression stepArg = stepContext != null
                         ? methodContext.makeVoidPromiseSupplier(stepContext)
                         : safeMaker().Literal(TypeTag.BOT, null);
