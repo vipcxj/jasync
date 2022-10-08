@@ -102,7 +102,7 @@ public class Issues {
         Assertions.assertEquals("b", testIssue8("abc").block());
     }
 
-    @Async(logResultTree = true)
+    @Async
     private JPromise<Integer> issue15() {
         int i = 0;
         int sum = 0;
@@ -120,5 +120,18 @@ public class Issues {
     public void testIssue15() {
         Integer sum = issue15().block();
         Assertions.assertEquals(55, sum);
+    }
+
+    @SuppressWarnings({"SameParameterValue", "unused"})
+    @Async
+    private JPromise<String> issue16(Long a, String b) {
+        b = JAsync.just("test").await();
+        return JAsync.just(b);
+    }
+
+    @Test
+    public void testIssue16() {
+        String test = issue16(0L, "not important").block();
+        Assertions.assertEquals("test", test);
     }
 }

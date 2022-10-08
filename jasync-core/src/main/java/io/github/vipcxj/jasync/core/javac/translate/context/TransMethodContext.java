@@ -35,7 +35,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
     private final static Map<String, String> indyHelpersMap = new HashMap<>();
     private Symbol.VarSymbol indyHelpersVarSymbol;
     private Symbol.VarSymbol indyHelperVarSymbol;
-    private final List<TransVarDeclContext> paramsContext;
+    private List<TransVarDeclContext> paramsContext;
     private TransBlockContext bodyContext;
     private final boolean staticMethod;
     private final boolean supportAsync;
@@ -95,7 +95,7 @@ public class TransMethodContext extends AbstractTransFrameHolderContext<JCTree.J
             TransVarDeclContext varDeclContext = (TransVarDeclContext) child;
             // fix issue #8
             varDeclContext.setAsyncParam(true);
-            paramsContext.append(varDeclContext);
+            paramsContext = paramsContext.append(varDeclContext);
         } else if (tree.body != null && tree.body == child.getTree()) {
             childContextMustBeBlock(child);
             bodyContext = (TransBlockContext) child;
