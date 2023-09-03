@@ -5,13 +5,18 @@ import io.github.vipcxj.jasync.ng.spec.spi.JPromiseSupport;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-@SuppressWarnings("unused")
-public interface JPromise<T> extends JHandle<T> {
+@SuppressWarnings({"unchecked", "unused"})
+public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
     JPromiseSupport provider = Utils.getProvider(JPromiseSupport.class);
     static int genId() {
         return provider.generateId();
@@ -27,6 +32,21 @@ public interface JPromise<T> extends JHandle<T> {
     }
     static JPromise<Void> sleep(long timeout, TimeUnit unit) {
         return provider.sleep(timeout, unit);
+    }
+    static <T> JPromise<T> from(CompletionStage<T> stage) {
+        if (stage instanceof JPromise) {
+            return (JPromise<T>) stage;
+        } else {
+        return JPromise.generate((thunk, context) -> {
+            stage.whenComplete((value, exception) -> {
+                if (exception == null) {
+                    thunk.resolve(value, context);
+                } else {
+                    thunk.reject(exception, context);
+                }
+            });
+        });
+        }
     }
     static <T> JPromise<T> portal(JAsyncPortalTask1<T> task) {
         return provider.portal(task);
@@ -590,5 +610,791 @@ public interface JPromise<T> extends JHandle<T> {
     JHandle<T> async(JContext context);
     default JHandle<T> async() {
         return async(JContext.defaultContext());
+    }
+
+
+    @Override
+    default <U> JPromise<U> thenApply(Function<? super T,? extends U> fn) {
+        return thenMapImmediate(v -> fn.apply(v));
+    }
+
+    @Override
+    default <U> JPromise<U> thenApplyAsync(Function<? super T,? extends U> fn) {
+        return thenMap(v -> fn.apply(v));
+    }
+
+    @Override
+    default <U> JPromise<U> thenApplyAsync(Function<? super T,? extends U> fn, Executor executor) {
+        if (executor == null) {
+            return thenApplyAsync(fn);
+        } else {
+            JScheduler scheduler = JScheduler.fromExecutorService(executor);
+            return wrapContext(thenApplyAsync(fn), ctx -> ctx.setScheduler(scheduler));
+        }
+    }
+
+    @Override
+    default JPromise<Void> thenAccept(Consumer<? super T> action) {
+        return thenMapImmediate(v -> {
+            action.accept(v);
+            return (Void) null;
+        });
+    }
+
+    @Override
+    default JPromise<Void> thenAcceptAsync(Consumer<? super T> action) {
+        return thenMap(v -> {
+            action.accept(v);
+            return (Void) null;
+        });
+    }
+
+    @Override
+    default JPromise<Void> thenAcceptAsync(Consumer<? super T> action, Executor executor) {
+        if (executor == null) {
+            return thenAcceptAsync(action);
+        } else {
+            JScheduler scheduler = JScheduler.fromExecutorService(executor);
+            return wrapContext(thenAcceptAsync(action), ctx -> ctx.setScheduler(scheduler));
+        }
+    }
+
+    @Override
+    default JPromise<Void> thenRun(Runnable action) {
+        return thenImmediate(() -> {
+            action.run();
+            return JPromise.empty();
+        });
+    }
+
+    @Override
+    default JPromise<Void> thenRunAsync(Runnable action) {
+        return then(() -> {
+            action.run();
+            return JPromise.empty();
+        });
+    }
+
+    @Override
+    default JPromise<Void> thenRunAsync(Runnable action, Executor executor) {
+        if (executor == null) {
+            return thenRunAsync(action);
+        } else {
+            JScheduler scheduler = JScheduler.fromExecutorService(executor);
+            return wrapContext(thenRunAsync(action), ctx -> ctx.setScheduler(scheduler));
+        }
+    }
+
+    /**
+     * Returns a new CompletionStage that, when this and the other
+     * given stage both complete normally, is executed with the two
+     * results as arguments to the supplied function.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param fn the function to use to compute the value of the
+     * returned CompletionStage
+     * @param <U> the type of the other CompletionStage's result
+     * @param <V> the function's return type
+     * @return the new CompletionStage
+     */
+    default <U,V> JPromise<V> thenCombine(CompletionStage<? extends U> other, BiFunction<? super T,? super U,? extends V> fn) {
+        return thenImmediate(v1 -> {
+            return JPromise.from(other).thenMapImmediate(v2 -> {
+                return fn.apply(v1, v2);
+            });
+        });
+    }
+
+    /**
+     * Returns a new CompletionStage that, when this and the other
+     * given stage both complete normally, is executed using this
+     * stage's default asynchronous execution facility, with the two
+     * results as arguments to the supplied function.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param fn the function to use to compute the value of the
+     * returned CompletionStage
+     * @param <U> the type of the other CompletionStage's result
+     * @param <V> the function's return type
+     * @return the new CompletionStage
+     */
+    default <U,V> JPromise<V> thenCombineAsync(CompletionStage<? extends U> other, BiFunction<? super T,? super U,? extends V> fn) {
+        return thenImmediate(v1 -> {
+            return JPromise.from(other).thenMap(v2 -> {
+                return fn.apply(v1, v2);
+            });
+        });
+    }
+
+    /**
+     * Returns a new CompletionStage that, when this and the other
+     * given stage both complete normally, is executed using the
+     * supplied executor, with the two results as arguments to the
+     * supplied function.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param fn the function to use to compute the value of the
+     * returned CompletionStage
+     * @param executor the executor to use for asynchronous execution
+     * @param <U> the type of the other CompletionStage's result
+     * @param <V> the function's return type
+     * @return the new CompletionStage
+     */
+    default <U,V> JPromise<V> thenCombineAsync(CompletionStage<? extends U> other, BiFunction<? super T,? super U,? extends V> fn, Executor executor) {
+        if (executor == null) {
+            return thenCombineAsync(other, fn);
+        } else {
+            JScheduler scheduler = JScheduler.fromExecutorService(executor);
+            return wrapContext(thenCombineAsync(other, fn), ctx -> ctx.setScheduler(scheduler));
+        }
+    }
+
+    /**
+     * Returns a new CompletionStage that, when this and the other
+     * given stage both complete normally, is executed with the two
+     * results as arguments to the supplied action.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param action the action to perform before completing the
+     * returned CompletionStage
+     * @param <U> the type of the other CompletionStage's result
+     * @return the new CompletionStage
+     */
+    default <U> JPromise<Void> thenAcceptBoth(CompletionStage<? extends U> other, BiConsumer<? super T, ? super U> action) {
+        return thenImmediate(v1 -> {
+            return JPromise.from(other).thenImmediate(v2 -> {
+                action.accept(v1, v2);
+                return JPromise.empty();
+            });
+        });
+    }
+
+    /**
+     * Returns a new CompletionStage that, when this and the other
+     * given stage both complete normally, is executed using this
+     * stage's default asynchronous execution facility, with the two
+     * results as arguments to the supplied action.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param action the action to perform before completing the
+     * returned CompletionStage
+     * @param <U> the type of the other CompletionStage's result
+     * @return the new CompletionStage
+     */
+    default <U> JPromise<Void> thenAcceptBothAsync(CompletionStage<? extends U> other, BiConsumer<? super T, ? super U> action) {
+        return thenImmediate(v1 -> {
+            return JPromise.from(other).then(v2 -> {
+                action.accept(v1, v2);
+                return JPromise.empty();
+            });
+        });
+    }
+
+    /**
+     * Returns a new CompletionStage that, when this and the other
+     * given stage both complete normally, is executed using the
+     * supplied executor, with the two results as arguments to the
+     * supplied action.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param action the action to perform before completing the
+     * returned CompletionStage
+     * @param executor the executor to use for asynchronous execution
+     * @param <U> the type of the other CompletionStage's result
+     * @return the new CompletionStage
+     */
+    default <U> JPromise<Void> thenAcceptBothAsync(CompletionStage<? extends U> other, BiConsumer<? super T, ? super U> action, Executor executor) {
+        if (executor == null) {
+            return thenAcceptBothAsync(other, action);
+        } else {
+            JScheduler scheduler = JScheduler.fromExecutorService(executor);
+            return wrapContext(thenAcceptBothAsync(other, action), ctx -> ctx.setScheduler(scheduler));
+        }
+    }
+
+    /**
+     * Returns a new CompletionStage that, when this and the other
+     * given stage both complete normally, executes the given action.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param action the action to perform before completing the
+     * returned CompletionStage
+     * @return the new CompletionStage
+     */
+    default JPromise<Void> runAfterBoth(CompletionStage<?> other, Runnable action) {
+        return thenImmediate(() -> {
+            return JPromise.from(other).thenImmediate(() -> {
+                action.run();
+                return JPromise.empty();
+            });
+        });
+    }
+    /**
+     * Returns a new CompletionStage that, when this and the other
+     * given stage both complete normally, executes the given action
+     * using this stage's default asynchronous execution facility.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param action the action to perform before completing the
+     * returned CompletionStage
+     * @return the new CompletionStage
+     */
+    default JPromise<Void> runAfterBothAsync(CompletionStage<?> other, Runnable action) {
+        return thenImmediate(() -> {
+            return JPromise.from(other).then(() -> {
+                action.run();
+                return JPromise.empty();
+            });
+        });
+    }
+
+    /**
+     * Returns a new CompletionStage that, when this and the other
+     * given stage both complete normally, executes the given action
+     * using the supplied executor.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param action the action to perform before completing the
+     * returned CompletionStage
+     * @param executor the executor to use for asynchronous execution
+     * @return the new CompletionStage
+     */
+    default JPromise<Void> runAfterBothAsync(CompletionStage<?> other, Runnable action, Executor executor) {
+        if (executor == null) {
+            return runAfterBothAsync(other, action);
+        } else {
+            JScheduler scheduler = JScheduler.fromExecutorService(executor);
+            return wrapContext(runAfterBothAsync(other, action), ctx -> ctx.setScheduler(scheduler));
+        }
+    }
+    /**
+     * Returns a new CompletionStage that, when either this or the
+     * other given stage complete normally, is executed with the
+     * corresponding result as argument to the supplied function.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param fn the function to use to compute the value of the
+     * returned CompletionStage
+     * @param <U> the function's return type
+     * @return the new CompletionStage
+     */
+    default <U> JPromise<U> applyToEither(CompletionStage<? extends T> other, Function<? super T, U> fn) {
+        return JPromise.any(this, from(other)).thenMapImmediate(v -> fn.apply(v));
+    }
+
+    /**
+     * Returns a new CompletionStage that, when either this or the
+     * other given stage complete normally, is executed using this
+     * stage's default asynchronous execution facility, with the
+     * corresponding result as argument to the supplied function.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param fn the function to use to compute the value of the
+     * returned CompletionStage
+     * @param <U> the function's return type
+     * @return the new CompletionStage
+     */
+    default <U> JPromise<U> applyToEitherAsync(CompletionStage<? extends T> other, Function<? super T, U> fn) {
+        return JPromise.any(this, from(other)).thenMap(v -> fn.apply(v));
+    }
+
+    /**
+     * Returns a new CompletionStage that, when either this or the
+     * other given stage complete normally, is executed using the
+     * supplied executor, with the corresponding result as argument to
+     * the supplied function.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param fn the function to use to compute the value of the
+     * returned CompletionStage
+     * @param executor the executor to use for asynchronous execution
+     * @param <U> the function's return type
+     * @return the new CompletionStage
+     */
+    default <U> JPromise<U> applyToEitherAsync(CompletionStage<? extends T> other, Function<? super T, U> fn, Executor executor) {
+        if (executor == null) {
+            return applyToEitherAsync(other, fn);
+        } else {
+            JScheduler scheduler = JScheduler.fromExecutorService(executor);
+            return wrapContext(applyToEitherAsync(other, fn), ctx -> ctx.setScheduler(scheduler));
+        }
+    }
+
+    /**
+     * Returns a new CompletionStage that, when either this or the
+     * other given stage complete normally, is executed with the
+     * corresponding result as argument to the supplied action.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param action the action to perform before completing the
+     * returned CompletionStage
+     * @return the new CompletionStage
+     */
+    default JPromise<Void> acceptEither(CompletionStage<? extends T> other, Consumer<? super T> action) {
+        return JPromise.any(this, from(other)).thenImmediate(v -> {
+            action.accept(v);
+            return JPromise.empty();
+        });
+    }
+
+    /**
+     * Returns a new CompletionStage that, when either this or the
+     * other given stage complete normally, is executed using this
+     * stage's default asynchronous execution facility, with the
+     * corresponding result as argument to the supplied action.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param action the action to perform before completing the
+     * returned CompletionStage
+     * @return the new CompletionStage
+     */
+    default JPromise<Void> acceptEitherAsync(CompletionStage<? extends T> other, Consumer<? super T> action) {
+        return JPromise.any(this, from(other)).then(v -> {
+            action.accept(v);
+            return JPromise.empty();
+        });
+    }
+
+    /**
+     * Returns a new CompletionStage that, when either this or the
+     * other given stage complete normally, is executed using the
+     * supplied executor, with the corresponding result as argument to
+     * the supplied action.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param action the action to perform before completing the
+     * returned CompletionStage
+     * @param executor the executor to use for asynchronous execution
+     * @return the new CompletionStage
+     */
+    default JPromise<Void> acceptEitherAsync(CompletionStage<? extends T> other, Consumer<? super T> action, Executor executor) {
+        if (executor == null) {
+            return acceptEitherAsync(other, action);
+        } else {
+            JScheduler scheduler = JScheduler.fromExecutorService(executor);
+            return wrapContext(acceptEitherAsync(other, action), ctx -> ctx.setScheduler(scheduler));
+        }
+    }
+
+    /**
+     * Returns a new CompletionStage that, when either this or the
+     * other given stage complete normally, executes the given action.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param action the action to perform before completing the
+     * returned CompletionStage
+     * @return the new CompletionStage
+     */
+    default JPromise<Void> runAfterEither(CompletionStage<?> other, Runnable action) {
+        return JPromise.any(this, from(other)).thenImmediate(() -> {
+            action.run();
+            return JPromise.empty();
+        });
+    }
+
+    /**
+     * Returns a new CompletionStage that, when either this or the
+     * other given stage complete normally, executes the given action
+     * using this stage's default asynchronous execution facility.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param action the action to perform before completing the
+     * returned CompletionStage
+     * @return the new CompletionStage
+     */
+    default JPromise<Void> runAfterEitherAsync(CompletionStage<?> other, Runnable action) {
+       return JPromise.any(this, from(other)).then(() -> {
+            action.run();
+            return JPromise.empty();
+        });
+    }
+
+    /**
+     * Returns a new CompletionStage that, when either this or the
+     * other given stage complete normally, executes the given action
+     * using the supplied executor.
+     *
+     * See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param other the other CompletionStage
+     * @param action the action to perform before completing the
+     * returned CompletionStage
+     * @param executor the executor to use for asynchronous execution
+     * @return the new CompletionStage
+     */
+    default JPromise<Void> runAfterEitherAsync(CompletionStage<?> other, Runnable action, Executor executor) {
+        if (executor == null) {
+            return runAfterEitherAsync(other, action);
+        } else {
+            JScheduler scheduler = JScheduler.fromExecutorService(executor);
+            return wrapContext(runAfterEitherAsync(other, action), ctx -> ctx.setScheduler(scheduler));
+        }
+    }
+
+    /**
+     * Returns a new CompletionStage that is completed with the same
+     * value as the CompletionStage returned by the given function.
+     *
+     * <p>When this stage completes normally, the given function is
+     * invoked with this stage's result as the argument, returning
+     * another CompletionStage.  When that stage completes normally,
+     * the CompletionStage returned by this method is completed with
+     * the same value.
+     *
+     * <p>To ensure progress, the supplied function must arrange
+     * eventual completion of its result.
+     *
+     * <p>This method is analogous to
+     * {@link java.util.Optional#flatMap Optional.flatMap} and
+     * {@link java.util.stream.Stream#flatMap Stream.flatMap}.
+     *
+     * <p>See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param fn the function to use to compute another CompletionStage
+     * @param <U> the type of the returned CompletionStage's result
+     * @return the new CompletionStage
+     */
+    default <U> JPromise<U> thenCompose(Function<? super T, ? extends CompletionStage<U>> fn) {
+        return thenImmediate(v -> JPromise.from(fn.apply(v)));
+    }
+
+    /**
+     * Returns a new CompletionStage that is completed with the same
+     * value as the CompletionStage returned by the given function,
+     * executed using this stage's default asynchronous execution
+     * facility.
+     *
+     * <p>When this stage completes normally, the given function is
+     * invoked with this stage's result as the argument, returning
+     * another CompletionStage.  When that stage completes normally,
+     * the CompletionStage returned by this method is completed with
+     * the same value.
+     *
+     * <p>To ensure progress, the supplied function must arrange
+     * eventual completion of its result.
+     *
+     * <p>See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param fn the function to use to compute another CompletionStage
+     * @param <U> the type of the returned CompletionStage's result
+     * @return the new CompletionStage
+     */
+    default <U> JPromise<U> thenComposeAsync(Function<? super T, ? extends CompletionStage<U>> fn) {
+        return then(v -> JPromise.from(fn.apply(v)));
+    }
+
+    /**
+     * Returns a new CompletionStage that is completed with the same
+     * value as the CompletionStage returned by the given function,
+     * executed using the supplied Executor.
+     *
+     * <p>When this stage completes normally, the given function is
+     * invoked with this stage's result as the argument, returning
+     * another CompletionStage.  When that stage completes normally,
+     * the CompletionStage returned by this method is completed with
+     * the same value.
+     *
+     * <p>To ensure progress, the supplied function must arrange
+     * eventual completion of its result.
+     *
+     * <p>See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * @param fn the function to use to compute another CompletionStage
+     * @param executor the executor to use for asynchronous execution
+     * @param <U> the type of the returned CompletionStage's result
+     * @return the new CompletionStage
+     */
+    default <U> JPromise<U> thenComposeAsync(Function<? super T, ? extends CompletionStage<U>> fn, Executor executor) {
+        if (executor == null) {
+            return thenComposeAsync(fn);
+        } else {
+            JScheduler scheduler = JScheduler.fromExecutorService(executor);
+            return wrapContext(thenComposeAsync(fn), ctx -> ctx.setScheduler(scheduler));
+        }
+    }
+
+    /**
+     * Returns a new CompletionStage that, when this stage completes
+     * either normally or exceptionally, is executed with this stage's
+     * result and exception as arguments to the supplied function.
+     *
+     * <p>When this stage is complete, the given function is invoked
+     * with the result (or {@code null} if none) and the exception (or
+     * {@code null} if none) of this stage as arguments, and the
+     * function's result is used to complete the returned stage.
+     *
+     * @param fn the function to use to compute the value of the
+     * returned CompletionStage
+     * @param <U> the function's return type
+     * @return the new CompletionStage
+     */
+    @Override    
+    default <U> JPromise<U> handle(BiFunction<? super T, Throwable, ? extends U> fn) {
+        return thenOrCatchImmediate((v, e) -> {
+            return JPromise.just(fn.apply(v, e));
+        });
+    }
+
+    /**
+     * Returns a new CompletionStage that, when this stage completes
+     * either normally or exceptionally, is executed using this stage's
+     * default asynchronous execution facility, with this stage's
+     * result and exception as arguments to the supplied function.
+     *
+     * <p>When this stage is complete, the given function is invoked
+     * with the result (or {@code null} if none) and the exception (or
+     * {@code null} if none) of this stage as arguments, and the
+     * function's result is used to complete the returned stage.
+     *
+     * @param fn the function to use to compute the value of the
+     * returned CompletionStage
+     * @param <U> the function's return type
+     * @return the new CompletionStage
+     */
+    default <U> JPromise<U> handleAsync(BiFunction<? super T, Throwable, ? extends U> fn) {
+        return thenOrCatch((v, e) -> {
+            return JPromise.just(fn.apply(v, e));
+        });
+    }
+
+    /**
+     * Returns a new CompletionStage that, when this stage completes
+     * either normally or exceptionally, is executed using the
+     * supplied executor, with this stage's result and exception as
+     * arguments to the supplied function.
+     *
+     * <p>When this stage is complete, the given function is invoked
+     * with the result (or {@code null} if none) and the exception (or
+     * {@code null} if none) of this stage as arguments, and the
+     * function's result is used to complete the returned stage.
+     *
+     * @param fn the function to use to compute the value of the
+     * returned CompletionStage
+     * @param executor the executor to use for asynchronous execution
+     * @param <U> the function's return type
+     * @return the new CompletionStage
+     */
+    default <U> JPromise<U> handleAsync(BiFunction<? super T, Throwable, ? extends U> fn, Executor executor) {
+        if (executor == null) {
+            return handleAsync(fn);
+        } else {
+            JScheduler scheduler = JScheduler.fromExecutorService(executor);
+            return wrapContext(handleAsync(fn), ctx -> ctx.setScheduler(scheduler));
+        }
+    }
+
+    /**
+     * Returns a new CompletionStage with the same result or exception as
+     * this stage, that executes the given action when this stage completes.
+     *
+     * <p>When this stage is complete, the given action is invoked
+     * with the result (or {@code null} if none) and the exception (or
+     * {@code null} if none) of this stage as arguments.  The returned
+     * stage is completed when the action returns.
+     *
+     * <p>Unlike method {@link #handle handle},
+     * this method is not designed to translate completion outcomes,
+     * so the supplied action should not throw an exception. However,
+     * if it does, the following rules apply: if this stage completed
+     * normally but the supplied action throws an exception, then the
+     * returned stage completes exceptionally with the supplied
+     * action's exception. Or, if this stage completed exceptionally
+     * and the supplied action throws an exception, then the returned
+     * stage completes exceptionally with this stage's exception.
+     *
+     * @param action the action to perform
+     * @return the new CompletionStage
+     */
+    default JPromise<T> whenComplete(BiConsumer<? super T, ? super Throwable> action) {
+        return thenOrCatchImmediate((v, e) -> {
+            try {
+                action.accept(v, e);
+            } catch (Throwable e1) {
+                if (e != null) {
+                    return JPromise.error(e);
+                } else {
+                    return JPromise.error(e1);
+                }
+            }
+            if (e != null) {
+                return JPromise.error(e);
+            } else {
+                return JPromise.just(v);
+            }
+        });
+    }
+
+    /**
+     * Returns a new CompletionStage with the same result or exception as
+     * this stage, that executes the given action using this stage's
+     * default asynchronous execution facility when this stage completes.
+     *
+     * <p>When this stage is complete, the given action is invoked with the
+     * result (or {@code null} if none) and the exception (or {@code null}
+     * if none) of this stage as arguments.  The returned stage is completed
+     * when the action returns.
+     *
+     * <p>Unlike method {@link #handleAsync(BiFunction) handleAsync},
+     * this method is not designed to translate completion outcomes,
+     * so the supplied action should not throw an exception. However,
+     * if it does, the following rules apply: If this stage completed
+     * normally but the supplied action throws an exception, then the
+     * returned stage completes exceptionally with the supplied
+     * action's exception. Or, if this stage completed exceptionally
+     * and the supplied action throws an exception, then the returned
+     * stage completes exceptionally with this stage's exception.
+     *
+     * @param action the action to perform
+     * @return the new CompletionStage
+     */
+    default JPromise<T> whenCompleteAsync(BiConsumer<? super T, ? super Throwable> action) {
+        return thenOrCatch((v, e) -> {
+            try {
+                action.accept(v, e);
+            } catch (Throwable e1) {
+                if (e != null) {
+                    return JPromise.error(e);
+                } else {
+                    return JPromise.error(e1);
+                }
+            }
+            if (e != null) {
+                return JPromise.error(e);
+            } else {
+                return JPromise.just(v);
+            }
+        });
+    }
+
+    /**
+     * Returns a new CompletionStage with the same result or exception as
+     * this stage, that executes the given action using the supplied
+     * Executor when this stage completes.
+     *
+     * <p>When this stage is complete, the given action is invoked with the
+     * result (or {@code null} if none) and the exception (or {@code null}
+     * if none) of this stage as arguments.  The returned stage is completed
+     * when the action returns.
+     *
+     * <p>Unlike method {@link #handleAsync(BiFunction,Executor) handleAsync},
+     * this method is not designed to translate completion outcomes,
+     * so the supplied action should not throw an exception. However,
+     * if it does, the following rules apply: If this stage completed
+     * normally but the supplied action throws an exception, then the
+     * returned stage completes exceptionally with the supplied
+     * action's exception. Or, if this stage completed exceptionally
+     * and the supplied action throws an exception, then the returned
+     * stage completes exceptionally with this stage's exception.
+     *
+     * @param action the action to perform
+     * @param executor the executor to use for asynchronous execution
+     * @return the new CompletionStage
+     */
+    default JPromise<T> whenCompleteAsync(BiConsumer<? super T, ? super Throwable> action, Executor executor) {
+        if (executor == null) {
+            return whenCompleteAsync(action);
+        } else {
+            JScheduler scheduler = JScheduler.fromExecutorService(executor);
+            return wrapContext(whenCompleteAsync(action), ctx -> ctx.setScheduler(scheduler));
+        }
+    }
+
+    /**
+     * Returns a new CompletionStage that, when this stage completes
+     * exceptionally, is executed with this stage's exception as the
+     * argument to the supplied function.  Otherwise, if this stage
+     * completes normally, then the returned stage also completes
+     * normally with the same value.
+     *
+     * @param fn the function to use to compute the value of the
+     * returned CompletionStage if this CompletionStage completed
+     * exceptionally
+     * @return the new CompletionStage
+     */
+    default JPromise<T> exceptionally(Function<Throwable, ? extends T> fn) {
+        return doCatchImmediate(e -> {
+            return JPromise.just(fn.apply(e));
+        });
+    }
+
+    /**
+     * Returns a {@link CompletableFuture} maintaining the same
+     * completion properties as this stage. If this stage is already a
+     * CompletableFuture, this method may return this stage itself.
+     * Otherwise, invocation of this method may be equivalent in
+     * effect to {@code thenApply(x -> x)}, but returning an instance
+     * of type {@code CompletableFuture}.
+     *
+     * @return the CompletableFuture
+     */
+    default CompletableFuture<T> toCompletableFuture() {
+        if (this instanceof CompletableFuture) {
+            return (CompletableFuture<T>) this;
+        } else {
+            CompletableFuture<T> future = new CompletableFuture<>();
+            onFinally((v, e) -> {
+                if (e != null) {
+                    future.completeExceptionally(e);
+                } else {
+                    future.complete(v);
+                }
+            });
+            return future;
+        }
     }
 }

@@ -9,48 +9,58 @@ import java.util.concurrent.*;
 
 public class ExecutorServiceScheduler implements JScheduler {
 
-    private final ExecutorService service;
+    private final Executor executor;
 
-    public ExecutorServiceScheduler(ExecutorService service) {
-        this.service = service;
+    public ExecutorServiceScheduler(Executor executor) {
+        this.executor = executor;
     }
 
     @Override
     public JDisposable schedule(Runnable task) {
-        Future<?> future = service.submit(task);
-        return new FutureDisposable<>(future);
+        if (executor instanceof ExecutorService) {
+            Future<?> future = ((ExecutorService) executor).submit(task);
+            return new FutureDisposable<>(future);
+        } else {
+            RunnableWrapper wrapper = new RunnableWrapper(task);
+            executor.execute(wrapper);
+            return wrapper;
+        }
     }
 
     @Override
     public JDisposable schedule(Runnable task, long delay, TimeUnit unit) {
-        if (service instanceof ScheduledExecutorService) {
-            ScheduledExecutorService scheduledService = (ScheduledExecutorService) this.service;
+        if (executor instanceof ScheduledExecutorService) {
+            ScheduledExecutorService scheduledService = (ScheduledExecutorService) this.executor;
             ScheduledFuture<?> future = scheduledService.schedule(task, delay, unit);
             return new FutureDisposable<>(future);
         } else {
-            final EventHandlerDisposable disposable = new EventHandlerDisposable();
-            EventHandle handle = Schedule.instance().addEvent(delay, unit, () -> service.submit(task));
+            DisposableHandler disposableHandler = new DisposableHandler();
+            final EventHandlerDisposable disposable = new EventHandlerDisposable(disposableHandler);
+            EventHandle handle = Schedule.instance().addEvent(delay, unit, () -> {
+                disposableHandler.updateDisposable(schedule(task));
+            });
             disposable.updateHandle(handle);
             return disposable;
         }
     }
 
-    private void setTimeout(Runnable task, long delay, TimeUnit unit, EventHandlerDisposable disposable) {
-        this.service.submit(task);
-        EventHandle handle = Schedule.instance().addEvent(delay, unit, () -> setTimeout(task, delay, unit, disposable));
+    private void setTimeout(Runnable task, long delay, TimeUnit unit, DisposableHandler disposableHandler, EventHandlerDisposable disposable) {
+        disposableHandler.updateDisposable(schedule(task));
+        EventHandle handle = Schedule.instance().addEvent(delay, unit, () -> setTimeout(task, delay, unit, disposableHandler, disposable));
         disposable.updateHandle(handle);
     }
 
     @Override
     public JDisposable schedulePeriodically(Runnable task, long initialDelay, long delay, TimeUnit unit) {
-        if (service instanceof ScheduledExecutorService) {
-            ScheduledExecutorService scheduledService = (ScheduledExecutorService) this.service;
+        if (executor instanceof ScheduledExecutorService) {
+            ScheduledExecutorService scheduledService = (ScheduledExecutorService) this.executor;
             ScheduledFuture<?> future = scheduledService.scheduleWithFixedDelay(task, initialDelay, delay, unit);
             return new FutureDisposable<>(future);
         } else {
-            final EventHandlerDisposable disposable = new EventHandlerDisposable();
+            DisposableHandler disposableHandler = new DisposableHandler();
+            final EventHandlerDisposable disposable = new EventHandlerDisposable(disposableHandler);
             EventHandle handle = Schedule.instance().addEvent(initialDelay, unit, () -> {
-                setTimeout(task, delay, unit, disposable);
+                setTimeout(task, delay, unit, disposableHandler, disposable);
             });
             disposable.updateHandle(handle);
             return disposable;

@@ -3,7 +3,7 @@ package io.github.vipcxj.jasync.ng.spec;
 import io.github.vipcxj.jasync.ng.spec.exceptions.JAsyncExecutionException;
 import io.github.vipcxj.jasync.ng.spec.spi.JSchedulerSupport;
 
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 public interface JScheduler {
@@ -21,7 +21,7 @@ public interface JScheduler {
     default boolean supportDelay() {
         return false;
     }
-    static JScheduler fromExecutorService(ExecutorService executorService) {
-        return provider.fromExecutorService(executorService);
+    static JScheduler fromExecutorService(Executor executor) {
+        return provider.fromExecutorService(executor);
     }
 }

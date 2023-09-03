@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -501,5 +503,19 @@ public class PromiseTest {
         }
         System.out.println(res[0]);
         System.out.println("testLock completed");
+    }
+
+    @Test
+    public void testCompletableFutureThatHasCompleted() throws InterruptedException {
+        CompletionStage<String> stage = CompletableFuture.completedStage("test");
+        Assertions.assertEquals("test", JPromise.from(stage).block());
+    }
+
+    @Test
+    public void testCompletableFutureThatNotCompleted() throws InterruptedException {
+        CompletableFuture<String> stage = new CompletableFuture<>();
+        JHandle<String> handle = JPromise.from(stage).async();
+        stage.complete("test");
+        Assertions.assertEquals("test", handle.block());
     }
 }

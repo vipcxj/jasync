@@ -56,9 +56,10 @@ public class LazyTask<T> implements Task<T> {
                 if (scheduler.supportDelay()) {
                     disposable = scheduler.schedule(() -> doSchedule(thunk, context), delay, timeUnit);
                 } else {
-                    final EventHandlerDisposable disposable = new EventHandlerDisposable();
+                    DisposableHandler disposableHandler = new DisposableHandler();
+                    final EventHandlerDisposable disposable = new EventHandlerDisposable(disposableHandler);
                     EventHandle handle = Schedule.instance().addEvent(delay, timeUnit, () -> {
-                        scheduler.schedule(() -> doSchedule(thunk, context));
+                        disposableHandler.updateDisposable(scheduler.schedule(() -> doSchedule(thunk, context)));
                     });
                     disposable.updateHandle(handle);
                     this.disposable = disposable;
