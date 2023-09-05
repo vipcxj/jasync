@@ -43,6 +43,7 @@
         <module>jasync-utils</module>
         <module>jasync-asm</module>
         <module>jasync-reactive</module>
+        <module>jasync-spring</module>
     </modules>
 
     <properties>
@@ -53,6 +54,7 @@
         <auto-service.version>1.0-rc7</auto-service.version>
         <asm.version>9.3</asm.version>
         <jctools.version>3.3.0</jctools.version>
+        <junit.version>5.10.0</junit.version>
     </properties>
 
     <dependencyManagement>
