@@ -1,5 +1,7 @@
 package io.github.vipcxj.jasync.ng.spring;
 
+import java.time.Duration;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,5 +28,34 @@ public class JAsyncControllerTest {
             .isOk()
             .expectBody(String.class)
             .isEqualTo("Hello World!");
+    }
+
+    @Test
+    public void testSleep() {
+        webClient
+            .mutateWith((b, hb, c) -> {
+                b.responseTimeout(Duration.ofSeconds(2));
+            })
+            .get().uri("/sleep")
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody(Void.class)
+            .isEqualTo(null);
+    }
+
+    @Test
+    public void testEcho() {
+        webClient
+            .mutateWith((b, hb, c) -> {
+                b.responseTimeout(Duration.ofDays(2));
+            })
+            .post().uri("/echo")
+            .bodyValue("hi!")
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody(String.class)
+            .isEqualTo("hi!");
     }
 }

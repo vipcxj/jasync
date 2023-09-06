@@ -23,15 +23,6 @@ public class JAsyncReactive {
     public static <T> JPromise<T> fromPublisher(Publisher<T> publisher) {
         JAsyncSubscriber<T> subscriber = new JAsyncSubscriber<>();
         publisher.subscribe(subscriber);
-        return subscriber.createSubscriptionPromise().then(s -> {
-            s.request(Long.MAX_VALUE);
-            return subscriber.createValuePromise().then(r -> {
-                if (r.getThrowable() == null) {
-                    return JPromise.just(r.getValue());
-                } else {
-                    return JPromise.error(r.getThrowable());
-                }
-            });
-        });
+        return subscriber.getPromise();
     }
 }

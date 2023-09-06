@@ -15,8 +15,9 @@ public class JAsyncSubscription<T> implements Subscription {
     private volatile JHandle<T> handle;
     /**
      * 0: init
-     * 1: requested
-     * 2: cancelled
+     * 1: requesting
+     * 2: requested
+     * 3: cancelled
      */
     private volatile int state;
     @SuppressWarnings("rawtypes")
@@ -35,6 +36,7 @@ public class JAsyncSubscription<T> implements Subscription {
         }
         if (STATE_UPDATER.compareAndSet(this, 0, 1)) {
             this.handle = this.promise.onFinally((v, e) -> {
+                this.state = 2;
                 if (e != null) {
                     this.subscriber.onError(e);
                 } else {
@@ -47,16 +49,22 @@ public class JAsyncSubscription<T> implements Subscription {
 
     @Override
     public void cancel() {
-        if (this.state == 2) {
+        if (this.state == 3) {
             return;
         }
         while(true) {
-            if (this.state == 2) {
+            if (this.state == 3) { // have cancelled.
                 return;
-            } else if (this.handle != null && STATE_UPDATER.compareAndSet(this, 1, 2)) {
-                this.handle.cancel();
-            } else {
-                STATE_UPDATER.compareAndSet(this, 0, 2);
+            } else if (this.state == 1) { // is cancelling
+                if (this.handle != null) {
+                    if (STATE_UPDATER.compareAndSet(this, 1, 3)) {
+                        this.handle.cancel();
+                    }
+                }
+            } else if (this.state == 2) { // the promise has completed, so no need cancel it, even if the handle has not assigned.
+                this.state = 3;
+            } else { // the promise has not started.
+                STATE_UPDATER.compareAndSet(this, 0, 3);
             }
         }
     }

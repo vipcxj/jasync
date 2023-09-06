@@ -3,26 +3,38 @@ package io.github.vipcxj.jasync.ng.reactive;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
+import io.github.vipcxj.jasync.ng.spec.JContext;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.JPromiseTrigger;
+import io.github.vipcxj.jasync.ng.spec.JThunk;
 
 public class JAsyncSubscriber<T> implements Subscriber<T> {
 
-    private final JPromiseTrigger<Subscription> subscriptionResolver;
-    private final JPromiseTrigger<Result<T>> valueResolver;
+    private final JPromiseTrigger<T> valueResolver;
+    private final JPromise<T> promise;
     private boolean done;
     private Subscription s;
 
     public JAsyncSubscriber() {
-        this.subscriptionResolver = JPromise.createTrigger();
         this.valueResolver = JPromise.createTrigger();
         this.done = false;
+        this.promise = JPromise.generate(this::onPromiseStart);
     }
 
     @Override
     public void onSubscribe(Subscription s) {
         this.s = s;
-        this.subscriptionResolver.resolve(s);
+        s.request(Long.MAX_VALUE);
+    }
+
+    private void onPromiseStart(JThunk<T> thunk, JContext context) {
+        this.valueResolver.getPromise().onFinally((v, t) -> {
+            if (t != null) {
+                thunk.reject(t, context);
+            } else {
+                thunk.resolve(v, context);
+            }
+        }).async();
     }
 
     @Override
@@ -30,7 +42,7 @@ public class JAsyncSubscriber<T> implements Subscriber<T> {
         if (!done) {
             this.done = true;
             this.s.cancel();
-            this.valueResolver.resolve(new Result<T>(t, null));
+            this.valueResolver.resolve(t);
         }
     }
 
@@ -38,7 +50,7 @@ public class JAsyncSubscriber<T> implements Subscriber<T> {
     public void onError(Throwable t) {
         if (!done) {
             this.done = true;
-            this.valueResolver.resolve(new Result<T>(null, t));
+            this.valueResolver.reject(t);
         }
     }
 
@@ -46,33 +58,11 @@ public class JAsyncSubscriber<T> implements Subscriber<T> {
     public void onComplete() {
         if (!done) {
             this.done = true;
-            this.valueResolver.resolve(new Result<T>(null, null));
+            this.valueResolver.resolve(null);
         }
     }
 
-    public JPromise<Result<T>> createValuePromise() {
-        return valueResolver.getPromise();
-    }
-
-    public JPromise<Subscription> createSubscriptionPromise() {
-        return subscriptionResolver.getPromise();
-    }
-    
-    public static class Result<T> {
-        private final T value;
-        private final Throwable throwable;
-
-        public Result(T value, Throwable throwable) {
-            this.value = value;
-            this.throwable = throwable;
-        }
-
-        public T getValue() {
-            return value;
-        }
-
-        public Throwable getThrowable() {
-            return throwable;
-        }
+    public JPromise<T> getPromise() {
+        return promise;
     }
 }
