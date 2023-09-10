@@ -1,31 +1,37 @@
 package io.github.vipcxj.jasync.ng.asm;
 
 import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.analysis.BasicValue;
 
 import java.util.*;
 
 public class Arguments {
-    public static final Arguments EMPTY = new Arguments();
     private final List<ExtendType> types;
+    private final List<String> names;
     private int uninitializedNum;
 
     public Arguments() {
         this.types = new ArrayList<>();
+        this.names = new ArrayList<>();
         this.uninitializedNum = 0;
     }
 
     Arguments(Arguments arguments, int from, int to) {
         this.types = new ArrayList<>();
-        arguments.types.stream().skip(from).limit(to - from).forEach(type -> {
+        this.names = new ArrayList<>();
+        for (int i = from; i < to; ++i) {
+            ExtendType type = arguments.types.get(i);
+            String name = arguments.names.get(i);
             this.types.add(type);
+            this.names.add(name);
             if (!type.isInitialized()) {
                 ++this.uninitializedNum;
             }
-        });
+        }
     }
 
-    public void addArgument(BasicValue value) {
+    public void addArgument(BasicValue value, String name) {
         boolean uninitialized = false;
         if (value instanceof JAsyncValue) {
             JAsyncValue asyncValue = (JAsyncValue) value;
@@ -35,13 +41,13 @@ public class Arguments {
         }
         Type type = value.getType();
         if (uninitialized) {
-            addArgument(type, true, value);
+            addArgument(type, true, value, name);
         } else {
-            addArgument(type, false, null);
+            addArgument(type, false, null, name);
         }
     }
 
-    private void addArgument(Type type, boolean uninitialized, Object ref) {
+    private void addArgument(Type type, boolean uninitialized, Object ref, String name) {
         type = (type != null && !type.equals(Constants.NULL_DESC)) ? type : Constants.OBJECT_DESC;
         ExtendType newType = null;
         if (ref != null) {
@@ -58,13 +64,14 @@ public class Arguments {
             newType = new ExtendType(type ,uninitialized, ref);
         }
         types.add(newType);
+        names.add(name);
         if (uninitialized) {
             ++uninitializedNum;
         }
     }
 
-    public void addArgument(Type type) {
-        addArgument(type, false, null);
+    public void addArgument(Type type, String name) {
+        addArgument(type, false, null, name);
     }
 
     public List<ExtendType> getTypes() {
@@ -111,10 +118,30 @@ public class Arguments {
         return results;
     }
 
-    public static Arguments of(Type... types) {
+    public LocalVariableNode[] toLocalVariables() {
+        LocalVariableNode[] variableNodes = new LocalVariableNode[types.size() - uninitializedNum];
+        int i = 0;
+        Iterator<ExtendType> iterator = types.iterator();
+        Iterator<String> nameIterator = names.iterator();
+        while (i < variableNodes.length) {
+            ExtendType extendType = iterator.next();
+            if (extendType.isInitialized()) {
+                String name = nameIterator.next();
+                variableNodes[i++] = new LocalVariableNode(name, extendType.getType().getDescriptor(), null, null, null, i);
+            }
+        }
+        return variableNodes;
+    }
+
+    public static Arguments of(Object... typeAndNames) {
+        if (typeAndNames.length % 2 != 0) {
+            throw new IllegalArgumentException("The number of inputs must be even.");
+        }
         Arguments arguments = new Arguments();
-        for (Type type : types) {
-            arguments.addArgument(type, false, null);
+        for (int i = 0; i < typeAndNames.length;) {
+            Type type = (Type) typeAndNames[i++];
+            String name = (String) typeAndNames[i++];
+            arguments.addArgument(type, false, null, name);
         }
         return arguments;
     }

@@ -25,6 +25,17 @@ public class NewTest {
         }
     }
 
+    public static class StaticClassWithOneArgs {
+        private final String arg;
+        public StaticClassWithOneArgs(String arg) {
+            this.arg = arg;
+        }
+
+        public String getArg() {
+            return arg;
+        }
+    }
+
     public static class StaticClassWithArgs {
         private final String message;
         private final Integer number;
@@ -65,6 +76,16 @@ public class NewTest {
         public Integer getNumber() {
             return number;
         }
+    }
+
+    private JPromise<String> simpleNew() throws InterruptedException {
+        StaticClassWithOneArgs object = new StaticClassWithOneArgs(sayHello().await());
+        return JPromise.just(object.getArg());
+    }
+
+    @Test
+    public void testSimpleNew() throws InterruptedException {
+        Assertions.assertEquals("hello", simpleNew().block());
     }
 
     private JPromise<String> oneStaticNew() throws InterruptedException {

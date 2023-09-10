@@ -1,21 +1,37 @@
 package io.github.vipcxj.jasync.ng.test;
 
+import io.github.vipcxj.jasync.ng.spec.JContext;
 import io.github.vipcxj.jasync.ng.spec.JHandle;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.concurrent.TimeUnit;
 
 public class WhileTest {
 
+    @Async(debugId = "sum1", logOriginalByteCode = Async.BYTE_CODE_OPTION_FULL_SUPPORT)
     public JPromise<Integer> sum1(int to) throws InterruptedException {
         int sum = 0;
         while (sum < to) {
             sum += JPromise.just(1).await();
         }
         return JPromise.just(sum);
+    }
+
+    @Test
+    public void testReflectGetParameters() throws NoSuchMethodException {
+        Method method = WhileTest.class.getDeclaredMethod("lambda$sum1$0", int.class, JContext.class);
+        Parameter[] parameters = method.getParameters();
+        int parameterCount = method.getParameterCount();
+        Assertions.assertEquals(parameterCount, parameters.length);
+        method = WhileTest.class.getDeclaredMethod("lambda$sum1$1", Object[].class, JContext.class);
+        parameters = method.getParameters();
+        parameterCount = method.getParameterCount();
+        Assertions.assertEquals(parameterCount, parameters.length);
     }
 
     @Async

@@ -31,16 +31,18 @@ public class MethodContext {
     private final AbstractInsnNode[] insnNodes;
     private List<Set<Integer>> loops;
     private int contextVarIndex;
+    private int localVarBase;
 
-    public MethodContext(ClassContext classContext, MethodNode mv, String rootMethodName) {
+    public MethodContext(ClassContext classContext, MethodNode mv, String rootMethodName, JAsyncInfo info) {
         // The root baseValidLocals = AsmHelper.calcMethodArgLocals(mv) - 1
         // Because the last argument is JContext which should be ignored.
-        this(classContext, mv, null, MethodType.TOP, null, rootMethodName, AsmHelper.calcMethodArgLocals(mv) - 1);
+        this(classContext, mv, info, null, MethodType.TOP, null, rootMethodName, AsmHelper.calcMethodArgLocals(mv) - 1);
     }
 
     public MethodContext(
             ClassContext classContext,
             MethodNode mv,
+            JAsyncInfo info,
             List<Integer> map,
             MethodType type,
             MethodContext parent,
@@ -49,11 +51,12 @@ public class MethodContext {
     ) {
         this.classContext = classContext;
         this.mv = mv;
+        this.info = info != null ? info : (parent != null ? parent.getInfo() : null);
         this.contextVarIndex = AsmHelper.calcMethodArgLocals(mv) - 1;
         this.map = map;
-        this.info = parent != null ? parent.getInfo() : JAsyncInfo.of(mv);
         this.localsToUpdate = new ArrayList<>();
         this.stacksToUpdate = new ArrayList<>();
+        this.localVarBase = 0;
         this.type = type;
         this.head = mapped(0);
         BranchAnalyzer analyzer = new BranchAnalyzer(true);
@@ -81,7 +84,7 @@ public class MethodContext {
     }
 
     public MethodContext createChild(MethodNode methodNode, List<Integer> map, MethodType type, int parentLocals) {
-        return new MethodContext(classContext, methodNode, map, type, this, rootMethodName, parentLocals);
+        return new MethodContext(classContext, methodNode, null, map, type, this, rootMethodName, parentLocals);
     }
 
     public MethodNode getMv() {
@@ -109,7 +112,7 @@ public class MethodContext {
     }
 
     public boolean isStatic() {
-        return (mv.access & Opcodes.ACC_STATIC) != 0;
+        return AsmHelper.isStatic(mv);
     }
 
     private MethodContext getRootMethodContext() {
@@ -151,17 +154,22 @@ public class MethodContext {
         BranchAnalyzer.Node<BasicValue>[] nodes = getFrames();
         if (nodes.length > 0) {
             loops = GraphUtils.tarjan(nodes);
+            // 新指令全部置空
             Arrays.fill(insnNodes, null);
+            // 填充新指令，多半填不满，但没关系，后面会处理
             process(nodes[0]);
+            // 清空已有的指令
             clearInsnList(getMv().instructions);
-            List<LocalVariableNode> localVariableNodes = new ArrayList<>();
-            LocalVariableNode[] localVariableArray = new LocalVariableNode[mv.maxLocals];
+            List<LocalVariableNode> completedLocalVariableNodes = new ArrayList<>();
+            LocalVariableNode[] processingLocalVariableNodes = new LocalVariableNode[mv.maxLocals];
             List<TryCatchBlockNode> processingTcbNodes = new ArrayList<>();
             List<TryCatchBlockNode> completedTcbNodes = new ArrayList<>();
             InsnList newInsnList = new InsnList();
             List<Integer> newMap = new ArrayList<>();
+            // 将处理过的新指令放回方法中
             for (int i = 0; i < insnNodes.length; ++i) {
                 AbstractInsnNode insnNode = insnNodes[i];
+                // 呼应前文，新指令填不满，大概率有空，空的直接丢弃
                 if (insnNode != null) {
                     int mappedIndex = mapped(i);
                     BranchAnalyzer.Node<BasicValue> frame = frames[i];
@@ -184,35 +192,35 @@ public class MethodContext {
                             newMap.add(mappedIndex);
                             newInsnList.add(node);
                         }
-                        for (int j = 0; j < localVariableArray.length; ++j) {
-                            LocalVariableNode variableNode = localVariableArray[j];
+                        for (int j = 0; j < processingLocalVariableNodes.length; ++j) {
+                            LocalVariableNode variableNode = processingLocalVariableNodes[j];
                             if (variableNode != null && variableNode.start != null) {
                                 variableNode.end = packageInsnNode.getEndNode();
                             }
-                            pushLocalVariable(localVariableArray, j, localVariableNodes, null);
+                            pushLocalVariable(processingLocalVariableNodes, j, completedLocalVariableNodes, null);
                         }
                     } else {
                         newMap.add(mappedIndex);
                         newInsnList.add(insnNode);
-                        updateLocalVar(localVariableArray, localVariableNodes, insnNode, frame);
+                        updateLocalVar(processingLocalVariableNodes, completedLocalVariableNodes, insnNode, frame);
                     }
                 }
             }
             LabelNode endNode;
             if (newInsnList.getLast() instanceof LabelNode) {
                 endNode = (LabelNode) newInsnList.getLast();
-                completeLocalVar(localVariableArray, localVariableNodes, null, true);
+                completeLocalVar(processingLocalVariableNodes, completedLocalVariableNodes, null, true);
             } else {
                 endNode = new LabelNode();
                 newInsnList.add(endNode);
-                completeLocalVar(localVariableArray, localVariableNodes, endNode, true);
+                completeLocalVar(processingLocalVariableNodes, completedLocalVariableNodes, endNode, true);
             }
             completeTryCatchBlockNodes(processingTcbNodes, completedTcbNodes, endNode);
             filterTryCatchBlockNodes(completedTcbNodes, newInsnList);
             map = newMap;
             getMv().instructions = newInsnList;
             getMv().tryCatchBlocks = completedTcbNodes;
-            getMv().localVariables = localVariableNodes;
+            getMv().localVariables = completedLocalVariableNodes;
             updateMax();
             for (MethodContext child : children) {
                 child.process();
@@ -283,66 +291,89 @@ public class MethodContext {
         }
         return equals(localVar.getName(), localVariableNode.name)
                 && equals(localVar.getDesc(), localVariableNode.desc)
-                && equals(localVar.getSignature(), localVariableNode.signature);
+                // the localVariableNode created from Arguments has a null signature, so don't check it.
+                && (localVariableNode.signature == null || equals(localVar.getSignature(), localVariableNode.signature));
     }
 
-    private void pushLocalVariable(LocalVariableNode[] localVariableArray, int i, List<LocalVariableNode> localVariableList, LabelNode endNode) {
-        LocalVariableNode localVariableNode = localVariableArray[i];
+    private void pushLocalVariable(LocalVariableNode[] processingLocalVariables, int i, List<LocalVariableNode> completedLocalVariables, LabelNode endNode) {
+        LocalVariableNode localVariableNode = processingLocalVariables[i];
         if (localVariableNode != null && localVariableNode.start != null && (localVariableNode.end != null || endNode != null)) {
             if (localVariableNode.end == null) {
                 localVariableNode.end = endNode;
             }
-            localVariableList.add(localVariableNode);
+            completedLocalVariables.add(localVariableNode);
         }
-        localVariableArray[i] = null;
+        processingLocalVariables[i] = null;
     }
 
     void updateLocalVar(
-            LocalVariableNode[] localVariableArray,
-            List<LocalVariableNode> localVariableList,
+            LocalVariableNode[] processingLocalVariables,
+            List<LocalVariableNode> completedLocalVariables,
             AbstractInsnNode insnNode, BranchAnalyzer.Node<? extends BasicValue> frame
     ) {
-        LocalVar[] localVars = frame.getLocalVars();
-        int size = Math.min(localVariableArray.length, localVars.length);
+        updateLocalVar(processingLocalVariables, completedLocalVariables, insnNode, frame.getLocalVars());
+    }
+
+    void updateLocalVar(
+            LocalVariableNode[] processingLocalVariables,
+            List<LocalVariableNode> completedLocalVariables,
+            AbstractInsnNode insnNode, LocalVar[] localVars
+    ) {
+        int size = Math.min(processingLocalVariables.length, localVars.length);
         for (int i = 0; i < size; ++i) {
             LocalVar localVar = localVars[i];
-            LocalVariableNode localVariableNode = localVariableArray[i];
-            if (!equals(localVar, localVariableNode)) {
+            LocalVariableNode processingLocalVariable = processingLocalVariables[i];
+            if (!equals(localVar, processingLocalVariable)) {
                 if (localVar == null) {
-                    pushLocalVariable(localVariableArray, i, localVariableList, null);
-                } else if (localVariableNode == null) {
+                    pushLocalVariable(processingLocalVariables, i, completedLocalVariables, insnNode instanceof LabelNode ? (LabelNode) insnNode : null);
+                } else if (processingLocalVariable == null) {
                     LocalVariableNode variableNode = new LocalVariableNode(localVar.getName(), localVar.getDesc(), localVar.getSignature(), null, null, i);
                     if (insnNode instanceof LabelNode) {
                         variableNode.start = (LabelNode) insnNode;
                     }
-                    localVariableArray[i] = variableNode;
+                    processingLocalVariables[i] = variableNode;
                 } else {
-                    pushLocalVariable(localVariableArray, i, localVariableList, null);
+                    pushLocalVariable(processingLocalVariables, i, completedLocalVariables, insnNode instanceof LabelNode ? (LabelNode) insnNode : null);
                     LocalVariableNode variableNode = new LocalVariableNode(localVar.getName(), localVar.getDesc(), localVar.getSignature(), null, null, i);
                     if (insnNode instanceof LabelNode) {
                         variableNode.start = (LabelNode) insnNode;
                     }
-                    localVariableArray[i] = variableNode;
+                    processingLocalVariables[i] = variableNode;
                 }
-            } else if (localVariableNode != null && insnNode instanceof LabelNode) {
-                if (localVariableNode.start == null) {
-                    localVariableNode.start = (LabelNode) insnNode;
-                } else {
-                    localVariableNode.end = (LabelNode) insnNode;
+            } else if (processingLocalVariable != null) {
+                // the localVariableNode created from Arguments has a null signature, so fix it here.
+                if (processingLocalVariable.signature == null && localVar.getSignature() != null) {
+                    processingLocalVariable.signature = localVar.getSignature();
+                }
+                if (insnNode instanceof LabelNode) {
+                    if (processingLocalVariable.start == null) {
+                        processingLocalVariable.start = (LabelNode) insnNode;
+                    } else {
+                        processingLocalVariable.end = (LabelNode) insnNode;
+                    }
                 }
             }
         }
     }
 
-    void completeLocalVar(LocalVariableNode[] localVariableArray, List<LocalVariableNode> localVariableList, LabelNode endNode, boolean includeThis) {
-        for (int i = 0; i < localVariableArray.length; ++i) {
-            LocalVariableNode localVariableNode = localVariableArray[i];
+    void completeLocalVar(LocalVariableNode[] processingLocalVariables, List<LocalVariableNode> completedLocalVariables, LabelNode endNode, boolean includeThis) {
+        for (int i = 0; i < processingLocalVariables.length; ++i) {
+            LocalVariableNode localVariableNode = processingLocalVariables[i];
             if (localVariableNode != null && (includeThis || isStatic() || localVariableNode.index != 0)) {
-                pushLocalVariable(localVariableArray, i, localVariableList, endNode);
+                pushLocalVariable(processingLocalVariables, i, completedLocalVariables, endNode);
             }
         }
     }
 
+    /**
+     * 更新 TryCatchBlock节点信息
+     * @param processings 正在处理中的 tcb节点
+     * @param completes 已经处理完成的 tcb节点
+     * @param insnNode 当前节点
+     * @param frame 当前帧
+     * @param labelMap 标签映射，用于 copy 指令，可以为空
+     * @return 可能需要插入的新标签指令，可能为 null
+     */
     LabelNode updateTryCatchBlockNodes(
             List<TryCatchBlockNode> processings,
             List<TryCatchBlockNode> completes,
@@ -432,6 +463,12 @@ public class MethodContext {
         completedTcbNodes.removeIf(tcb -> !insnList.contains(tcb.handler));
     }
 
+    /**
+     * 获取头指令，因为传入的指令可能是 PackageInsnNode 类型，这种指令是一系列指令的集合，取其第一条指令，如果是空的也返回空
+     * 对于其他类型的指令，原样返回。
+     * @param node 需要取头指令的指令
+     * @return 头指令
+     */
     private AbstractInsnNode getFirstNode(AbstractInsnNode node) {
         if (node instanceof PackageInsnNode) {
             PackageInsnNode packageInsnNode = (PackageInsnNode) node;
@@ -616,6 +653,26 @@ public class MethodContext {
         return methodNode;
     }
 
+    private String genLocalVarName(String baseName) {
+        String localVarName = (baseName != null && !baseName.isEmpty()) ? baseName : "__tmp" + this.localVarBase++;
+        if (this.mv.localVariables != null) {
+            for (LocalVariableNode lvn : this.mv.localVariables) {
+                if (Objects.equals(lvn.name, localVarName)) {
+                    return genLocalVarName((baseName != null && !baseName.isEmpty()) ? (baseName + "_") : null);
+                }
+            }
+        }
+        return localVarName;
+    }
+
+    private String calcLocalVarName(int i, BranchAnalyzer.Node<? extends BasicValue> node) {
+        LocalVar localVar = node.getLocalVars()[i];
+        if (localVar != null) {
+            return  localVar.getName();
+        }
+        return genLocalVarName(null);
+    }
+
     int calcValidLocals(BranchAnalyzer.Node<? extends BasicValue> node) {
         int locals = node.getLocals();
         AsmHelper.LocalReverseIterator iterator = AsmHelper.reverseIterateLocal(node);
@@ -649,11 +706,12 @@ public class MethodContext {
         for (int i = start; i < validLocals;) {
             BasicValue value = node.getLocal(i);
             Type type = value.getType();
+            String name = calcLocalVarName(i, node);
             if (type != null) {
-                arguments.addArgument(value);
+                arguments.addArgument(value, name);
                 i += type.getSize();
             } else {
-                arguments.addArgument((Type) null);
+                arguments.addArgument((Type) null, name);
                 ++i;
             }
         }
@@ -666,7 +724,8 @@ public class MethodContext {
         // stack: a, b -> arguments
         for (int i = 0; i < iMax; ++i) {
             BasicValue value = node.getStack(i);
-            arguments.addArgument(value);
+            String name = genLocalVarName(null);
+            arguments.addArgument(value, name);
         }
     }
 
@@ -675,9 +734,9 @@ public class MethodContext {
         Arguments arguments = new Arguments();
         calcExtraAwaitArgumentsType(validLocals, frame, arguments);
         // await type, throwable type -> arguments
-        arguments.addArgument(Constants.OBJECT_DESC);
-        arguments.addArgument(Constants.THROWABLE_DESC);
-        arguments.addArgument(Constants.JCONTEXT_DESC);
+        arguments.addArgument(Constants.OBJECT_DESC, genLocalVarName("awaitResult"));
+        arguments.addArgument(Constants.THROWABLE_DESC, genLocalVarName("error"));
+        arguments.addArgument(Constants.JCONTEXT_DESC, genLocalVarName("context"));
         // x, y, z, a, b, await type, throwable type, JContext
         return arguments;
     }
@@ -776,8 +835,8 @@ public class MethodContext {
             // create arguments for lambda
             Arguments arguments = new Arguments();
             localsToArguments(validLocals, node, arguments);
-            arguments.addArgument(exceptionType);
-            arguments.addArgument(Constants.JCONTEXT_DESC);
+            arguments.addArgument(exceptionType, genLocalVarName("error"));
+            arguments.addArgument(Constants.JCONTEXT_DESC, genLocalVarName("context"));
             String lambdaName = findLambdaName(handlerNode, arguments, MethodType.CATCH_BODY);
             if (lambdaName == null) {
                 CatchLambdaContext lambdaContext = new CatchLambdaContext(this, arguments, handlerNode, validLocals);
@@ -1094,7 +1153,10 @@ public class MethodContext {
             AsmHelper.appendStack(getMv(), node, 1);
         }
         String jumpTargetFieldName = genJumpIndexField(mappedIndex);
-        Arguments arguments = Arguments.of(Constants.OBJECT_ARRAY_DESC, Constants.JCONTEXT_DESC);
+        Arguments arguments = Arguments.of(
+                Constants.OBJECT_ARRAY_DESC, genLocalVarName("arguments"),
+                Constants.JCONTEXT_DESC, genLocalVarName("context")
+        );
         String lambdaName = findLambdaName(node, arguments, MethodType.LOOP_BODY);
         if (lambdaName == null) {
             LoopLambdaContext loopLambdaContext = new LoopLambdaContext(this, arguments, node, jumpTargetFieldName);

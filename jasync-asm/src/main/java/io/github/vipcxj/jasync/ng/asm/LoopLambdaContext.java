@@ -94,6 +94,11 @@ public class LoopLambdaContext extends AbstractLambdaContext {
         methodContext.logCollectLocalsAndStack(node, WHY_COLLECT_JUMP, lambdaNode.name, methodContext.getMv().name, validLocals);
     }
 
+    /**
+     * locals: this?, localVars, context
+     * This method make the locals to:
+     * locals: this?, local0, local1, local2 ..., context
+     */
     private void restoreLocalAndStack() {
         boolean isStatic = methodContext.isStatic();
         int offset = isStatic ? 0 : 1;

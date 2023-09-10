@@ -19,8 +19,8 @@ public abstract class AbstractLambdaContext {
     protected final List<Integer> lambdaMap;
     protected final int index;
     protected final int mappedIndex;
-    protected final List<LocalVariableNode> localVariableNodes;
-    protected final LocalVariableNode[] localVariableArray;
+    protected final List<LocalVariableNode> completedLocalVariables;
+    protected final LocalVariableNode[] processingLocalVariables;
     protected final List<TryCatchBlockNode> processingTcbNode;
     protected final List<TryCatchBlockNode> completedTcbNode;
     protected LabelNode startLabelNode;
@@ -44,8 +44,8 @@ public abstract class AbstractLambdaContext {
         this.index = node.getIndex();
         this.mappedIndex = methodContext.mapped(index);
 
-        this.localVariableNodes = new ArrayList<>();
-        this.localVariableArray = new LocalVariableNode[methodContext.getMv().maxLocals];
+        this.completedLocalVariables = new ArrayList<>();
+        this.processingLocalVariables = arguments.toLocalVariables();
         this.processingTcbNode = new ArrayList<>();
         this.completedTcbNode = new ArrayList<>();
     }
@@ -62,7 +62,7 @@ public abstract class AbstractLambdaContext {
         addBodyCodes();
         addEndLabelNode();
         lambdaNode.tryCatchBlocks = completedTcbNode;
-        lambdaNode.localVariables = localVariableNodes;
+        lambdaNode.localVariables = completedLocalVariables;
         methodContext.addLambdaContext(lambdaNode, lambdaMap, methodType, validLocals());
     }
 
@@ -74,6 +74,13 @@ public abstract class AbstractLambdaContext {
         startLabelNode = new LabelNode();
         lambdaNode.instructions.add(startLabelNode);
         lambdaMap.add(mappedIndex);
+        for (LocalVariableNode localVariableNode : this.processingLocalVariables) {
+            // localVariableNode here is created from arguments, so they should start here.
+            if (localVariableNode != null) {
+                localVariableNode.start = startLabelNode;
+            }
+        }
+        methodContext.updateLocalVar(processingLocalVariables, completedLocalVariables, startLabelNode, node);
     }
 
     private void addCompleteInitLabelNode() {
@@ -89,12 +96,12 @@ public abstract class AbstractLambdaContext {
         AbstractInsnNode lastNode = lambdaNode.instructions.getLast();
         if (lastNode instanceof LabelNode) {
             endLabel = (LabelNode) lastNode;
-            methodContext.completeLocalVar(localVariableArray, localVariableNodes, null, false);
+            methodContext.completeLocalVar(processingLocalVariables, completedLocalVariables, null, false);
         } else {
             endLabel = new LabelNode();
             lambdaNode.instructions.add(endLabel);
             lambdaMap.add(mappedIndex);
-            methodContext.completeLocalVar(localVariableArray, localVariableNodes, endLabel, false);
+            methodContext.completeLocalVar(processingLocalVariables, completedLocalVariables, endLabel, false);
         }
         addThisVarToLocalVarNodes(endLabel);
         methodContext.completeTryCatchBlockNodes(processingTcbNode, completedTcbNode, endLabel);
@@ -103,7 +110,7 @@ public abstract class AbstractLambdaContext {
     private LocalVariableNode findThisVar() {
         if (methodContext.isStatic())
             return null;
-        for (LocalVariableNode localVariableNode : localVariableArray) {
+        for (LocalVariableNode localVariableNode : processingLocalVariables) {
             if (localVariableNode != null && localVariableNode.index == 0) {
                 return localVariableNode;
             }
@@ -115,7 +122,7 @@ public abstract class AbstractLambdaContext {
         LocalVariableNode thisVarNode = findThisVar();
         if (thisVarNode != null && thisVarNode.start != null) {
             thisVarNode.end = endLabel;
-            localVariableNodes.add(thisVarNode);
+            completedLocalVariables.add(thisVarNode);
         }
     }
 
@@ -207,7 +214,7 @@ public abstract class AbstractLambdaContext {
             BranchAnalyzer.Node<? extends BasicValue> frame
     ) {
         LabelNode tcStart = methodContext.updateTryCatchBlockNodes(processingTcbNode, completedTcbNode, n, frame, labelMap);
-        methodContext.updateLocalVar(localVariableArray, localVariableNodes, n, frame);
+        methodContext.updateLocalVar(processingLocalVariables, completedLocalVariables, n, frame);
         return tcStart;
     }
 

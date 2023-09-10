@@ -39,6 +39,11 @@ public class ClassChecker extends ClassVisitor {
     }
 
     @Override
+    public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+        super.visit(version, access, name, signature, superName, interfaces);
+    }
+
+    @Override
     public void visitSource(String source, String debug) {
         super.visitSource(source, debug);
         this.source = source;

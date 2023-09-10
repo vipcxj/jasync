@@ -19,6 +19,10 @@ import java.util.*;
 
 public class AsmHelper {
 
+    public static boolean isStatic(MethodNode mv) {
+        return isStatic(mv.access);
+    }
+
     public static boolean isAwait(int opcode, String owner, String name, String desc) {
         if (Constants.AWAIT.equals(name)) {
             if (opcode == Opcodes.INVOKEINTERFACE || opcode == Opcodes.INVOKESPECIAL || opcode == Opcodes.INVOKEVIRTUAL) {
@@ -437,6 +441,13 @@ public class AsmHelper {
         return (Type.getMethodType(methodNode.desc).getArgumentsAndReturnSizes() >> 2) - (isStatic(methodNode.access) ? 1 : 0);
     }
 
+    /**
+     * find next not used local index.
+     * @param methodNode the method node
+     * @param start the index to find start from
+     * @param size the variable size, must be 1 ro 2
+     * @return the next not used local index
+     */
     public static int calcFreeVarIndex(MethodNode methodNode, int start, int size) {
         if (size != 1 && size != 2) {
             throw new IllegalArgumentException("size must be 1 or 2.");

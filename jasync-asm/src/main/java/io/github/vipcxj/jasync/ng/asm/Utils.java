@@ -47,7 +47,8 @@ public class Utils {
         } else {
             int cmp = isSubTypeOf(typeName, OBJECT_PROMISE_NAME);
             if (cmp == 0) {
-                throw new RuntimeException("Unable to decide whether " + typeName + " is a promise type.");
+                Logger.warn("Unable to decide whether " + typeName + " is a promise type.");
+                return false;
             } else if (cmp == 1) {
                 Logger.info("Find promise type: " + typeName + ".");
                 promiseTypes.add(typeName);
@@ -63,7 +64,7 @@ public class Utils {
             return Class.forName(type);
         } catch (ClassNotFoundException e) {
             Logger.error("Unable to find " + type + " in class loader " + Utils.class.getClassLoader());
-            Logger.error(e);
+            Logger.error(e.getMessage());
             return null;
         }
     }

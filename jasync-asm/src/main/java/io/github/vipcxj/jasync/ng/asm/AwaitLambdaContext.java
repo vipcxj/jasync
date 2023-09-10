@@ -37,7 +37,7 @@ public class AwaitLambdaContext extends AbstractLambdaContext {
     protected void addInitCodes() {
         updateTcbAndLocal(startLabelNode, node);
         boolean isStatic = methodContext.isStatic();
-        // arguments: x, y, z, a, b, await result, await error
+        // arguments: x, y, z, a, b, await result, await error, context
         int errorOffset = arguments.argumentLocalOffset(isStatic, -2);
         Label errorRethrowEndLabel = new Label();
         // load error to stack
