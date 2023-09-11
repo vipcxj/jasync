@@ -294,6 +294,7 @@ public class ChainMethodNode extends MethodVisitor {
                 new String[] { Constants.THROWABLE_NAME }
         );
         methodNode.accept(realMethod);
+        realMethod.parameters = null;
         fixRealMethodLocalVars(realMethod);
         realMethod.visibleAnnotableParameterCount = 0;
         realMethod.visibleParameterAnnotations = null;

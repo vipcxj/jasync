@@ -118,16 +118,18 @@ public class Arguments {
         return results;
     }
 
-    public LocalVariableNode[] toLocalVariables() {
-        LocalVariableNode[] variableNodes = new LocalVariableNode[types.size() - uninitializedNum];
-        int i = 0;
+    public LocalVariableNode[] toLocalVariables(boolean isStatic) {
+        int offset = isStatic ? 0 : 1;
+        LocalVariableNode[] variableNodes = new LocalVariableNode[types.size() - uninitializedNum + offset];
+        int i = offset;
         Iterator<ExtendType> iterator = types.iterator();
         Iterator<String> nameIterator = names.iterator();
         while (i < variableNodes.length) {
             ExtendType extendType = iterator.next();
             if (extendType.isInitialized()) {
                 String name = nameIterator.next();
-                variableNodes[i++] = new LocalVariableNode(name, extendType.getType().getDescriptor(), null, null, null, i);
+                variableNodes[i] = new LocalVariableNode(name, extendType.getType().getDescriptor(), null, null, null, i);
+                ++i;
             }
         }
         return variableNodes;

@@ -1,5 +1,7 @@
 package io.github.vipcxj.jasync.ng.asm;
 
+import org.objectweb.asm.Type;
+
 import java.util.*;
 
 public class ClassContext {
@@ -37,6 +39,10 @@ public class ClassContext {
 
     public String getInternalName() {
         return checker.getNestChecker().getClassInternalName();
+    }
+
+    public String getDescriptor() {
+        return Type.getObjectType(getInternalName()).getDescriptor();
     }
 
     public String getQualifiedName() {

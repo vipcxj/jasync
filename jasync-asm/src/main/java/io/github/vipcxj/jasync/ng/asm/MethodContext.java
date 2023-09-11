@@ -87,6 +87,10 @@ public class MethodContext {
         return new MethodContext(classContext, methodNode, null, map, type, this, rootMethodName, parentLocals);
     }
 
+    public ClassContext getClassContext() {
+        return classContext;
+    }
+
     public MethodNode getMv() {
         return mv;
     }
@@ -202,7 +206,7 @@ public class MethodContext {
                     } else {
                         newMap.add(mappedIndex);
                         newInsnList.add(insnNode);
-                        updateLocalVar(processingLocalVariableNodes, completedLocalVariableNodes, insnNode, frame);
+                        updateLocalVar(processingLocalVariableNodes, completedLocalVariableNodes, insnNode, frame, -1);
                     }
                 }
             }
@@ -309,17 +313,20 @@ public class MethodContext {
     void updateLocalVar(
             LocalVariableNode[] processingLocalVariables,
             List<LocalVariableNode> completedLocalVariables,
-            AbstractInsnNode insnNode, BranchAnalyzer.Node<? extends BasicValue> frame
+            AbstractInsnNode insnNode, BranchAnalyzer.Node<? extends BasicValue> frame, int validLocals
     ) {
-        updateLocalVar(processingLocalVariables, completedLocalVariables, insnNode, frame.getLocalVars());
+        if (validLocals < 0) {
+            validLocals = calcValidLocals(frame);
+        }
+        updateLocalVar(processingLocalVariables, completedLocalVariables, insnNode, frame.getLocalVars(), validLocals);
     }
 
     void updateLocalVar(
             LocalVariableNode[] processingLocalVariables,
             List<LocalVariableNode> completedLocalVariables,
-            AbstractInsnNode insnNode, LocalVar[] localVars
+            AbstractInsnNode insnNode, LocalVar[] localVars, int validLocals
     ) {
-        int size = Math.min(processingLocalVariables.length, localVars.length);
+        int size = Math.min(processingLocalVariables.length, validLocals);
         for (int i = 0; i < size; ++i) {
             LocalVar localVar = localVars[i];
             LocalVariableNode processingLocalVariable = processingLocalVariables[i];
@@ -653,24 +660,27 @@ public class MethodContext {
         return methodNode;
     }
 
-    private String genLocalVarName(String baseName) {
+    private String genLocalVarName(String baseName, BranchAnalyzer.Node<? extends BasicValue> frame, int validLocals) {
+        if (validLocals < 0) {
+            validLocals = calcValidLocals(frame);
+        }
         String localVarName = (baseName != null && !baseName.isEmpty()) ? baseName : "__tmp" + this.localVarBase++;
-        if (this.mv.localVariables != null) {
-            for (LocalVariableNode lvn : this.mv.localVariables) {
-                if (Objects.equals(lvn.name, localVarName)) {
-                    return genLocalVarName((baseName != null && !baseName.isEmpty()) ? (baseName + "_") : null);
-                }
+        LocalVar[] localVars = frame.getLocalVars();
+        for (int i = 0; i < validLocals; ++i) {
+            LocalVar localVar = localVars[i];
+            if (localVar != null && Objects.equals(localVar.getName(), localVarName)) {
+                return genLocalVarName((baseName != null && !baseName.isEmpty()) ? (baseName + "_") : null, frame, validLocals);
             }
         }
         return localVarName;
     }
 
-    private String calcLocalVarName(int i, BranchAnalyzer.Node<? extends BasicValue> node) {
+    private String calcLocalVarName(int i, BranchAnalyzer.Node<? extends BasicValue> node, int validLocals) {
         LocalVar localVar = node.getLocalVars()[i];
         if (localVar != null) {
             return  localVar.getName();
         }
-        return genLocalVarName(null);
+        return genLocalVarName(null, node, validLocals);
     }
 
     int calcValidLocals(BranchAnalyzer.Node<? extends BasicValue> node) {
@@ -706,7 +716,7 @@ public class MethodContext {
         for (int i = start; i < validLocals;) {
             BasicValue value = node.getLocal(i);
             Type type = value.getType();
-            String name = calcLocalVarName(i, node);
+            String name = calcLocalVarName(i, node, validLocals);
             if (type != null) {
                 arguments.addArgument(value, name);
                 i += type.getSize();
@@ -724,7 +734,7 @@ public class MethodContext {
         // stack: a, b -> arguments
         for (int i = 0; i < iMax; ++i) {
             BasicValue value = node.getStack(i);
-            String name = genLocalVarName(null);
+            String name = genLocalVarName(null, node, validLocals);
             arguments.addArgument(value, name);
         }
     }
@@ -734,9 +744,9 @@ public class MethodContext {
         Arguments arguments = new Arguments();
         calcExtraAwaitArgumentsType(validLocals, frame, arguments);
         // await type, throwable type -> arguments
-        arguments.addArgument(Constants.OBJECT_DESC, genLocalVarName("awaitResult"));
-        arguments.addArgument(Constants.THROWABLE_DESC, genLocalVarName("error"));
-        arguments.addArgument(Constants.JCONTEXT_DESC, genLocalVarName("context"));
+        arguments.addArgument(Constants.OBJECT_DESC, genLocalVarName("awaitResult", frame, validLocals));
+        arguments.addArgument(Constants.THROWABLE_DESC, genLocalVarName("error", frame, validLocals));
+        arguments.addArgument(Constants.JCONTEXT_DESC, genLocalVarName("context", frame, validLocals));
         // x, y, z, a, b, await type, throwable type, JContext
         return arguments;
     }
@@ -835,8 +845,8 @@ public class MethodContext {
             // create arguments for lambda
             Arguments arguments = new Arguments();
             localsToArguments(validLocals, node, arguments);
-            arguments.addArgument(exceptionType, genLocalVarName("error"));
-            arguments.addArgument(Constants.JCONTEXT_DESC, genLocalVarName("context"));
+            arguments.addArgument(exceptionType, genLocalVarName("error", node, validLocals));
+            arguments.addArgument(Constants.JCONTEXT_DESC, genLocalVarName("context", node, validLocals));
             String lambdaName = findLambdaName(handlerNode, arguments, MethodType.CATCH_BODY);
             if (lambdaName == null) {
                 CatchLambdaContext lambdaContext = new CatchLambdaContext(this, arguments, handlerNode, validLocals);
@@ -1153,9 +1163,10 @@ public class MethodContext {
             AsmHelper.appendStack(getMv(), node, 1);
         }
         String jumpTargetFieldName = genJumpIndexField(mappedIndex);
+        int validLocals = calcValidLocals(node);
         Arguments arguments = Arguments.of(
-                Constants.OBJECT_ARRAY_DESC, genLocalVarName("arguments"),
-                Constants.JCONTEXT_DESC, genLocalVarName("context")
+                Constants.OBJECT_ARRAY_DESC, genLocalVarName("arguments", node, validLocals),
+                Constants.JCONTEXT_DESC, genLocalVarName("context", node, validLocals)
         );
         String lambdaName = findLambdaName(node, arguments, MethodType.LOOP_BODY);
         if (lambdaName == null) {
@@ -1172,7 +1183,6 @@ public class MethodContext {
         // stack: ..., localVars -> {...} -> ..., localVars -> {...}, jumpIndex
         insnNodes.add(loadJumpTarget(jumpTargetFieldName));
         // stack: ..., localVars -> {...}, jumpIndex -> ..., localVars -> {...}, jumpIndex, localVars
-        int validLocals = calcValidLocals(node);
         collectLocalsAndStackToArrayArg(packageInsnNode, getMv(), node, this.insnNodes, validLocals, WHY_COLLECT_LOOP);
         // stack: ..., localVars -> {...}, jumpIndex, localVars -> ..., JPromise
         insnNodes.add(new MethodInsnNode(

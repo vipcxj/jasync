@@ -7,24 +7,23 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class PromiseTest {
+class PromiseTest {
 
     @Test
-    public void test0() throws InterruptedException {
+    void test0() throws InterruptedException {
         System.out.println("test0 starting");
         JPromise.just(1).thenMap(v -> v + 1).thenMap(v -> v + 1).block();
         System.out.println("test0 completed");
     }
 
     @Test
-    public void test() throws InterruptedException {
+    void test() throws InterruptedException {
         System.out.println("test starting");
         for (int i = 0; i < 1; ++i) {
             JPromise.sleep(1, TimeUnit.SECONDS)
@@ -57,7 +56,7 @@ public class PromiseTest {
     }
 
     @Test
-    public void test1() throws InterruptedException {
+    void test1() throws InterruptedException {
         System.out.println("test1 starting");
         Integer value = JPromise.portal((JPortal<Integer> portal, JContext ignored) ->
                 JPromise.updateContextValue("index", j -> j + 1, 0)
@@ -85,7 +84,7 @@ public class PromiseTest {
     }
 
     @Test
-    public void test2() throws InterruptedException {
+    void test2() throws InterruptedException {
         System.out.println("test2 starting");
         ScheduledExecutorService service = Executors.newScheduledThreadPool(4);
         for (int i = 0; i < 8; ++i) {
@@ -106,7 +105,7 @@ public class PromiseTest {
     }
 
     @Test
-    public void test3() throws InterruptedException {
+    void test3() throws InterruptedException {
         System.out.println("test3 starting");
         ExecutorService service = Executors.newWorkStealingPool(4);
         for (int i = 0; i < 8; ++i) {
@@ -132,7 +131,7 @@ public class PromiseTest {
     }
 
     @Test
-    public void test4() throws InterruptedException {
+    void test4() throws InterruptedException {
         System.out.println("test4 starting");
         int i = 0;
         String msg = "a";
@@ -164,7 +163,7 @@ public class PromiseTest {
     }
 
     @Test
-    public void test5() throws InterruptedException {
+    void test5() throws InterruptedException {
         System.out.println("test5 starting");
         JPromise<Integer> one = JPromise.just(1);
         Integer two = one.then(v0 -> one.thenMap(v1 -> v0 + v1)).block();
@@ -173,14 +172,14 @@ public class PromiseTest {
     }
 
     @Test
-    public void test6() throws InterruptedException {
+    void test6() throws InterruptedException {
         System.out.println("test6 starting");
         Assertions.assertEquals(1, JPromise.just(1).block());
         System.out.println("test6 completed");
     }
 
     @Test
-    public void test7() {
+    void test7() {
         System.out.println("test7 starting");
         Assertions.assertThrows(InterruptedException.class, () -> {
             JPromise<Integer> delay = JPromise.just(1).delay(30, TimeUnit.SECONDS);
@@ -198,7 +197,7 @@ public class PromiseTest {
     }
 
     @Test
-    public void test8() {
+    void test8() {
         Assertions.assertThrows(InterruptedException.class, () -> {
             System.out.println("test8 starting");
             JPromise<Integer> one = JPromise.just(1);
@@ -217,7 +216,7 @@ public class PromiseTest {
     }
 
     @Test
-    public void testOrder() {
+    void testOrder() {
         System.out.println("testOrder starting");
         JPromise<Void> sleep3 = JPromise.create((jThunk, context) -> {
             sleep(3000, jThunk, context);
@@ -242,7 +241,7 @@ public class PromiseTest {
     }
 
     @Test
-    public void testTwoFinally() throws InterruptedException {
+    void testTwoFinally() throws InterruptedException {
         System.out.println("testTwoFinally starting");
         AtomicInteger i = new AtomicInteger();
         JPromise.empty().doFinally(() -> {
@@ -257,7 +256,7 @@ public class PromiseTest {
     }
 
     @Test
-    public void testCancelLoop() throws InterruptedException {
+    void testCancelLoop() throws InterruptedException {
         System.out.println("testCancelLoop starting");
         JPromise<Object> loop = JPromise.portal(portal -> {
             return JPromise.sleep(1, TimeUnit.SECONDS)
@@ -506,13 +505,14 @@ public class PromiseTest {
     }
 
     @Test
-    public void testCompletableFutureThatHasCompleted() throws InterruptedException {
-        CompletionStage<String> stage = CompletableFuture.completedStage("test");
+    void testCompletableFutureThatHasCompleted() throws InterruptedException {
+        CompletableFuture<String> stage = new CompletableFuture<>();
+        stage.complete("test");
         Assertions.assertEquals("test", JPromise.from(stage).block());
     }
 
     @Test
-    public void testCompletableFutureThatNotCompleted() throws InterruptedException {
+    void testCompletableFutureThatNotCompleted() throws InterruptedException {
         CompletableFuture<String> stage = new CompletableFuture<>();
         JHandle<String> handle = JPromise.from(stage).async();
         stage.complete("test");

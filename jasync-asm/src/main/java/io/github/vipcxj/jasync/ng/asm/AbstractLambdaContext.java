@@ -45,7 +45,17 @@ public abstract class AbstractLambdaContext {
         this.mappedIndex = methodContext.mapped(index);
 
         this.completedLocalVariables = new ArrayList<>();
-        this.processingLocalVariables = arguments.toLocalVariables();
+        this.processingLocalVariables = arguments.toLocalVariables(AsmHelper.isStatic(this.lambdaNode));
+        if (!AsmHelper.isStatic(this.lambdaNode)) {
+            this.processingLocalVariables[0] = new LocalVariableNode(
+                    "this",
+                    methodContext.getClassContext().getDescriptor(),
+                    null,
+                    null,
+                    null,
+                    0
+            );
+        }
         this.processingTcbNode = new ArrayList<>();
         this.completedTcbNode = new ArrayList<>();
     }
@@ -80,7 +90,7 @@ public abstract class AbstractLambdaContext {
                 localVariableNode.start = startLabelNode;
             }
         }
-        methodContext.updateLocalVar(processingLocalVariables, completedLocalVariables, startLabelNode, node);
+        methodContext.updateLocalVar(processingLocalVariables, completedLocalVariables, startLabelNode, node, validLocals());
     }
 
     private void addCompleteInitLabelNode() {
@@ -122,7 +132,9 @@ public abstract class AbstractLambdaContext {
         LocalVariableNode thisVarNode = findThisVar();
         if (thisVarNode != null && thisVarNode.start != null) {
             thisVarNode.end = endLabel;
-            completedLocalVariables.add(thisVarNode);
+            if (completedLocalVariables.stream().noneMatch(v -> v.index == 0)) {
+                completedLocalVariables.add(thisVarNode);
+            }
         }
     }
 
@@ -214,7 +226,7 @@ public abstract class AbstractLambdaContext {
             BranchAnalyzer.Node<? extends BasicValue> frame
     ) {
         LabelNode tcStart = methodContext.updateTryCatchBlockNodes(processingTcbNode, completedTcbNode, n, frame, labelMap);
-        methodContext.updateLocalVar(processingLocalVariables, completedLocalVariables, n, frame);
+        methodContext.updateLocalVar(processingLocalVariables, completedLocalVariables, n, frame, validLocals());
         return tcStart;
     }
 
