@@ -8,6 +8,8 @@ import java.util.function.Function;
 import org.reactivestreams.Publisher;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.ReactiveAdapter;
 import org.springframework.core.ReactiveAdapterRegistry;
@@ -17,6 +19,8 @@ import io.github.vipcxj.jasync.ng.reactive.JAsyncReactive;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 
 @Configuration
+@AutoConfiguration
+@ConditionalOnClass(JPromise.class)
 public class JAsyncSupportAutoConfigure implements InitializingBean {
 
     @Autowired
