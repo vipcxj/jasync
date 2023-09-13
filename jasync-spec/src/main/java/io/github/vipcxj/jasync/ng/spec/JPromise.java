@@ -6,6 +6,7 @@ import io.github.vipcxj.jasync.ng.spec.spi.JPromiseSupport;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -37,15 +38,19 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
         if (stage instanceof JPromise) {
             return (JPromise<T>) stage;
         } else {
-        return JPromise.generate((thunk, context) -> {
-            stage.whenComplete((value, exception) -> {
-                if (exception == null) {
-                    thunk.resolve(value, context);
-                } else {
-                    thunk.reject(exception, context);
-                }
+            return JPromise.generate((thunk, context) -> {
+                stage.whenComplete((value, exception) -> {
+                    if (exception == null) {
+                        thunk.resolve(value, context);
+                    } else {
+                        if (exception instanceof CompletionException) {
+                            thunk.reject(exception.getCause(), context);
+                        } else {
+                            thunk.reject(exception, context);
+                        }
+                    }
+                });
             });
-        });
         }
     }
     static <T> JPromise<T> portal(JAsyncPortalTask1<T> task) {
