@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 public class InsnTextifier extends Textifier {
 
     private final List<AbstractInsnNode> insnNodes;
-    private final List<Frame<? extends BasicValue>> frames;
+    private final List<BranchAnalyzer.Node<BasicValue>> frames;
     private final List<Integer> map;
     private int index;
     private boolean withFrame;
@@ -27,7 +27,7 @@ public class InsnTextifier extends Textifier {
     private final Set<AbstractInsnNode> targets;
     private final VarNameHelper helper;
 
-    public InsnTextifier(List<AbstractInsnNode> insnNodes, List<Frame<? extends BasicValue>> frames, List<Integer> map) {
+    public InsnTextifier(List<AbstractInsnNode> insnNodes, List<BranchAnalyzer.Node<BasicValue>> frames, List<Integer> map) {
         super(io.github.vipcxj.jasync.ng.asm.Constants.ASM_VERSION);
         this.insnNodes = insnNodes;
         this.frames = frames;
@@ -123,12 +123,18 @@ public class InsnTextifier extends Textifier {
         }
     }
 
-    private static String printFramePart(Frame<? extends BasicValue> frame, VarNameHelper helper, boolean stack) {
+    private static String printFramePart(BranchAnalyzer.Node<BasicValue> frame, VarNameHelper helper, boolean stack) {
         StringBuilder sb = new StringBuilder();
         int to = stack ? frame.getStackSize() : frame.getLocals();
         for (int i = 0; i < to;) {
             sb.append(i);
             sb.append(":");
+            if (!stack) {
+                LocalVar localVar = frame.getLocalVars()[i];
+                if (localVar != null) {
+                    sb.append("(").append(localVar.getName()).append("):");
+                }
+            }
             BasicValue value = stack ? frame.getStack(i) : frame.getLocal(i);
             if (value != null) {
                 Type type = value.getType();
@@ -179,7 +185,7 @@ public class InsnTextifier extends Textifier {
         return tab;
     }
 
-    public static String printFrame(Frame<? extends BasicValue> frame, VarNameHelper helper, int tab, int numberWidth, int number, int mapWidth, int map) {
+    public static String printFrame(BranchAnalyzer.Node<BasicValue> frame, VarNameHelper helper, int tab, int numberWidth, int number, int mapWidth, int map) {
         return tabs(tab, numberWidth, number, mapWidth, map) +
                 "[" +
                 printFramePart(frame, helper, false) +
@@ -190,7 +196,7 @@ public class InsnTextifier extends Textifier {
     }
 
     private String printFrame(int i, VarNameHelper helper) {
-        Frame<? extends BasicValue> frame = i < frames.size() ? frames.get(i) : null;
+        BranchAnalyzer.Node<BasicValue> frame = i < frames.size() ? frames.get(i) : null;
         int mappedIndex = getMappedIndex(i);
         if (frame != null) {
             return printFrame(frame, helper, tab, numberWidth, i + offset, mapWidth, mappedIndex);

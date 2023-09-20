@@ -47,7 +47,7 @@ public class ChainMethodNode extends MethodVisitor {
 
     private void verifyMethod(MethodContext methodContext) {
         BasicVerifier verifier = new MyVerifier();
-        Analyzer<BasicValue> analyzer = new BranchAnalyzer(verifier, false);
+        BranchAnalyzer analyzer = new BranchAnalyzer(verifier, false);
         MethodNode methodNode = methodContext.getMv();
         try {
             analyzer.analyzeAndComputeMaxs(classContext.getInternalName(), methodNode);
@@ -55,7 +55,7 @@ public class ChainMethodNode extends MethodVisitor {
             AsmHelper.printFrameProblem(
                     classContext.getInternalName(),
                     methodNode,
-                    analyzer.getFrames(),
+                    analyzer.getNodes(),
                     methodContext.getMap(),
                     e,
                     JAsyncInfo.BYTE_CODE_OPTION_FULL_SUPPORT,

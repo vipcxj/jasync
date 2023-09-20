@@ -67,7 +67,7 @@ public class MethodContext {
             AsmHelper.printFrameProblem(
                     classContext.getInternalName(),
                     mv,
-                    analyzer.getFrames(),
+                    analyzer.getNodes(),
                     map,
                     e,
                     JAsyncInfo.BYTE_CODE_OPTION_FULL_SUPPORT,

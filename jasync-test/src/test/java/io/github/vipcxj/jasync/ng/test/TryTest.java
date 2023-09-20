@@ -506,7 +506,7 @@ public class TryTest {
         return a;
     }
 
-    @Async
+    @Async(logResultByteCode = Async.BYTE_CODE_OPTION_FULL_SUPPORT)
     private JPromise<Integer> tryCatchAndFinally(int flag) {
         int a = 0;
         try {

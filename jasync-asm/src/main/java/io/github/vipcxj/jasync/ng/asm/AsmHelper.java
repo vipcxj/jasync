@@ -94,7 +94,7 @@ public class AsmHelper {
             MethodNode methodNode,
             AbstractInsnNode errorNode,
             List<AbstractInsnNode> insnNodes,
-            List<Frame<? extends BasicValue>> frames,
+            List<BranchAnalyzer.Node<BasicValue>> frames,
             List<Integer> map,
             int byteCodeOption
     ) {
@@ -124,11 +124,11 @@ public class AsmHelper {
         printWriter.flush();
     }
 
-    public static void printFrameProblem(String owner, MethodNode methodNode, Frame<? extends BasicValue>[] frames, List<Integer> map, int byteCodeOption) {
+    public static void printFrameProblem(String owner, MethodNode methodNode, BranchAnalyzer.Node<BasicValue>[] frames, List<Integer> map, int byteCodeOption) {
         printFrameProblem(owner, methodNode, frames, map, null, byteCodeOption, -1, 1);
     }
 
-    public static void printFrameProblem(String owner, MethodNode methodNode, Frame<? extends BasicValue>[] frames, List<Integer> map, AnalyzerException error, int byteCodeOption, int from, int to) {
+    public static void printFrameProblem(String owner, MethodNode methodNode, BranchAnalyzer.Node<BasicValue>[] frames, List<Integer> map, AnalyzerException error, int byteCodeOption, int from, int to) {
         if (!JAsyncInfo.isLogByteCode(byteCodeOption)) {
             return;
         }
@@ -148,12 +148,12 @@ public class AsmHelper {
                     to = Integer.MAX_VALUE - 1;
                 }
             } catch (Throwable ignored) { } finally {
-                frames = analyzer.getFrames();
+                frames = analyzer.getNodes();
             }
         }
         if (frames == null) {
             //noinspection unchecked
-            frames = new Frame[0];
+            frames = new BranchAnalyzer.Node[0];
         }
         AbstractInsnNode errorNode = error != null ? error.node : null;
         if (errorNode == null) {
@@ -182,7 +182,7 @@ public class AsmHelper {
                 insnNodes.add(node);
                 node = node.getNext();
             }
-            List<Frame<? extends BasicValue>> frameList = new ArrayList<>();
+            List<BranchAnalyzer.Node<BasicValue>> frameList = new ArrayList<>();
             List<Integer> mapList = new ArrayList<>();
             AbstractInsnNode firstInsn = insnNodes.get(0);
             int firstIndex = methodNode.instructions.indexOf(firstInsn);
