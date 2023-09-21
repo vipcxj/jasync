@@ -216,6 +216,7 @@ public class MethodContext {
                 completeLocalVar(processingLocalVariableNodes, completedLocalVariableNodes, null, true);
             } else {
                 endNode = new LabelNode();
+                newMap.add(newMap.isEmpty() ? 0 : newMap.get(newMap.size() - 1));
                 newInsnList.add(endNode);
                 completeLocalVar(processingLocalVariableNodes, completedLocalVariableNodes, endNode, true);
             }
@@ -237,8 +238,11 @@ public class MethodContext {
     private void restoreContextVar() {
         int newContextVarIndex = AsmHelper.calcFreeVarIndex(mv, contextVarIndex, 1);
         if (newContextVarIndex != contextVarIndex) {
+            int mappedIndex = mapped(0);
             mv.instructions.insertBefore(mv.instructions.getFirst(), new VarInsnNode(Opcodes.ASTORE, newContextVarIndex));
+            map.add(0, mappedIndex);
             mv.instructions.insertBefore(mv.instructions.getFirst(), new VarInsnNode(Opcodes.ALOAD, contextVarIndex));
+            map.add(0, mappedIndex);
             AsmHelper.updateLocal(mv, newContextVarIndex);
             AsmHelper.updateStack(mv, 1);
             this.contextVarIndex = newContextVarIndex;
@@ -248,16 +252,25 @@ public class MethodContext {
     private void recordLineNumbers() {
         LineNumberNode lastLineNumberNode = null;
         AbstractInsnNode lastPositionNode = null;
+        int lastMappedIndex = 0;
+        int i = 0;
+        int lastI = i;
         for (AbstractInsnNode insnNode : mv.instructions) {
             if (insnNode instanceof LineNumberNode) {
                 lastLineNumberNode = (LineNumberNode) insnNode;
                 lastPositionNode = lastLineNumberNode;
+                lastI = i;
+                lastMappedIndex = mapped(lastI);
             } else if (insnNode.getOpcode() == Opcodes.ARETURN && lastLineNumberNode != null) {
                 AbstractInsnNode node = new VarInsnNode(Opcodes.ALOAD, contextVarIndex);
                 mv.instructions.insert(lastPositionNode, node);
+                map.add(++lastI, lastMappedIndex);
+                ++i;
                 lastPositionNode = node;
                 node = AsmHelper.loadConstantInt(lastLineNumberNode.line);
                 mv.instructions.insert(lastPositionNode, node);
+                map.add(++lastI, lastMappedIndex);
+                ++i;
                 lastPositionNode = node;
                 node = new MethodInsnNode(
                         Opcodes.INVOKEINTERFACE,
@@ -267,12 +280,19 @@ public class MethodContext {
                         true
                 );
                 mv.instructions.insert(lastPositionNode, node);
+                map.add(++lastI, lastMappedIndex);
+                ++i;
                 lastPositionNode = node;
                 node = new InsnNode(Opcodes.POP);
                 mv.instructions.insert(lastPositionNode, node);
+                map.add(++lastI, lastMappedIndex);
+                ++i;
             } else if (insnNode instanceof FrameNode){
                 lastPositionNode = insnNode;
+                lastI = i;
+                lastMappedIndex = mapped(lastI);
             }
+            ++i;
         }
     }
 
@@ -302,7 +322,7 @@ public class MethodContext {
     private void pushLocalVariable(LocalVariableNode[] processingLocalVariables, int i, List<LocalVariableNode> completedLocalVariables, LabelNode endNode) {
         LocalVariableNode localVariableNode = processingLocalVariables[i];
         if (localVariableNode != null && localVariableNode.start != null && (localVariableNode.end != null || endNode != null)) {
-            if (localVariableNode.end == null) {
+            if (endNode != null) {
                 localVariableNode.end = endNode;
             }
             completedLocalVariables.add(localVariableNode);

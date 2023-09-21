@@ -1,10 +1,11 @@
 package io.github.vipcxj.jasync.ng.asm;
 
-import org.objectweb.asm.*;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
-import org.objectweb.asm.tree.analysis.Analyzer;
 import org.objectweb.asm.tree.analysis.AnalyzerException;
-import org.objectweb.asm.tree.analysis.BasicValue;
 import org.objectweb.asm.tree.analysis.BasicVerifier;
 import org.objectweb.asm.util.ASMifier;
 import org.objectweb.asm.util.Printer;
@@ -269,15 +270,15 @@ public class ChainMethodNode extends MethodVisitor {
             methodNode.instructions.insertBefore(methodNode.instructions.getFirst(), start);
             methodNode.instructions.insert(methodNode.instructions.getLast(), end);
         }
-        Type[] argumentTypes = Type.getMethodType(methodNode.desc).getArgumentTypes();
-        methodNode.localVariables.add(new LocalVariableNode(
-                calcLocalVarName("context", methodNode.localVariables),
-                Constants.JCONTEXT_DESC.getDescriptor(),
-                null,
-                start,
-                end,
-                argumentTypes.length - 1 + (isStatic ? 0 : 1)
-        ));
+//        Type[] argumentTypes = Type.getMethodType(methodNode.desc).getArgumentTypes();
+//        methodNode.localVariables.add(new LocalVariableNode(
+//                calcLocalVarName("context", methodNode.localVariables),
+//                Constants.JCONTEXT_DESC.getDescriptor(),
+//                null,
+//                start,
+//                end,
+//                argumentTypes.length - 1 + (isStatic ? 0 : 1)
+//        ));
     }
 
     @Override
