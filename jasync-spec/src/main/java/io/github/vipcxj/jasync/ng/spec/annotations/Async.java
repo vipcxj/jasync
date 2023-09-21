@@ -15,11 +15,15 @@ public @interface Async {
     int BYTE_CODE_OPTION_INDEX = 4;
     int BYTE_CODE_OPTION_MAP = 8;
     int BYTE_CODE_OPTION_TCB = 16;
+    int BYTE_CODE_OPTION_LINE = 32;
+    int BYTE_CODE_OPTION_LOCAL_VAR_NAME = 64;
     int BYTE_CODE_OPTION_FULL_SUPPORT = BYTE_CODE_OPTION_ON
             | BYTE_CODE_OPTION_FRAME
             | BYTE_CODE_OPTION_INDEX
             | BYTE_CODE_OPTION_MAP
-            | BYTE_CODE_OPTION_TCB;
+            | BYTE_CODE_OPTION_TCB
+            | BYTE_CODE_OPTION_LINE
+            | BYTE_CODE_OPTION_LOCAL_VAR_NAME;
 
     String debugId() default "";
     boolean disabled() default false;

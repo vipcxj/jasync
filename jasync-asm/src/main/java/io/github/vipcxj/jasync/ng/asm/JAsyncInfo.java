@@ -13,11 +13,15 @@ public class JAsyncInfo {
     public static final int BYTE_CODE_OPTION_INDEX = 4;
     public static final int BYTE_CODE_OPTION_MAP = 8;
     public static final int BYTE_CODE_OPTION_TCB = 16;
+    public static final int BYTE_CODE_OPTION_LINE = 32;
+    public static final int BYTE_CODE_OPTION_LOCAL_VAR_NAME = 64;
     public static final int BYTE_CODE_OPTION_FULL_SUPPORT = BYTE_CODE_OPTION_ON
             | BYTE_CODE_OPTION_FRAME
             | BYTE_CODE_OPTION_INDEX
             | BYTE_CODE_OPTION_MAP
-            | BYTE_CODE_OPTION_TCB;
+            | BYTE_CODE_OPTION_TCB
+            | BYTE_CODE_OPTION_LINE
+            | BYTE_CODE_OPTION_LOCAL_VAR_NAME;
 
     public static final JAsyncInfo DEFAULT = new JAsyncInfo();
     private final String debugId;
@@ -77,6 +81,14 @@ public class JAsyncInfo {
 
     public static boolean isLogByteCodeWithTCB(int option) {
         return (option & BYTE_CODE_OPTION_TCB) != 0;
+    }
+
+    public static boolean isLogByteCodeWithLineNumber(int option) {
+        return (option & BYTE_CODE_OPTION_LINE) != 0;
+    }
+
+    public static boolean isLogByteCodeWithLocalVarName(int option) {
+        return (option & BYTE_CODE_OPTION_LOCAL_VAR_NAME) != 0;
     }
 
     public int getLogOriginalByteCode() {

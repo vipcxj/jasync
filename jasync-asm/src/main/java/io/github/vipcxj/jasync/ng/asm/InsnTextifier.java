@@ -20,8 +20,10 @@ public class InsnTextifier extends Textifier {
     private final List<Integer> map;
     private int index;
     private boolean withFrame;
+    private boolean withLocalVarName;
     private int tab;
     private int numberWidth;
+    private int lineWidth;
     private int mapWidth;
     private int offset;
     private final Set<AbstractInsnNode> targets;
@@ -34,8 +36,10 @@ public class InsnTextifier extends Textifier {
         this.map = map;
         this.index = 0;
         this.withFrame = true;
+        this.withLocalVarName = true;
         this.tab = 2;
         this.numberWidth = 0;
+        this.lineWidth = calcLineNumberWidth();
         this.mapWidth = 0;
         this.offset = 0;
         this.helper = new VarNameHelper();
@@ -58,6 +62,23 @@ public class InsnTextifier extends Textifier {
         return res;
     }
 
+    private int calcLineNumberWidth() {
+        if (this.frames == null) {
+            return 0;
+        }
+        int maxLine = -1;
+        for (BranchAnalyzer.Node<BasicValue> frame : this.frames) {
+            if (frame != null && frame.getLineNumber() > maxLine) {
+                maxLine = frame.getLineNumber();
+            }
+        }
+        if (maxLine <= 0) {
+            return 0;
+        } else {
+            return calcNumberWidth(maxLine);
+        }
+    }
+
     public VarNameHelper getHelper() {
         return helper;
     }
@@ -73,15 +94,18 @@ public class InsnTextifier extends Textifier {
                 if (methodNode.instructions.contains(firstNode)) {
                     this.offset = methodNode.instructions.indexOf(firstNode);
                     this.numberWidth = JAsyncInfo.isLogByteCodeWithIndex(option) ? calcNumberWidth(methodNode.instructions.size()) : 0;
+                    this.lineWidth = JAsyncInfo.isLogByteCodeWithLineNumber(option) ? calcLineNumberWidth() : 0;
                     this.mapWidth = (map != null && JAsyncInfo.isLogByteCodeWithMap(option)) ? calcNumberWidth(map.stream().mapToInt(i -> i).max().orElse(0)) : 0;
                     this.tab = Math.max(this.tab, 3);
                     this.withFrame = JAsyncInfo.isLogByteCodeWithFrame(option);
+                    this.withLocalVarName = JAsyncInfo.isLogByteCodeWithLocalVarName(option);
                     return;
                 }
             }
         }
         this.offset = 0;
         this.numberWidth = 0;
+        this.lineWidth = 0;
         this.mapWidth = 0;
     }
 
@@ -123,13 +147,13 @@ public class InsnTextifier extends Textifier {
         }
     }
 
-    private static String printFramePart(BranchAnalyzer.Node<BasicValue> frame, VarNameHelper helper, boolean stack) {
+    private static String printFramePart(BranchAnalyzer.Node<BasicValue> frame, VarNameHelper helper, boolean stack, boolean localVarName) {
         StringBuilder sb = new StringBuilder();
         int to = stack ? frame.getStackSize() : frame.getLocals();
         for (int i = 0; i < to;) {
             sb.append(i);
             sb.append(":");
-            if (!stack) {
+            if (!stack && localVarName) {
                 LocalVar localVar = frame.getLocalVars()[i];
                 if (localVar != null) {
                     sb.append("(").append(localVar.getName()).append("):");
@@ -169,14 +193,25 @@ public class InsnTextifier extends Textifier {
         return sb.toString();
     }
 
-    private static String tabs(int num, int numberWidth, int number, int mapWidth, int map) {
+    private static String repeatStr(int n, String c) {
+        return String.format("%0" + n + "d", 0).replace("0", c);
+    }
+
+    private static String tabs(int num, int numberWidth, int number, int mapWidth, int map, int lineWidth, int line) {
         String tab = String.format("%" + num + "s", " ");
+        if (lineWidth > 0) {
+            if (line < 0) {
+                tab = "[L" + repeatStr(lineWidth, "?") + "]" + tab;
+            } else {
+                tab = String.format("[L%0" + lineWidth + "d]", line) + tab;
+            }
+        }
         if (numberWidth > 0) {
             if (mapWidth > 0) {
                 if (map >= 0) {
                     tab = String.format("%0" + numberWidth + "d<-%0" + mapWidth + "d", number, map) + tab;
                 } else {
-                    tab = String.format("%0" + numberWidth + "d%" + mapWidth + "s", number, " ") + tab;
+                    tab = String.format("%0" + numberWidth + "d%" + (mapWidth + 2) + "s", number, " ") + tab;
                 }
             } else {
                 tab = String.format("%0" + numberWidth + "d", number) + tab;
@@ -185,12 +220,12 @@ public class InsnTextifier extends Textifier {
         return tab;
     }
 
-    public static String printFrame(BranchAnalyzer.Node<BasicValue> frame, VarNameHelper helper, int tab, int numberWidth, int number, int mapWidth, int map) {
-        return tabs(tab, numberWidth, number, mapWidth, map) +
+    public static String printFrame(BranchAnalyzer.Node<BasicValue> frame, VarNameHelper helper, int tab, int numberWidth, int number, int mapWidth, int map, int lineWidth, int line, boolean localVarName) {
+        return tabs(tab, numberWidth, number, mapWidth, map, lineWidth, line) +
                 "[" +
-                printFramePart(frame, helper, false) +
+                printFramePart(frame, helper, false, localVarName) +
                 "] [" +
-                printFramePart(frame, helper, true) +
+                printFramePart(frame, helper, true, localVarName) +
                 "]" +
                 System.lineSeparator();
     }
@@ -199,7 +234,13 @@ public class InsnTextifier extends Textifier {
         BranchAnalyzer.Node<BasicValue> frame = i < frames.size() ? frames.get(i) : null;
         int mappedIndex = getMappedIndex(i);
         if (frame != null) {
-            return printFrame(frame, helper, tab, numberWidth, i + offset, mapWidth, mappedIndex);
+            return printFrame(
+                    frame, helper, tab,
+                    numberWidth, i + offset,
+                    mapWidth, mappedIndex,
+                    lineWidth, frame.getLineNumber(),
+                    withLocalVarName
+            );
         } else {
             return null;
         }
@@ -243,7 +284,7 @@ public class InsnTextifier extends Textifier {
             return list;
         } else if (text != null) {
             String strText = text.toString();
-            String number = strText.substring(0, numberWidth + mapWidth);
+            String number = strText.substring(0, numberWidth + mapWidth + (lineWidth > 0 ? lineWidth + 2 : 0));
             String strTab = strText.substring(numberWidth + mapWidth, numberWidth + mapWidth + tab);
             String content = strText.substring(numberWidth + mapWidth + tab);
             if (tab <= 2) {
@@ -478,7 +519,9 @@ public class InsnTextifier extends Textifier {
     }
 
     private String adjustTab(String text, int currentTab, int index) {
-        return tabs(tab, numberWidth, index + offset, mapWidth, getMappedIndex(index)) + text.substring(currentTab);
+        BranchAnalyzer.Node<BasicValue> frame = index < frames.size() ? frames.get(index) : null;
+        int line = frame != null ? frame.getLineNumber() : -1;
+        return tabs(tab, numberWidth, index + offset, mapWidth, getMappedIndex(index), lineWidth, line) + text.substring(currentTab);
     }
 
     protected String join(String[] parts, String by) {

@@ -68,6 +68,33 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
         return true;
     }
 
+    private void fillLineNumber(Node<? extends BasicValue> node, int currentLineNumber) {
+        if (node.lineNumber != null) {
+            return;
+        }
+        if (node.insnNode instanceof LineNumberNode) {
+            LineNumberNode lineNode = (LineNumberNode) node.insnNode;
+            currentLineNumber = lineNode.line;
+            for (Node<? extends BasicValue> precursor : node.precursors) {
+                if (precursor.insnNode == lineNode.start) {
+                    precursor.lineNumber = lineNode.line;
+                }
+            }
+        }
+        node.lineNumber = currentLineNumber;
+        for (Node<? extends BasicValue> successor : node.getSuccessors()) {
+            try {
+                fillLineNumber(successor, currentLineNumber);
+            } catch (StackOverflowError ignored) {}
+        }
+        for (Node<? extends BasicValue> successor : node.getTryCatchSuccessors()) {
+            try {
+                fillLineNumber(successor, currentLineNumber);
+            } catch (StackOverflowError ignored) {}
+        }
+
+    }
+
     public Node<BasicValue>[] getNodes() {
         if (nodes != null) {
             return nodes;
@@ -79,6 +106,7 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
         //noinspection unchecked
         nodes = new Node[frames.length];
         Set<LabelNode> labelNodes = new HashSet<>();
+        Node<BasicValue> firstNode = null;
         for (int i = 0; i < frames.length; ++i) {
             AbstractInsnNode insnNode = methodNode.instructions.get(i);
             if (insnNode instanceof LabelNode) {
@@ -86,6 +114,9 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
             }
             nodes[i] = (Node<BasicValue>) frames[i];
             if (nodes[i] != null) {
+                if (firstNode == null) {
+                    firstNode = nodes[i];
+                }
                 nodes[i].index = i;
                 nodes[i].insnNode = insnNode;
                 installLocalVars(nodes[i], methodNode, labelNodes);
@@ -97,6 +128,9 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
                     }
                 }
             }
+        }
+        if (firstNode != null) {
+            fillLineNumber(firstNode, -1);
         }
         for (Node<BasicValue> node : nodes) {
             if (node != null) {
@@ -295,6 +329,7 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
         private final List<TryCatchBlockNode> handlers = new ArrayList<>();
         private final Set<Node<? extends V>> tryCatchSuccessors = new HashSet<>();
         private int index;
+        private Integer lineNumber;
         private AbstractInsnNode insnNode;
         private Type needCastTo;
         private final LocalVar[] localVars;
@@ -339,6 +374,10 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
 
         public LocalVar[] getLocalVars() {
             return localVars;
+        }
+
+        public int getLineNumber() {
+            return lineNumber != null ? lineNumber : -1;
         }
 
         public AbstractInsnNode getInsnNode() {
