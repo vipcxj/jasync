@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.ng.test;
 
+import io.github.vipcxj.jasync.ng.spec.AwaitType;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.annotations.Async;
 import org.junit.jupiter.api.Assertions;
@@ -33,21 +34,44 @@ public class AwaitTest {
     }
 
     @Async
-    private JPromise<String> simpleAwait() throws InterruptedException {
+    private JPromise<String> simpleAwait() {
         JPromise<String> helloWorld = JPromise.just("hello world");
         return JPromise.just(helloWorld.await());
+    }
+
+    @Async(logResultByteCode = Async.BYTE_CODE_OPTION_FULL_SUPPORT)
+    private JPromise<String> simpleAwait(AwaitType type) {
+        JPromise<String> helloWorld = JPromise.just("hello world");
+        return JPromise.just(helloWorld.await(type));
+    }
+
+    private JPromise<String> simpleAwaitInterruptable() throws InterruptedException {
+        JPromise<String> helloWorld = JPromise.just("hello world");
+        return JPromise.just(helloWorld.awaitInterruptable());
+    }
+
+    private JPromise<String> simpleAwaitInterruptable(AwaitType type) throws InterruptedException {
+        JPromise<String> helloWorld = JPromise.just("hello world");
+        return JPromise.just(helloWorld.awaitInterruptable(type));
     }
 
     @Test
     public void testSimpleAwait() throws InterruptedException {
         Assertions.assertEquals("hello world", simpleAwait().block());
+        Assertions.assertEquals("hello world", simpleAwait(AwaitType.AUTO).block());
+        Assertions.assertEquals("hello world", simpleAwait(AwaitType.IMMEDIATE).block());
+        Assertions.assertEquals("hello world", simpleAwait(AwaitType.SCHEDULE).block());
+        Assertions.assertEquals("hello world", simpleAwaitInterruptable().block());
+        Assertions.assertEquals("hello world", simpleAwaitInterruptable(AwaitType.AUTO).block());
+        Assertions.assertEquals("hello world", simpleAwaitInterruptable(AwaitType.IMMEDIATE).block());
+        Assertions.assertEquals("hello world", simpleAwaitInterruptable(AwaitType.SCHEDULE).block());
     }
 
     private int nestedNoAwait1() {
         return 1 + (1 + (3 + 2)) + 3 * 4;
     }
 
-    private JPromise<Integer> nestedAwait1() throws InterruptedException {
+    private JPromise<Integer> nestedAwait1() {
         int res = 1 + plus(one().await(), plus(3, two().await()).await()).await()
                 + zero().await()
                 +  mul(three().await(), 4).await();
@@ -64,7 +88,7 @@ public class AwaitTest {
         return ++i + 2 * ++i;
     }
 
-    private JPromise<Integer> nestedAwait2() throws InterruptedException {
+    private JPromise<Integer> nestedAwait2() {
         int i = 0;
         i = plus(++i, two().await() * ++i).await();
         return JPromise.just(i);

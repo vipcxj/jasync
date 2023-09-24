@@ -18,7 +18,7 @@ public class ForTest {
     }
 
     @SuppressWarnings("InfiniteLoopStatement")
-    public JPromise<Void> interruptableForLoop() throws InterruptedException {
+    public JPromise<Void> interruptableForLoop() {
         for (;;) {
             JPromise.sleep(1, TimeUnit.SECONDS).await();
         }

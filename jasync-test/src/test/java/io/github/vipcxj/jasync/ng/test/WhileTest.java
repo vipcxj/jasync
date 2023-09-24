@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 public class WhileTest {
 
     @Async(debugId = "sum1", logOriginalByteCode = Async.BYTE_CODE_OPTION_FULL_SUPPORT)
-    public JPromise<Integer> sum1(int to) throws InterruptedException {
+    public JPromise<Integer> sum1(int to) {
         int sum = 0;
         while (sum < to) {
             sum += JPromise.just(1).await();
@@ -35,7 +35,7 @@ public class WhileTest {
     }
 
     @Async
-    public JPromise<Integer> sum2(int to) throws InterruptedException {
+    public JPromise<Integer> sum2(int to) {
         int sum = 0;
         while (sum < JPromise.just(to).await()) {
             sum += JPromise.just(1).await();
@@ -44,7 +44,7 @@ public class WhileTest {
     }
 
     @Async
-    public JPromise<Integer> multi1(int a, int b) throws InterruptedException {
+    public JPromise<Integer> multi1(int a, int b) {
         int res = 0;
         int i = 0, j = 0;
         while (i++ < a) {
@@ -57,7 +57,7 @@ public class WhileTest {
     }
 
     @Async
-    public JPromise<Integer> multi2(int a, int b) throws InterruptedException {
+    public JPromise<Integer> multi2(int a, int b) {
         int res = 0;
         int i = 0, j = 0;
         while (i++ < JPromise.just(a).await()) {
@@ -120,7 +120,7 @@ public class WhileTest {
         }
     }
 
-    private JPromise<Integer> whileWithFinally(TestObject n, Object o) throws InterruptedException {
+    private JPromise<Integer> whileWithFinally(TestObject n, Object o) {
         try {
             if (o != null) {
                 n.consume(o).await();
@@ -143,7 +143,7 @@ public class WhileTest {
         Assertions.assertEquals(0, whileWithFinally(n, n).block());
     }
 
-    private JPromise<Integer> onlyLoopInTryBlock(TestObject n) throws InterruptedException {
+    private JPromise<Integer> onlyLoopInTryBlock(TestObject n) {
         try {
             while (n.ok()) {
                 Object obj = n.getObj().await();
@@ -160,7 +160,7 @@ public class WhileTest {
         Assertions.assertEquals(0, onlyLoopInTryBlock(new TestObject()).block());
     }
 
-    private JPromise<Void> longLoop() throws InterruptedException {
+    private JPromise<Void> longLoop() {
         //noinspection InfiniteLoopStatement
         while (true) {
             JPromise.sleep(1, TimeUnit.SECONDS).await();

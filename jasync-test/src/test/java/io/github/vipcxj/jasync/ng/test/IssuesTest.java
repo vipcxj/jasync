@@ -13,7 +13,7 @@ import java.util.function.Supplier;
 public class IssuesTest {
 
     @Async
-    public <G> JPromise<G> get(Class<G> format) throws InterruptedException {
+    public <G> JPromise<G> get(Class<G> format) {
         Long data = JPromise.just(1L).await();
         return JPromise.just(format.cast(data));
     }
@@ -24,7 +24,7 @@ public class IssuesTest {
     }
 
     @Async
-    public JPromise<Integer> test2(int input1, int input2) throws InterruptedException {
+    public JPromise<Integer> test2(int input1, int input2) {
         int one = JPromise.just(1).await();
         Supplier<Integer> arg = () -> input1;
         Supplier<Integer> sum = () -> one + arg.get() + input2;
@@ -38,7 +38,7 @@ public class IssuesTest {
         Assertions.assertEquals(7, test2(3, 3).block());
     }
 
-    public JPromise<Long> test3() throws InterruptedException {
+    public JPromise<Long> test3() {
         List<Long> list = new ArrayList<>();
         list.add(1L);
         list.add(2L);
@@ -69,7 +69,7 @@ public class IssuesTest {
 
     @SuppressWarnings("unused")
     @Async
-    private JPromise<String> testIssue7() throws InterruptedException {
+    private JPromise<String> testIssue7() {
         String a = "定义a";
         try {
             a = "修改a";
@@ -88,7 +88,7 @@ public class IssuesTest {
 
     @SuppressWarnings({"ParameterCanBeLocal", "SameParameterValue"})
     @Async
-    private static JPromise<String> testIssue8(String command) throws InterruptedException {
+    private static JPromise<String> testIssue8(String command) {
         //noinspection UnusedAssignment
         command = "a";
         command = JPromise.just("b").await();

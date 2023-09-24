@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 
 public class LongAndDoubleTest {
 
-    private JPromise<Long> simpleLong1(long n) throws InterruptedException {
+    private JPromise<Long> simpleLong1(long n) {
         long a = JPromise.just(n).await();
         return JPromise.just(a);
     }
@@ -17,7 +17,7 @@ public class LongAndDoubleTest {
         Assertions.assertEquals(2L, simpleLong1(2L).block());
     }
 
-    private JPromise<Long> simpleLong2(long n) throws InterruptedException {
+    private JPromise<Long> simpleLong2(long n) {
         long a = n + 1;
         long b = a + JPromise.just(1L).await();
         return JPromise.just(a + b);

@@ -10,7 +10,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 public class SwitchTest {
 
     @Async
-    private JPromise<Integer> testReturn(int i) throws InterruptedException {
+    private JPromise<Integer> testReturn(int i) {
         int res;
         switch (i) {
             case 1:
@@ -28,7 +28,7 @@ public class SwitchTest {
     }
 
     @Async
-    private JPromise<Integer> testBreak(int i) throws InterruptedException {
+    private JPromise<Integer> testBreak(int i) {
         int res;
         switch (i) {
             case 1:
@@ -47,7 +47,7 @@ public class SwitchTest {
 
     @SuppressWarnings("UnusedAssignment")
     @Async
-    private JPromise<Integer> testNoBreak1(int i) throws InterruptedException {
+    private JPromise<Integer> testNoBreak1(int i) {
         int res;
         switch (i) {
             case 1:
@@ -64,7 +64,7 @@ public class SwitchTest {
 
     @SuppressWarnings("UnusedAssignment")
     @Async
-    private JPromise<Integer> testNoBreak2(int i) throws InterruptedException {
+    private JPromise<Integer> testNoBreak2(int i) {
         int res;
         switch (i) {
             default:
@@ -82,7 +82,7 @@ public class SwitchTest {
 
     @SuppressWarnings("UnusedAssignment")
     @Async
-    private JPromise<Integer> testNoBreak3(int i) throws InterruptedException {
+    private JPromise<Integer> testNoBreak3(int i) {
         int res = -3;
         switch (i) {
             default:

@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 public class StaticTest {
 
     @Async
-    private static JPromise<String> helloWorld() throws InterruptedException {
+    private static JPromise<String> helloWorld() {
         String message = "hello" + JPromise.just(" world").await();
         return JPromise.just(message);
     }

@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 public class BlockTest {
 
     @Async
-    private JPromise<Long> block1() throws InterruptedException {
+    private JPromise<Long> block1() {
         long out = 0;
         {
             long one = JPromise.just(1).await();

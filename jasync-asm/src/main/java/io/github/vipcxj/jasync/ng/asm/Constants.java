@@ -22,6 +22,8 @@ public class Constants {
     public static final Type JPROMISE_DESC = Type.getObjectType(JPROMISE_NAME);
     public static final String JCONTEXT_NAME = "io/github/vipcxj/jasync/ng/spec/JContext";
     public static final Type JCONTEXT_DESC = Type.getObjectType(JCONTEXT_NAME);
+    public static final String AWAIT_TYPE_NAME = "io/github/vipcxj/jasync/ng/spec/AwaitType";
+    public static final Type AWAIT_TYPE_DESC = Type.getObjectType(AWAIT_TYPE_NAME);
 
     public static final String JASYNC_PROMISE_SUPPLIER1_NAME = "io/github/vipcxj/jasync/ng/spec/functional/JAsyncPromiseSupplier1";
     public static final Type JASYNC_PROMISE_SUPPLIER1_DESC = Type.getObjectType(JASYNC_PROMISE_SUPPLIER1_NAME);
@@ -60,11 +62,13 @@ public class Constants {
 
     public static final String JPROMISE_THEN_OR_CATCH_NAME = "thenOrCatchWithContext";
     public static final Type JPROMISE_THEN_OR_CATCH1_DESC = Type.getMethodType(JPROMISE_DESC, JASYNC_PROMISE_FUNCTION3_DESC);
+    public static final Type JPROMISE_THEN_OR_CATCH2_DESC = Type.getMethodType(JPROMISE_DESC, AWAIT_TYPE_DESC, JASYNC_PROMISE_FUNCTION3_DESC);
 
     public static final String JPROMISE_DO_MULTI_CATCHES_NAME = "doMultiCatches";
     public static final Type JPROMISE_DO_MULTI_CATCHES1_DESC = Type.getMethodType(JPROMISE_DESC, OBJECT_ARRAY_DESC);
 
     public static final String AWAIT = "await";
+    public static final String AWAIT_INTERRUPTABLE = "awaitInterruptable";
 
     public static final String INTEGER_NAME = "java/lang/Integer";
     public static final Type INTEGER_DESC = Type.getObjectType(INTEGER_NAME);

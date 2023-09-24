@@ -40,7 +40,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> singleStatementHasAwait() throws InterruptedException {
+    public JPromise<Integer> singleStatementHasAwait() {
         int a = 1;
         int b;
         label: b = JPromise.just(a).await() + 1;
@@ -71,7 +71,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> ifHasAwait1(boolean input) throws InterruptedException {
+    public JPromise<Integer> ifHasAwait1(boolean input) {
         int a = 1;
         label:
         if (JPromise.just(input).await()) {
@@ -89,7 +89,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> ifHasAwait2(boolean input) throws InterruptedException {
+    public JPromise<Integer> ifHasAwait2(boolean input) {
         int a = 1;
         label:
         if (input) {
@@ -107,7 +107,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> ifHasAwait3(boolean input) throws InterruptedException {
+    public JPromise<Integer> ifHasAwait3(boolean input) {
         int a = 1;
         label:
         if (JPromise.just(input).await()) {
@@ -235,7 +235,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> whileHasAwait1() throws InterruptedException {
+    public JPromise<Integer> whileHasAwait1() {
         int a = 1;
         label:
         while (a < JPromise.just(3).await()) {
@@ -253,7 +253,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> whileHasAwait2() throws InterruptedException {
+    public JPromise<Integer> whileHasAwait2() {
         int a = 0;
         int i = 0;
         label:
@@ -278,7 +278,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> whileHasAwait3() throws InterruptedException {
+    public JPromise<Integer> whileHasAwait3() {
         int a = 0;
         int i = 0;
         label:
@@ -302,7 +302,7 @@ public class LabelTest {
         Assertions.assertEquals(20, whileHasAwait3().block());
     }
 
-    public JPromise<Integer> whileHasAwait4() throws InterruptedException {
+    public JPromise<Integer> whileHasAwait4() {
         int a = 0;
         int i = 0;
         label1:
@@ -473,7 +473,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> doWhileHasAwait1() throws InterruptedException {
+    public JPromise<Integer> doWhileHasAwait1() {
         int a = 1;
         label:
         do {
@@ -492,7 +492,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> doWhileHasAwait2() throws InterruptedException {
+    public JPromise<Integer> doWhileHasAwait2() {
         int a = 0;
         int i = 0;
         label:
@@ -519,7 +519,7 @@ public class LabelTest {
     }
 
     @Async
-    public JPromise<Integer> doWhileHasAwait3() throws InterruptedException {
+    public JPromise<Integer> doWhileHasAwait3() {
         int a = 0;
         int i = 0;
         label:
@@ -545,7 +545,7 @@ public class LabelTest {
         Assertions.assertEquals(25, doWhileHasAwait3().block());
     }
 
-    public JPromise<Integer> doWhileHasAwait4() throws InterruptedException {
+    public JPromise<Integer> doWhileHasAwait4() {
         int a = 0;
         int i = 0;
         label1:
@@ -679,7 +679,7 @@ public class LabelTest {
         }
     }
 
-    public JPromise<Integer> forHasAwait1(int num) throws InterruptedException {
+    public JPromise<Integer> forHasAwait1(int num) {
         int a = 0;
         label:
         for (int i = JPromise.just(0).await(); i < JPromise.just(num).await(); ++i) {
@@ -705,7 +705,7 @@ public class LabelTest {
         }
     }
 
-    public JPromise<Integer> forHasAwait2(int num) throws InterruptedException {
+    public JPromise<Integer> forHasAwait2(int num) {
         int a = 0;
         label1:
         for (int i = 0; JPromise.just(i).await() < num; ++i) {
@@ -799,7 +799,7 @@ public class LabelTest {
     }
 
     @Async
-    private JPromise<Integer> foreachContinueHasAwait() throws InterruptedException {
+    private JPromise<Integer> foreachContinueHasAwait() {
         int[] array = new int[] {1, 2, 3, 4};
         List<Integer> list = new ArrayList<>();
         list.add(1);

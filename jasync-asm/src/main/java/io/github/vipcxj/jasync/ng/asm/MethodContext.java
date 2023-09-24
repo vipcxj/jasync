@@ -521,7 +521,8 @@ public class MethodContext {
     private boolean isAwait(Set<Integer> ssc) {
         for (Integer index : ssc) {
             AbstractInsnNode insnNode = getMv().instructions.get(index);
-            if (AsmHelper.isAwait(insnNode)) {
+            int amt = AsmHelper.isAwait(insnNode);
+            if (amt != AsmHelper.AWAIT_METHOD_TYPE_NOT_AWAIT) {
                 return true;
             }
         }
@@ -585,21 +586,28 @@ public class MethodContext {
                 } else {
                     label = 2;
                 }
-            } else if (AsmHelper.isAwait(insnNode)) {
-                label = 3;
-            } else if (isReturn(root) && !root.getHandlers().isEmpty()) {
-                label = 4;
             } else {
-                label = 0;
+                int amt = AsmHelper.isAwait(insnNode);
+                if (amt != AsmHelper.AWAIT_METHOD_TYPE_NOT_AWAIT) {
+                    if (amt == AsmHelper.AWAIT_METHOD_TYPE_AUTO) {
+                        label = 3;
+                    } else {
+                        label = 4;
+                    }
+                } else if (isReturn(root) && !root.getHandlers().isEmpty()) {
+                    label = 5;
+                } else {
+                    label = 0;
+                }
             }
             boolean visited = withFlag.isFlag();
             if (visited) {
                 if (insnNodes[index] == null) {
                     if (label == 1) {
                         insnNodes[index] = processAwaitLoopNode(root);
-                    } else if (label == 3) {
-                        insnNodes[index] = processAwaitNode(root);
-                    } else if (label == 4) {
+                    } else if (label == 3 || label == 4) {
+                        insnNodes[index] = processAwaitNode(root, label == 4);
+                    } else if (label == 5) {
                         insnNodes[index] = processReturnNode(root);
                     } else {
                         insnNodes[index] = insnNode;
@@ -747,10 +755,12 @@ public class MethodContext {
         }
     }
 
-    private void calcExtraAwaitArgumentsType(int validLocals, BranchAnalyzer.Node<? extends BasicValue> node, Arguments arguments) {
+    private void calcExtraAwaitArgumentsType(int validLocals, BranchAnalyzer.Node<? extends BasicValue> node, Arguments arguments, boolean withType) {
         localsToArguments(validLocals, node, arguments);
         int stackSize = node.getStackSize();
-        int iMax = stackSize - 1;
+        // if withType promise and awaitType is excluded
+        // else only promise is excluded.
+        int iMax = stackSize - (withType ? 2 : 1);
         // stack: a, b -> arguments
         for (int i = 0; i < iMax; ++i) {
             BasicValue value = node.getStack(i);
@@ -759,11 +769,11 @@ public class MethodContext {
         }
     }
 
-    private Arguments calcAwaitArgumentsType(int validLocals, BranchAnalyzer.Node<? extends BasicValue> frame) {
-        // stack: a, b, promise | locals: this?, x, y, z
+    private Arguments calcAwaitArgumentsType(int validLocals, BranchAnalyzer.Node<? extends BasicValue> frame, boolean withType) {
+        // stack: a, b, promise, awaitType? | locals: this?, x, y, z
         Arguments arguments = new Arguments();
-        calcExtraAwaitArgumentsType(validLocals, frame, arguments);
-        // await type, throwable type -> arguments
+        calcExtraAwaitArgumentsType(validLocals, frame, arguments, withType);
+        // await type, throwable type, context -> arguments
         arguments.addArgument(Constants.OBJECT_DESC, genLocalVarName("awaitResult", frame, validLocals));
         arguments.addArgument(Constants.THROWABLE_DESC, genLocalVarName("error", frame, validLocals));
         arguments.addArgument(Constants.JCONTEXT_DESC, genLocalVarName("context", frame, validLocals));
@@ -897,46 +907,71 @@ public class MethodContext {
         return packageInsnNode;
     }
 
-    private PackageInsnNode processAwaitNode(BranchAnalyzer.Node<? extends BasicValue> node) {
+    private PackageInsnNode processAwaitNode(BranchAnalyzer.Node<? extends BasicValue> node, boolean withType) {
         PackageInsnNode packageInsnNode = new PackageInsnNode();
         List<AbstractInsnNode> insnList = packageInsnNode.getInsnNodes();
         int validLocals = calcValidLocals(node);
         int stackSize = node.getStackSize();
         // stack: promise | locals: this?, x, y, z
-        if (stackSize == 1) {
+        if ((withType && stackSize == 2) || (!withType && stackSize == 1)) {
             if (!isStatic()) {
                 // load this to stack
                 // stack: promise | locals: this, x, y, z -> stack: promise, this | locals: this, x, y, z
+                // or
+                // stack: promise, awaitType | locals: this, x, y, z -> stack: promise, awaitType, this | locals: this, x, y, z
                 insnList.add(new VarInsnNode(Opcodes.ALOAD, 0));
             }
             // push the previous locals to the stack except this
-            // stack: promise, this? | locals: this?, x, y, z -> stack: promise, this?, x, y, z | locals: this?, x, y, z
+            // stack: promise, awaitType?, this? | locals: this?, x, y, z
+            // ->
+            // stack: promise, awaitType?, this?, x, y, z | locals: this?, x, y, z
             AsmHelper.pushLocalToStack(validLocals, isStatic(), node, insnList);
         }
-        // stack: a, b, promise | locals: this?, x, y, z
+        // stack: a, b, promise, awaitType? | locals: this?, x, y, z
         else {
             // store the current stack to the locals (offset by locals). the first one (index of locals) should be the promise
-            // stack: a, b, promise | locals: this?, x, y, z -> stack: [] | locals: this?, x, y, z, promise, b, a
+            // stack: a, b, promise, awaitType? | locals: this?, x, y, z
+            // ->
+            // stack: [] | locals: this?, x, y, z, awaitType?, promise, b, a
             int maxLocals = AsmHelper.storeStackToLocal(validLocals, node, insnList, insnNodes);
             updateLocals(maxLocals);
-            // push the target promise to stack
-            // stack: [] | locals: this?, x, y, z, promise, b, a -> stack: promise | locals: this?, x, y, z, promise, b, a
+            // push the target promise and awaitType to stack
+            if (withType) {
+                // stack: [] | locals: this?, x, y, z, awaitType, promise, b, a
+                // ->
+                // stack: promise | locals: this?, x, y, z, awaitType, promise, b, a
+                insnList.add(new VarInsnNode(Opcodes.ALOAD, validLocals + 1));
+            }
+            // if withType
+            //   stack: promise | locals: this?, x, y, z, awaitType, promise, b, a
+            //   ->
+            //   stack: promise, awaitType | locals: this?, x, y, z, awaitType, promise, b, a
+            // else
+            //   stack: [] | locals: this?, x, y, z, promise, b, a
+            //   ->
+            //   stack: promise | locals: this?, x, y, z, promise, b, a
             insnList.add(new VarInsnNode(Opcodes.ALOAD, validLocals));
             if (!isStatic()) {
                 // load this to stack
-                // stack: promise | locals: this, x, y, z, promise, b, a -> stack: promise, this | locals: this, x, y, z, promise, b, a
+                // stack: promise, awaitType? | locals: this, x, y, z, awaitType?, promise, b, a
+                // ->
+                // stack: promise, awaitType?, this | locals: this, x, y, z, awaitType?, promise, b, a
                 insnList.add(new VarInsnNode(Opcodes.ALOAD, 0));
             }
             // push the previous locals to the stack except this
-            // stack: promise, this? | locals: this?, x, y, z, promise, b, a -> stack: promise, this?, x, y, z | locals: this?, x, y, z, promise, b, a
+            // stack: promise, awaitType?, this? | locals: this?, x, y, z, awaitType?, promise, b, a
+            // ->
+            // stack: promise, awaitType?, this?, x, y, z | locals: this?, x, y, z, awaitType?, promise, b, a
             AsmHelper.pushLocalToStack(validLocals, isStatic(), node, insnList);
             // push the previous stack from locals to the stack, except the previous stack top, which is the promise.
-            // stack: promise, this?, x, y, z | locals: this?, x, y, z, promise, b, a -> stack: promise, this?, x, y, z, a, b | locals: this?, x, y, z, promise, b, a
-            restoreStack(insnList, node, maxLocals, stackSize - 1);
+            // stack: promise, awaitType?, this?, x, y, z | locals: this?, x, y, z, awaitType?, promise, b, a
+            // ->
+            // stack: promise, awaitType?, this?, x, y, z, a, b | locals: this?, x, y, z, awaitType?, promise, b, a
+            restoreStack(insnList, node, maxLocals, stackSize - (withType ? 2 : 1));
         }
         updateStacks(stackSize + validLocals);
         // thenOrCatchLambda: JAsyncPromiseFunction3 = (x, y, z, a, b, Object, throwable, context) -> JPromise
-        Arguments arguments = calcAwaitArgumentsType(validLocals, node);
+        Arguments arguments = calcAwaitArgumentsType(validLocals, node, withType);
         String lambdaName = findLambdaName(node, arguments, MethodType.AWAIT_BODY);
         if (lambdaName == null) {
             AwaitLambdaContext lambdaContext = new AwaitLambdaContext(this, arguments, node, validLocals);
@@ -950,11 +985,15 @@ public class MethodContext {
                 isStatic(),
                 arguments.argTypes(3)
         ));
-        insnList.add(new MethodInsnNode(
-                Opcodes.INVOKEINTERFACE,
-                Constants.JPROMISE_NAME,
-                Constants.JPROMISE_THEN_OR_CATCH_NAME,
-                Constants.JPROMISE_THEN_OR_CATCH1_DESC.getDescriptor())
+        insnList.add(
+                new MethodInsnNode(
+                        Opcodes.INVOKEINTERFACE,
+                        Constants.JPROMISE_NAME,
+                        Constants.JPROMISE_THEN_OR_CATCH_NAME,
+                        withType
+                                ? Constants.JPROMISE_THEN_OR_CATCH2_DESC.getDescriptor()
+                                : Constants.JPROMISE_THEN_OR_CATCH1_DESC.getDescriptor()
+                )
         );
         insnList.add(new InsnNode(Opcodes.ARETURN));
         packageInsnNode.complete();

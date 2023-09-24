@@ -37,7 +37,7 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<String> tryWithCatch1(JPromise<String> what) throws InterruptedException {
+    private JPromise<String> tryWithCatch1(JPromise<String> what) {
         String message = "hello";
         try {
             String await = what.await();
@@ -59,7 +59,7 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<String> tryWithCatch2(String what) throws InterruptedException {
+    private JPromise<String> tryWithCatch2(String what) {
         String message = "hello";
         try {
             if (what != null) {
@@ -83,7 +83,7 @@ public class TryTest {
         return JPromise.error(t);
     }
 
-    private JPromise<Boolean> tryWithCatch3() throws InterruptedException {
+    private JPromise<Boolean> tryWithCatch3() {
         boolean res;
         try {
             throwError(new IllegalStateException()).await();
@@ -99,7 +99,7 @@ public class TryTest {
         Assertions.assertFalse(tryWithCatch3().block());
     }
 
-    private JPromise<Boolean> tryWithCatch4() throws InterruptedException {
+    private JPromise<Boolean> tryWithCatch4() {
         boolean res;
         try {
             throwError(new IllegalStateException()).await();
@@ -115,7 +115,7 @@ public class TryTest {
         Assertions.assertFalse(tryWithCatch4().block());
     }
 
-    private JPromise<Boolean> tryWithCatch5() throws InterruptedException {
+    private JPromise<Boolean> tryWithCatch5() {
         boolean res;
         try {
             throwError(new IllegalStateException()).await();
@@ -162,7 +162,7 @@ public class TryTest {
         Assertions.assertEquals(2, returnInTryWith2().block());
     }
 
-    private JPromise<String> tryWithMultiTypeCatch(String what) throws InterruptedException {
+    private JPromise<String> tryWithMultiTypeCatch(String what) {
         String message = "hello ";
         try {
             if (what == null) {
@@ -185,7 +185,7 @@ public class TryTest {
         Assertions.assertEquals("hello null", tryWithMultiTypeCatch("error").block());
     }
 
-    private JPromise<String> tryWithMultiCatch1(String what, int flag) throws InterruptedException {
+    private JPromise<String> tryWithMultiCatch1(String what, int flag) {
         String message = "hello";
         try {
             if (what == null) {
@@ -226,7 +226,7 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<String> tryWithMultiCatch2() throws InterruptedException {
+    private JPromise<String> tryWithMultiCatch2() {
         String message = "";
         try {
             try {
@@ -264,7 +264,7 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<Integer> tryFinallyCatchContinue() throws InterruptedException {
+    private JPromise<Integer> tryFinallyCatchContinue() {
         int a = 0;
         for (int i = 0; i < 10; ++i) {
             try {
@@ -300,7 +300,7 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<Integer> tryFinallyCatchBreak() throws InterruptedException {
+    private JPromise<Integer> tryFinallyCatchBreak() {
         int a = 0;
         for (int i = 0; i < 10; ++i) {
             try {
@@ -336,7 +336,7 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<Integer> tryFinallyCatchReturn() throws InterruptedException {
+    private JPromise<Integer> tryFinallyCatchReturn() {
         int a = 0;
         for (int i = 0; i < 10; ++i) {
             try {
@@ -356,7 +356,7 @@ public class TryTest {
         Assertions.assertEquals(tryFinallyCatchReturnNoAwait(), tryFinallyCatchReturn().block());
     }
 
-    private JPromise<Integer> tryFinallyWithLoop1(int target) throws InterruptedException {
+    private JPromise<Integer> tryFinallyWithLoop1(int target) {
         TestClosable closable = new TestClosable(target);
         try {
             for (int i = 0; i < 10; ++i) {
@@ -383,7 +383,7 @@ public class TryTest {
         return JPromise.empty();
     }
 
-    private JPromise<Integer> tryFinallyWithLoop2(int target) throws InterruptedException {
+    private JPromise<Integer> tryFinallyWithLoop2(int target) {
         TestClosable closable = new TestClosable(target);
         try {
             for (int i = 0; i < 10; ++i) {
@@ -434,7 +434,7 @@ public class TryTest {
         void release() {}
     }
 
-    public JPromise<Integer> tryFinallyWithLoop3(TestContext context, boolean storeIfRead) throws InterruptedException {
+    public JPromise<Integer> tryFinallyWithLoop3(TestContext context, boolean storeIfRead) {
         // Here local var byteBuf is merged by null and TestBuf. The index of it should also be merged.
         // Then calcLocalVars will take byteBuf into account.
         TestBuf byteBuf = storeIfRead ? context.createBuff() : null;
@@ -466,7 +466,7 @@ public class TryTest {
     }
 
     @Async
-    private JPromise<String> tryFinallyCatchException() throws InterruptedException {
+    private JPromise<String> tryFinallyCatchException() {
         String message = "hello";
         try {
             message += JPromise.just(" world").await();
@@ -543,7 +543,7 @@ public class TryTest {
         throw new RuntimeException();
     }
 
-    private JPromise<Integer> nest1() throws InterruptedException {
+    private JPromise<Integer> nest1() {
         int out = nest0().await() + 1;
         return JPromise.just(out);
     }

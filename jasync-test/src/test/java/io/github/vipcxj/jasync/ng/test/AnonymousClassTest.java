@@ -13,7 +13,7 @@ public class AnonymousClassTest {
         //noinspection Convert2Lambda
         JAsyncPromiseSupplier0<String> supplier = new JAsyncPromiseSupplier0<String>() {
             @Override
-            public JPromise<String> get() throws Throwable {
+            public JPromise<String> get() {
                 String helloWorld = JPromise.just("Hello World").await();
                 return JPromise.just(helloWorld + input);
             }

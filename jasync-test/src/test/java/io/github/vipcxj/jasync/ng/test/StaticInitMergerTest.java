@@ -28,7 +28,7 @@ public class StaticInitMergerTest {
         return JPromise.just(1);
     }
 
-    private JPromise<Integer> simpleLoop() throws InterruptedException {
+    private JPromise<Integer> simpleLoop() {
         int sum = 0;
         for (int i = 0; i < 10; ++i) {
             sum += one().await();

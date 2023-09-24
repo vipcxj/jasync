@@ -11,7 +11,7 @@ public class InnerClassTest {
     class InnerClass {
 
         @Async
-        private JPromise<String> fun() throws InterruptedException {
+        private JPromise<String> fun() {
             return JPromise.just(
                     JPromise.just("InnerClass").await()
             );
@@ -19,13 +19,13 @@ public class InnerClassTest {
 
         class NestInnerClass {
 
-            private JPromise<String> fun() throws InterruptedException {
+            private JPromise<String> fun() {
                 return JPromise.just(
                         JPromise.just("InnerClass").await() + "." + JPromise.just("NestInnerClass").await()
                 );
             }
 
-            public JPromise<String> closingMethod() throws InterruptedException {
+            public JPromise<String> closingMethod() {
                 class AnClass {
                     public JPromise<String> fun() {
                         return JPromise.just("InnerClass.NestInnerClass.closingMethod.AnClass");
@@ -50,7 +50,7 @@ public class InnerClassTest {
     static class StaticInnerClass {
 
         @Async
-        private JPromise<String> fun() throws InterruptedException {
+        private JPromise<String> fun() {
             return JPromise.just(
                     JPromise.just("StaticInnerClass").await()
             );
@@ -58,7 +58,7 @@ public class InnerClassTest {
 
         class NestInnerClass {
             @Async
-            private JPromise<String> fun() throws InterruptedException {
+            private JPromise<String> fun() {
                 return JPromise.just(
                         JPromise.just("StaticInnerClass").await() + "." + JPromise.just("NestInnerClass").await()
                 );
@@ -67,7 +67,7 @@ public class InnerClassTest {
 
         static class StaticNestInnerClass {
             @Async
-            private JPromise<String> fun() throws InterruptedException {
+            private JPromise<String> fun() {
                 return JPromise.just(
                         JPromise.just("StaticInnerClass").await() + "." + JPromise.just("StaticNestInnerClass").await()
                 );

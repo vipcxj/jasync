@@ -23,23 +23,50 @@ public class AsmHelper {
         return isStatic(mv.access);
     }
 
-    public static boolean isAwait(int opcode, String owner, String name, String desc) {
-        if (Constants.AWAIT.equals(name)) {
+    public static int AWAIT_METHOD_TYPE_NOT_AWAIT = 0;
+    public static int AWAIT_METHOD_TYPE_AUTO = 1;
+    public static int AWAIT_METHOD_TYPE_WITH_TYPE = 2;
+    /**
+     * check await type
+     * @param opcode method opcode
+     * @param owner method owner
+     * @param name method name
+     * @param desc method desc
+     * @return 0 for not await, 1 for auto await, 2 for await with await type
+     */
+    public static int isAwait(int opcode, String owner, String name, String desc) {
+        if (Constants.AWAIT.equals(name) || Constants.AWAIT_INTERRUPTABLE.equals(name)) {
             if (opcode == Opcodes.INVOKEINTERFACE || opcode == Opcodes.INVOKESPECIAL || opcode == Opcodes.INVOKEVIRTUAL) {
-                if (Type.getArgumentTypes(desc).length == 0) {
-                    return Utils.isJPromise(Type.getObjectType(owner).getClassName());
+                Type[] argumentTypes = Type.getArgumentTypes(desc);
+                int awaitType = AWAIT_METHOD_TYPE_NOT_AWAIT;
+                if (argumentTypes.length == 0) {
+                    awaitType = AWAIT_METHOD_TYPE_AUTO;
+                } else if (argumentTypes.length == 1 && Objects.equals(argumentTypes[0], Constants.AWAIT_TYPE_DESC)) {
+                    awaitType = AWAIT_METHOD_TYPE_WITH_TYPE;
+                } else {
+                    return awaitType;
+                }
+                if (Utils.isJPromise(Type.getObjectType(owner).getClassName())) {
+                    return awaitType;
+                } else {
+                    return AWAIT_METHOD_TYPE_NOT_AWAIT;
                 }
             }
         }
-        return false;
+        return AWAIT_METHOD_TYPE_NOT_AWAIT;
     }
 
-    public static boolean isAwait(AbstractInsnNode insnNode) {
+    /**
+     * check await type
+     * @param insnNode the insn node to be checked
+     * @return 0 for not await, 1 for auto await, 2 for await with await type
+     */
+    public static int isAwait(AbstractInsnNode insnNode) {
         if (insnNode instanceof MethodInsnNode) {
             MethodInsnNode methodInsnNode = (MethodInsnNode) insnNode;
             return isAwait(methodInsnNode.getOpcode(), methodInsnNode.owner, methodInsnNode.name, methodInsnNode.desc);
         }
-        return false;
+        return AWAIT_METHOD_TYPE_NOT_AWAIT;
     }
 
     private static void printMethodSign(MethodNode methodNode, Printer printer) {

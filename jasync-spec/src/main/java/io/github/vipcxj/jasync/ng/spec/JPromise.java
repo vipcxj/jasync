@@ -5,12 +5,7 @@ import io.github.vipcxj.jasync.ng.spec.spi.JPromiseSupport;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -287,126 +282,136 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
             thunk.resolve((T) old, newContext);
         });
     }
-
-    default T await() throws InterruptedException {
+    default T await() {
         throw new UnsupportedOperationException("The method \"await\" should be called in an async method.");
     }
-    <R> JPromise<R> thenWithContext(JAsyncPromiseFunction1<T, R> mapper, boolean immediate);
+    default T await(AwaitType type) {
+        throw new UnsupportedOperationException("The method \"await\" should be called in an async method.");
+    }
+    @SuppressWarnings("RedundantThrows")
+    default T awaitInterruptable() throws InterruptedException {
+        throw new UnsupportedOperationException("The method \"awaitInterruptable\" should be called in an async method.");
+    }
+    @SuppressWarnings("RedundantThrows")
+    default T awaitInterruptable(AwaitType type) throws InterruptedException {
+        throw new UnsupportedOperationException("The method \"awaitInterruptable\" should be called in an async method.");
+    }
+    <R> JPromise<R> thenWithContext(AwaitType type, JAsyncPromiseFunction1<T, R> mapper);
     default <R> JPromise<R> thenWithContext(JAsyncPromiseFunction1<T, R> mapper) {
-        return thenWithContext(mapper, false);
+        return thenWithContext(AwaitType.AUTO, mapper);
     }
     default <R> JPromise<R> thenWithContextImmediate(JAsyncPromiseFunction1<T, R> mapper) {
-        return thenWithContext(mapper, true);
+        return thenWithContext(AwaitType.IMMEDIATE, mapper);
     }
 
-    default <R> JPromise<R> then(JAsyncPromiseFunction0<T, R> mapper, boolean immediate) {
-        return thenWithContext((v, ctx) -> mapper.apply(v), immediate);
+    default <R> JPromise<R> then(AwaitType type, JAsyncPromiseFunction0<T, R> mapper) {
+        return thenWithContext(type, (v, ctx) -> mapper.apply(v));
     }
     default <R> JPromise<R> then(JAsyncPromiseFunction0<T, R> mapper) {
-        return then(mapper, false);
+        return then(AwaitType.AUTO, mapper);
     }
     default <R> JPromise<R> thenImmediate(JAsyncPromiseFunction0<T, R> mapper) {
-        return then(mapper, true);
+        return then(AwaitType.IMMEDIATE, mapper);
     }
 
-    default <R> JPromise<R> thenWithContext(JAsyncPromiseSupplier1<R> supplier, boolean immediate) {
-        return thenWithContext((ignored, ctx) -> supplier.get(ctx), immediate);
+    default <R> JPromise<R> thenWithContext(AwaitType type, JAsyncPromiseSupplier1<R> supplier) {
+        return thenWithContext(type, (ignored, ctx) -> supplier.get(ctx));
     }
     default <R> JPromise<R> thenWithContext(JAsyncPromiseSupplier1<R> supplier) {
-        return thenWithContext(supplier, false);
+        return thenWithContext(AwaitType.AUTO, supplier);
     }
     default <R> JPromise<R> thenWithContextImmediate(JAsyncPromiseSupplier1<R> supplier) {
-        return thenWithContext(supplier, true);
+        return thenWithContext(AwaitType.IMMEDIATE, supplier);
     }
 
-    default <R> JPromise<R> then(JAsyncPromiseSupplier0<R> supplier, boolean immediate) {
-        return then((T ignored) -> supplier.get(), immediate);
+    default <R> JPromise<R> then(AwaitType type, JAsyncPromiseSupplier0<R> supplier) {
+        return then(type, (T ignored) -> supplier.get());
     }
     default <R> JPromise<R> then(JAsyncPromiseSupplier0<R> supplier) {
-        return then(supplier, false);
+        return then(AwaitType.AUTO, supplier);
     }
     default <R> JPromise<R> thenImmediate(JAsyncPromiseSupplier0<R> supplier) {
-        return then(supplier, true);
+        return then(AwaitType.IMMEDIATE, supplier);
     }
 
-    default <R> JPromise<R> thenMapWithContext(JAsyncFunction1<T, R> function, boolean immediate) {
-        return thenWithContext((T v, JContext ctx) -> JPromise.just(function.apply(v, ctx)), immediate);
+    default <R> JPromise<R> thenMapWithContext(AwaitType type, JAsyncFunction1<T, R> function) {
+        return thenWithContext(type, (T v, JContext ctx) -> JPromise.just(function.apply(v, ctx)));
     }
     default <R> JPromise<R> thenMapWithContext(JAsyncFunction1<T, R> function) {
-        return thenMapWithContext(function, false);
+        return thenMapWithContext(AwaitType.AUTO, function);
     }
     default <R> JPromise<R> thenMapWithContextImmediate(JAsyncFunction1<T, R> function) {
-        return thenMapWithContext(function, true);
+        return thenMapWithContext(AwaitType.IMMEDIATE, function);
     }
 
-    default <R> JPromise<R> thenMap(JAsyncFunction0<T, R> function, boolean immediate) {
-        return then((T v) -> JPromise.just(function.apply(v)), immediate);
+    default <R> JPromise<R> thenMap(AwaitType type, JAsyncFunction0<T, R> function) {
+        return then(type, (T v) -> JPromise.just(function.apply(v)));
     }
     default <R> JPromise<R> thenMap(JAsyncFunction0<T, R> function) {
-        return thenMap(function, false);
+        return thenMap(AwaitType.AUTO, function);
     }
     default <R> JPromise<R> thenMapImmediate(JAsyncFunction0<T, R> function) {
-        return thenMap(function, true);
+        return thenMap(AwaitType.IMMEDIATE, function);
     }
 
-    default <R> JPromise<R> thenMapWithContext(JAsyncSupplier1<R> function, boolean immediate) {
-        return thenWithContext((v, ctx) -> JPromise.just(function.get(ctx)), immediate);
+    default <R> JPromise<R> thenMapWithContext(AwaitType type, JAsyncSupplier1<R> function) {
+        return thenWithContext(type, (v, ctx) -> JPromise.just(function.get(ctx)));
     }
     default <R> JPromise<R> thenMapWithContext(JAsyncSupplier1<R> function) {
-        return thenMapWithContext(function, false);
+        return thenMapWithContext(AwaitType.AUTO, function);
     }
     default <R> JPromise<R> thenMapWithContextImmediate(JAsyncSupplier1<R> function) {
-        return thenMapWithContext(function, true);
+        return thenMapWithContext(AwaitType.IMMEDIATE, function);
     }
 
-    default <R> JPromise<R> thenMap(JAsyncSupplier0<R> function, boolean immediate) {
-        return then((T v) -> JPromise.just(function.get()), immediate);
+    default <R> JPromise<R> thenMap(AwaitType type, JAsyncSupplier0<R> function) {
+        return then(type, (T v) -> JPromise.just(function.get()));
     }
     default <R> JPromise<R> thenMap(JAsyncSupplier0<R> function) {
-        return thenMap(function, false);
+        return thenMap(AwaitType.AUTO, function);
     }
     default <R> JPromise<R> thenMapImmediate(JAsyncSupplier0<R> function) {
-        return thenMap(function, true);
+        return thenMap(AwaitType.IMMEDIATE, function);
     }
 
-    default <R> JPromise<T> thenWithWithContext(JAsyncPromiseFunction1<T, R> function, boolean immediate) {
-        return thenWithContext((v, ctx) -> function.apply(v, ctx).thenReturn(v), immediate);
+    default <R> JPromise<T> thenWithWithContext(AwaitType type, JAsyncPromiseFunction1<T, R> function) {
+        return thenWithContext(type, (v, ctx) -> function.apply(v, ctx).thenReturn(v));
     }
     default <R> JPromise<T> thenWithWithContext(JAsyncPromiseFunction1<T, R> function) {
-        return thenWithWithContext(function, false);
+        return thenWithWithContext(AwaitType.AUTO, function);
     }
     default <R> JPromise<T> thenWithWithContextImmediate(JAsyncPromiseFunction1<T, R> function) {
-        return thenWithWithContext(function, true);
+        return thenWithWithContext(AwaitType.IMMEDIATE, function);
     }
 
-    default <R> JPromise<T> thenWith(JAsyncPromiseFunction0<T, R> function, boolean immediate) {
-        return then(v -> function.apply(v).thenReturn(v), immediate);
+    default <R> JPromise<T> thenWith(AwaitType type, JAsyncPromiseFunction0<T, R> function) {
+        return then(type, v -> function.apply(v).thenReturn(v));
     }
     default <R> JPromise<T> thenWith(JAsyncPromiseFunction0<T, R> function) {
-        return thenWith(function, false);
+        return thenWith(AwaitType.AUTO, function);
     }
     default <R> JPromise<T> thenWithImmediate(JAsyncPromiseFunction0<T, R> function) {
-        return thenWith(function, true);
+        return thenWith(AwaitType.IMMEDIATE, function);
     }
 
-    default <R> JPromise<T> thenWithWithContext(JAsyncPromiseSupplier1<R> supplier, boolean immediate) {
-        return thenWithContext((v, ctx) -> supplier.get(ctx).thenReturn(v), immediate);
+    default <R> JPromise<T> thenWithWithContext(AwaitType type, JAsyncPromiseSupplier1<R> supplier) {
+        return thenWithContext(type, (v, ctx) -> supplier.get(ctx).thenReturn(v));
     }
     default <R> JPromise<T> thenWithWithContext(JAsyncPromiseSupplier1<R> supplier) {
-        return thenWithWithContext(supplier, false);
+        return thenWithWithContext(AwaitType.AUTO, supplier);
     }
     default <R> JPromise<T> thenWithWithContextImmediate(JAsyncPromiseSupplier1<R> supplier) {
-        return thenWithWithContext(supplier, true);
+        return thenWithWithContext(AwaitType.IMMEDIATE, supplier);
     }
 
-    default <R> JPromise<T> thenWith(JAsyncPromiseSupplier0<R> supplier, boolean immediate) {
-        return then(v -> supplier.get().thenReturn(v), immediate);
+    default <R> JPromise<T> thenWith(AwaitType type, JAsyncPromiseSupplier0<R> supplier) {
+        return then(type, v -> supplier.get().thenReturn(v));
     }
     default <R> JPromise<T> thenWith(JAsyncPromiseSupplier0<R> supplier) {
-        return thenWith(supplier, false);
+        return thenWith(AwaitType.AUTO, supplier);
     }
     default <R> JPromise<T> thenWithImmediate(JAsyncPromiseSupplier0<R> supplier) {
-        return thenWith(supplier, true);
+        return thenWith(AwaitType.IMMEDIATE, supplier);
     }
 
     default <R> JPromise<R> thenReturn(R next) {
@@ -453,22 +458,22 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
         return thenWith(() -> sleep(timeout, unit));
     }
 
-    JPromise<T> doCatchWithContext(JAsyncCatchFunction1<Throwable, T> catcher, boolean immediate);
+    JPromise<T> doCatchWithContext(AwaitType type, JAsyncCatchFunction1<Throwable, T> catcher);
     default JPromise<T> doCatchWithContext(JAsyncCatchFunction1<Throwable, T> catcher) {
-        return doCatchWithContext(catcher, false);
+        return doCatchWithContext(AwaitType.AUTO, catcher);
     }
     default JPromise<T> doCatchWithContextImmediate(JAsyncCatchFunction1<Throwable, T> catcher) {
-        return doCatchWithContext(catcher, true);
+        return doCatchWithContext(AwaitType.IMMEDIATE, catcher);
     }
 
-    default JPromise<T> doCatch(JAsyncCatchFunction0<Throwable, T> catcher, boolean immediate) {
-        return doCatchWithContext((error, ctx) -> catcher.apply(error), immediate);
+    default JPromise<T> doCatch(AwaitType type, JAsyncCatchFunction0<Throwable, T> catcher) {
+        return doCatchWithContext(type, (error, ctx) -> catcher.apply(error));
     }
     default JPromise<T> doCatch(JAsyncCatchFunction0<Throwable, T> catcher) {
-        return doCatch(catcher, false);
+        return doCatch(AwaitType.AUTO, catcher);
     }
     default JPromise<T> doCatchImmediate(JAsyncCatchFunction0<Throwable, T> catcher) {
-        return doCatch(catcher, true);
+        return doCatch(AwaitType.IMMEDIATE, catcher);
     }
 
     String MULTI_CATCH_ARGS_ERROR = "The arguments exceptionTypeAndCatches composed with throwable class and JPromiseCatchFunction0 or JPromiseCatchFunction1 pairs.";
@@ -478,14 +483,14 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
      * JAsyncCatchFunction1 closure1 = (e, ctx) -> { ... }
      * JAsyncCatchFunction0 closure2 = (e) -> { ... }
      * promise.doMultiCatches(
-     *   immediate,
+     *   type,
      *   IllegalArgumentException.class, closure1,
      *   RuntimeException.class, closure2
      * )
      * </pre>
      * equals to:
      * <pre>
-     * promise.doCatch(immediate, (e, ctx) -> {
+     * promise.doCatch(type, (e, ctx) -> {
      *     if (e instanceof IllegalArgumentException) {
      *         return closure1.apply(e, ctx);
      *     } else if (e instanceof RuntimeException) {
@@ -496,12 +501,12 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
      * })
      * </pre>
      *
-     * @param immediate whether invoke the closure immediate ignore the current scheduler
+     * @param type whether invoke the closure immediate ignore the current scheduler or using scheduler or auto detection by the framework.
      * @param exceptionTypeAndCatches exception type and catch closure pairs.
      *                                Both JAsyncCatchFunction0 and JAsyncCatchFunction1 are supported.
      * @return the promise
      */
-    default JPromise<T> doMultiCatches(boolean immediate, Object... exceptionTypeAndCatches) {
+    default JPromise<T> doMultiCatches(AwaitType type, Object... exceptionTypeAndCatches) {
         if ((exceptionTypeAndCatches.length & 1) == 1) {
             throw new IllegalArgumentException("The number of arguments exceptionTypeAndCatches must be even.");
         }
@@ -519,7 +524,7 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
                 throw new IllegalArgumentException(MULTI_CATCH_ARGS_ERROR);
             }
         }
-        return doCatchWithContext((e, ctx) -> {
+        return doCatchWithContext(type, (e, ctx) -> {
             for (int i = 0; i < exceptionTypeAndCatches.length;) {
                 Class<?> exceptionType = (Class<?>) exceptionTypeAndCatches[i++];
                 Object closure = exceptionTypeAndCatches[i++];
@@ -534,7 +539,7 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
                 }
             }
             throw e;
-        }, immediate);
+        });
     }
 
     /**
@@ -542,10 +547,10 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
      * @param exceptionTypeAndCatches exception type and catch closure pairs.
      *                                Both JAsyncCatchFunction0 and JAsyncCatchFunction1 are supported.
      * @return the promise
-     * @see #doMultiCatches(boolean, Object...)
+     * @see #doMultiCatches(AwaitType, Object...)
      */
     default JPromise<T> doMultiCatches(Object... exceptionTypeAndCatches) {
-        return doMultiCatches(false, exceptionTypeAndCatches);
+        return doMultiCatches(AwaitType.AUTO, exceptionTypeAndCatches);
     }
 
     /**
@@ -553,42 +558,42 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
      * @param exceptionTypeAndCatches exception type and catch closure pairs.
      *                                Both JAsyncCatchFunction0 and JAsyncCatchFunction1 are supported.
      * @return the promise
-     * @see #doMultiCatches(boolean, Object...)
+     * @see #doMultiCatches(AwaitType, Object...)
      */
     default JPromise<T> doMultiCatchImmediate(Object... exceptionTypeAndCatches) {
-        return doMultiCatches(true, exceptionTypeAndCatches);
+        return doMultiCatches(AwaitType.IMMEDIATE, exceptionTypeAndCatches);
     }
 
-    <R> JPromise<R> thenOrCatchWithContext(JAsyncPromiseFunction3<T, R> handler, boolean immediate);
+    <R> JPromise<R> thenOrCatchWithContext(AwaitType type, JAsyncPromiseFunction3<T, R> handler);
     default <R> JPromise<R> thenOrCatchWithContext(JAsyncPromiseFunction3<T, R> handler) {
-        return thenOrCatchWithContext(handler, false);
+        return thenOrCatchWithContext(AwaitType.AUTO, handler);
     }
     default <R> JPromise<R> thenOrCatchWithContextImmediate(JAsyncPromiseFunction3<T, R> handler) {
-        return thenOrCatchWithContext(handler, true);
+        return thenOrCatchWithContext(AwaitType.IMMEDIATE, handler);
     }
     default <R> JPromise<R> thenOrCatch(JAsyncPromiseFunction2<T, R> handler) {
         return thenOrCatchWithContext((t, throwable, context) -> handler.apply(t, throwable));
     }
     default <R> JPromise<R> thenOrCatchImmediate(JAsyncPromiseFunction2<T, R> handler) {
-        return thenOrCatchWithContext((t, throwable, context) -> handler.apply(t, throwable), true);
+        return thenOrCatchWithContext(AwaitType.IMMEDIATE, (t, throwable, context) -> handler.apply(t, throwable));
     }
 
-    <R> JPromise<T> doFinallyWithContext(JAsyncPromiseSupplier1<R> supplier, boolean immediate);
+    <R> JPromise<T> doFinallyWithContext(AwaitType type, JAsyncPromiseSupplier1<R> supplier);
     default <R> JPromise<T> doFinallyWithContext(JAsyncPromiseSupplier1<R> supplier) {
-        return doFinallyWithContext(supplier, false);
+        return doFinallyWithContext(AwaitType.AUTO, supplier);
     }
     default <R> JPromise<T> doFinallyWithContextImmediate(JAsyncPromiseSupplier1<R> supplier) {
-        return doFinallyWithContext(supplier, true);
+        return doFinallyWithContext(AwaitType.IMMEDIATE, supplier);
     }
 
-    default <R> JPromise<T> doFinally(JAsyncPromiseSupplier0<R> supplier, boolean immediate) {
-        return doFinallyWithContext(ctx -> supplier.get(), immediate);
+    default <R> JPromise<T> doFinally(AwaitType type, JAsyncPromiseSupplier0<R> supplier) {
+        return doFinallyWithContext(type, ctx -> supplier.get());
     }
     default <R> JPromise<T> doFinally(JAsyncPromiseSupplier0<R> supplier) {
-        return doFinally(supplier, false);
+        return doFinally(AwaitType.AUTO, supplier);
     }
     default <R> JPromise<T> doFinallyImmediate(JAsyncPromiseSupplier0<R> supplier) {
-        return doFinally(supplier, true);
+        return doFinally(AwaitType.IMMEDIATE, supplier);
     }
 
     JPromise<T> onSuccess(BiConsumer<T, JContext> resolver);
@@ -620,12 +625,12 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
 
     @Override
     default <U> JPromise<U> thenApply(Function<? super T,? extends U> fn) {
-        return thenMapImmediate(v -> fn.apply(v));
+        return thenMapImmediate(fn::apply);
     }
 
     @Override
     default <U> JPromise<U> thenApplyAsync(Function<? super T,? extends U> fn) {
-        return thenMap(v -> fn.apply(v));
+        return thenMap(fn::apply);
     }
 
     @Override
@@ -642,7 +647,7 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
     default JPromise<Void> thenAccept(Consumer<? super T> action) {
         return thenMapImmediate(v -> {
             action.accept(v);
-            return (Void) null;
+            return null;
         });
     }
 
@@ -650,7 +655,7 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
     default JPromise<Void> thenAcceptAsync(Consumer<? super T> action) {
         return thenMap(v -> {
             action.accept(v);
-            return (Void) null;
+            return null;
         });
     }
 
@@ -780,12 +785,12 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
 
     @Override
     default <U> JPromise<U> applyToEither(CompletionStage<? extends T> other, Function<? super T, U> fn) {
-        return JPromise.any(this, from(other)).thenMapImmediate(v -> fn.apply(v));
+        return JPromise.any(this, from(other)).thenMapImmediate(fn::apply);
     }
 
     @Override
     default <U> JPromise<U> applyToEitherAsync(CompletionStage<? extends T> other, Function<? super T, U> fn) {
-        return JPromise.any(this, from(other)).thenMap(v -> fn.apply(v));
+        return JPromise.any(this, from(other)).thenMap(fn::apply);
     }
 
     @Override
