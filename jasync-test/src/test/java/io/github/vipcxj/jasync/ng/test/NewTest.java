@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.ng.test;
 
+import io.github.vipcxj.jasync.ng.spec.AwaitType;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -80,16 +81,17 @@ public class NewTest {
 
     private JPromise<String> simpleNew() {
         StaticClassWithOneArgs object = new StaticClassWithOneArgs(sayHello().await());
-        return JPromise.just(object.getArg());
+        StaticClassWithOneArgs object2 = new StaticClassWithOneArgs(sayHello().await(AwaitType.IMMEDIATE));
+        return JPromise.just(object.getArg() + " " + object2.getArg());
     }
 
     @Test
     public void testSimpleNew() throws InterruptedException {
-        Assertions.assertEquals("hello", simpleNew().block());
+        Assertions.assertEquals("hello hello", simpleNew().block());
     }
 
     private JPromise<String> oneStaticNew() {
-        StaticClassWithArgs object = new StaticClassWithArgs(sayHello().await(), one().await() + two().await());
+        StaticClassWithArgs object = new StaticClassWithArgs(sayHello().await(), one().await(AwaitType.SCHEDULE) + two().await());
         return JPromise.just(object.getMessage() + object.getNumber());
     }
 
@@ -99,7 +101,7 @@ public class NewTest {
     }
 
     private JPromise<String> oneInnerNew() {
-        InnerClass object = new InnerClass(sayHello().await(), one().await() + two().await());
+        InnerClass object = new InnerClass(sayHello().await(), one().await() + two().await(AwaitType.AUTO));
         return JPromise.just(object.getMessage() + object.getNumber());
     }
 
@@ -111,7 +113,7 @@ public class NewTest {
     private JPromise<String> nestNews() {
         InnerClass object = new InnerClass(
                 new StaticClassWithArgs(sayHello().await(), 1).getMessage(),
-                new InnerClass(new StaticClassWithOutArgs().getMessage(), JPromise.just(new InnerClass()).await().getNumber()).getNumber()
+                new InnerClass(new StaticClassWithOutArgs().getMessage(), JPromise.just(new InnerClass()).await(AwaitType.IMMEDIATE).getNumber()).getNumber()
         );
         return JPromise.just(object.getMessage() + object.getNumber());
     }
