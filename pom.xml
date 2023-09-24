@@ -44,6 +44,7 @@
         <module>jasync-asm</module>
         <module>jasync-reactive</module>
         <module>jasync-spring</module>
+        <module>jasync-agent</module>
     </modules>
 
     <properties>
