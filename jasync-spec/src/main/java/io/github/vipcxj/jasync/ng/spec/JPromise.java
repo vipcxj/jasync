@@ -3,6 +3,7 @@ package io.github.vipcxj.jasync.ng.spec;
 import io.github.vipcxj.jasync.ng.spec.functional.*;
 import io.github.vipcxj.jasync.ng.spec.spi.JPromiseSupport;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.*;
@@ -28,6 +29,44 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
     }
     static JPromise<Void> sleep(long timeout, TimeUnit unit) {
         return provider.sleep(timeout, unit);
+    }
+    static JPromise<Void> sleep(Duration timeout) {
+        if (timeout == null) {
+            return JPromise.empty();
+        }
+        return provider.sleep(timeout.toNanos(), TimeUnit.NANOSECONDS);
+    }
+    static <T> JPromise<T> timeout(JPromise<T> promise, T whenTimeout, long timeout, TimeUnit unit) {
+        if (timeout <= 0) {
+            return promise;
+        } else {
+            return JPromise.any(
+                    promise,
+                    JPromise.sleep(timeout, unit).thenReturn(whenTimeout)
+            );
+        }
+    }
+    static <T> JPromise<T> timeout(JPromise<T> promise, T whenTimeout, Duration timeout) {
+        if (timeout == null) {
+            return promise;
+        }
+        return timeout(promise, whenTimeout, timeout.toNanos(), TimeUnit.NANOSECONDS);
+    }
+    static <T> JPromise<T> timeout(JPromise<T> promise, long timeout, TimeUnit unit) {
+        if (timeout <= 0) {
+            return promise;
+        } else {
+            return JPromise.any(
+                    promise,
+                    JPromise.sleep(timeout, unit).thenThrow(new TimeoutException())
+            );
+        }
+    }
+    static <T> JPromise<T> timeout(JPromise<T> promise, Duration timeout) {
+        if (timeout == null) {
+            return promise;
+        }
+        return timeout(promise, timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
     static <T> JPromise<T> from(CompletionStage<T> stage) {
         if (stage instanceof JPromise) {
@@ -420,6 +459,10 @@ public interface JPromise<T> extends JHandle<T>, CompletionStage<T> {
 
     default <R> JPromise<R> thenVoid() {
         return thenReturn(null);
+    }
+
+    default <R> JPromise<R> thenThrow(Throwable t) {
+        return  thenPromise(JPromise.error(t));
     }
 
     default <R> JPromise<R> thenPromise(JPromise<R> nextPromise) {

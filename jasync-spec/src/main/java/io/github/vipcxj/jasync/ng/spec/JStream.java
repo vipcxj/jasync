@@ -2,6 +2,7 @@ package io.github.vipcxj.jasync.ng.spec;
 
 import io.github.vipcxj.jasync.ng.spec.spi.JStreamSupport;
 
+import java.time.Duration;
 import java.util.function.Predicate;
 
 public interface JStream<T> {
@@ -16,17 +17,17 @@ public interface JStream<T> {
         return provider.create(capacity);
     }
 
-    JPromise<Void> push(T data);
+    JPromise<Void> produce(T data);
 
-    boolean tryPut(T data);
+    boolean tryProduce(T data);
 
-    JPromise<T> pop();
+    JPromise<T> consume();
 
-    T tryPop();
+    T tryConsume();
 
-    JStream<T> pop(Predicate<T> filter);
+    JPromise<T> consume(Predicate<T> filter);
 
-    T tryPop(Predicate<T> filter);
+    T tryConsume(Predicate<T> filter);
 
     int getCapacity();
 
