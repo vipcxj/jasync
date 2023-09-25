@@ -3,28 +3,25 @@ package io.github.vipcxj.jasync.ng.runtime.stream;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.JStream;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
 public class BoundedStream<T> implements JStream<T> {
 
     private final int capacity;
-    private final Object[] data;
-    private int start;
-    private int size;
-    private final List<BooleanSupplier> consumableCallbacks;
-    private final List<BooleanSupplier> producableCallbacks;
+    private final ConcurrentLinkedDeque<T> deque;
+    private final AtomicInteger size;
+    private final ConcurrentLinkedDeque<BooleanSupplier> consumableCallbacks;
+    private final ConcurrentLinkedDeque<BooleanSupplier> producableCallbacks;
 
     public BoundedStream(int capacity) {
-        assert capacity > 0;
         this.capacity = capacity;
-        this.data = new Object[this.capacity];
-        this.start = 0;
-        this.size = 0;
-        this.consumableCallbacks = new ArrayList<>();
-        this.producableCallbacks = new ArrayList<>();
+        this.deque = new ConcurrentLinkedDeque<>();
+        this.size = new AtomicInteger(0);
+        this.consumableCallbacks = new ConcurrentLinkedDeque<>();
+        this.producableCallbacks = new ConcurrentLinkedDeque<>();
     }
 
     private void triggerConsumableCallbacks() {
@@ -59,7 +56,16 @@ public class BoundedStream<T> implements JStream<T> {
 
     @Override
     public boolean tryProduce(T data) {
-        return false;
+        int size = this.size.get();
+        // size may greater than capacity
+        if (isUnbound() || size < capacity) {
+            deque.add(data);
+            this.size.incrementAndGet();
+            triggerConsumableCallbacks();
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @Override
@@ -98,7 +104,12 @@ public class BoundedStream<T> implements JStream<T> {
 
     @Override
     public T tryConsume(Predicate<T> filter) {
-        return null;
+        if (deque.removeIf(filter)) {
+            size.decrementAndGet();
+            if (!isUnbound()) {
+                triggerProducableCallbacks();
+            }
+        }
     }
 
     @Override
