@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.ng.runtime.stream;
 
+import io.github.vipcxj.jasync.ng.runtime.utils.MyConcurrentLinkedDeque;
 import io.github.vipcxj.jasync.ng.spec.JPromise;
 import io.github.vipcxj.jasync.ng.spec.JStream;
 
@@ -11,14 +12,14 @@ import java.util.function.Predicate;
 public class BoundedStream<T> implements JStream<T> {
 
     private final int capacity;
-    private final ConcurrentLinkedDeque<T> deque;
+    private final MyConcurrentLinkedDeque<T> deque;
     private final AtomicInteger size;
     private final ConcurrentLinkedDeque<BooleanSupplier> consumableCallbacks;
     private final ConcurrentLinkedDeque<BooleanSupplier> producableCallbacks;
 
     public BoundedStream(int capacity) {
         this.capacity = capacity;
-        this.deque = new ConcurrentLinkedDeque<>();
+        this.deque = new MyConcurrentLinkedDeque<>();
         this.size = new AtomicInteger(0);
         this.consumableCallbacks = new ConcurrentLinkedDeque<>();
         this.producableCallbacks = new ConcurrentLinkedDeque<>();
@@ -104,11 +105,15 @@ public class BoundedStream<T> implements JStream<T> {
 
     @Override
     public T tryConsume(Predicate<T> filter) {
-        if (deque.removeIf(filter)) {
+        T removed = deque.removeFirstOccurrence(filter);
+        if (removed != null) {
             size.decrementAndGet();
             if (!isUnbound()) {
                 triggerProducableCallbacks();
             }
+            return removed;
+        } else {
+            return null;
         }
     }
 
