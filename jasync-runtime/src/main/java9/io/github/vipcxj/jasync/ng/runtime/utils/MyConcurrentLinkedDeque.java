@@ -3,7 +3,6 @@ package io.github.vipcxj.jasync.ng.runtime.utils;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.*;
-import java.util.concurrent.Helpers;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -178,7 +177,7 @@ public class MyConcurrentLinkedDeque<E>
      * - head.item may or may not be null
      * - head may not be reachable from the first or last node, or from tail
      */
-    private transient volatile MyConcurrentLinkedDeque.Node<E> head;
+    private transient volatile Node<E> head;
 
     /**
      * A node from which the last node on list (that is, the unique node p
@@ -192,32 +191,32 @@ public class MyConcurrentLinkedDeque<E>
      * - tail.item may or may not be null
      * - tail may not be reachable from the first or last node, or from head
      */
-    private transient volatile MyConcurrentLinkedDeque.Node<E> tail;
+    private transient volatile Node<E> tail;
 
-    private static final MyConcurrentLinkedDeque.Node<Object> PREV_TERMINATOR, NEXT_TERMINATOR;
+    private static final Node<Object> PREV_TERMINATOR, NEXT_TERMINATOR;
 
     @SuppressWarnings("unchecked")
-    MyConcurrentLinkedDeque.Node<E> prevTerminator() {
-        return (MyConcurrentLinkedDeque.Node<E>) PREV_TERMINATOR;
+    Node<E> prevTerminator() {
+        return (Node<E>) PREV_TERMINATOR;
     }
 
     @SuppressWarnings("unchecked")
-    MyConcurrentLinkedDeque.Node<E> nextTerminator() {
-        return (MyConcurrentLinkedDeque.Node<E>) NEXT_TERMINATOR;
+    Node<E> nextTerminator() {
+        return (Node<E>) NEXT_TERMINATOR;
     }
 
     static final class Node<E> {
-        volatile MyConcurrentLinkedDeque.Node<E> prev;
+        volatile Node<E> prev;
         volatile E item;
-        volatile MyConcurrentLinkedDeque.Node<E> next;
+        volatile Node<E> next;
     }
 
     /**
      * Returns a new node holding item.  Uses relaxed write because item
      * can only be seen after piggy-backing publication via CAS.
      */
-    static <E> MyConcurrentLinkedDeque.Node<E> newNode(E item) {
-        MyConcurrentLinkedDeque.Node<E> node = new MyConcurrentLinkedDeque.Node<E>();
+    static <E> Node<E> newNode(E item) {
+        Node<E> node = new Node<E>();
         ITEM.set(node, item);
         return node;
     }
@@ -226,11 +225,11 @@ public class MyConcurrentLinkedDeque<E>
      * Links e as first element.
      */
     private void linkFirst(E e) {
-        final MyConcurrentLinkedDeque.Node<E> newNode = newNode(Objects.requireNonNull(e));
+        final Node<E> newNode = newNode(Objects.requireNonNull(e));
 
         restartFromHead:
         for (;;)
-            for (MyConcurrentLinkedDeque.Node<E> h = head, p = h, q;;) {
+            for (Node<E> h = head, p = h, q;;) {
                 if ((q = p.prev) != null &&
                         (q = (p = q).prev) != null)
                     // Check for head updates every other hop.
@@ -258,11 +257,11 @@ public class MyConcurrentLinkedDeque<E>
      * Links e as last element.
      */
     private void linkLast(E e) {
-        final MyConcurrentLinkedDeque.Node<E> newNode = newNode(Objects.requireNonNull(e));
+        final Node<E> newNode = newNode(Objects.requireNonNull(e));
 
         restartFromTail:
         for (;;)
-            for (MyConcurrentLinkedDeque.Node<E> t = tail, p = t, q;;) {
+            for (Node<E> t = tail, p = t, q;;) {
                 if ((q = p.next) != null &&
                         (q = (p = q).next) != null)
                     // Check for tail updates every other hop.
@@ -291,14 +290,14 @@ public class MyConcurrentLinkedDeque<E>
     /**
      * Unlinks non-null node x.
      */
-    void unlink(MyConcurrentLinkedDeque.Node<E> x) {
+    void unlink(Node<E> x) {
         // assert x != null;
         // assert x.item == null;
         // assert x != PREV_TERMINATOR;
         // assert x != NEXT_TERMINATOR;
 
-        final MyConcurrentLinkedDeque.Node<E> prev = x.prev;
-        final MyConcurrentLinkedDeque.Node<E> next = x.next;
+        final Node<E> prev = x.prev;
+        final Node<E> next = x.next;
         if (prev == null) {
             unlinkFirst(x, next);
         } else if (next == null) {
@@ -323,18 +322,18 @@ public class MyConcurrentLinkedDeque<E>
             // unchanged and ensuring that x is not reachable from
             // tail/head, before setting x's prev/next links to their
             // logical approximate replacements, self/TERMINATOR.
-            MyConcurrentLinkedDeque.Node<E> activePred, activeSucc;
+            Node<E> activePred, activeSucc;
             boolean isFirst, isLast;
             int hops = 1;
 
             // Find active predecessor
-            for (MyConcurrentLinkedDeque.Node<E> p = prev; ; ++hops) {
+            for (Node<E> p = prev; ; ++hops) {
                 if (p.item != null) {
                     activePred = p;
                     isFirst = false;
                     break;
                 }
-                MyConcurrentLinkedDeque.Node<E> q = p.prev;
+                Node<E> q = p.prev;
                 if (q == null) {
                     if (p.next == p)
                         return;
@@ -349,13 +348,13 @@ public class MyConcurrentLinkedDeque<E>
             }
 
             // Find active successor
-            for (MyConcurrentLinkedDeque.Node<E> p = next; ; ++hops) {
+            for (Node<E> p = next; ; ++hops) {
                 if (p.item != null) {
                     activeSucc = p;
                     isLast = false;
                     break;
                 }
-                MyConcurrentLinkedDeque.Node<E> q = p.next;
+                Node<E> q = p.next;
                 if (q == null) {
                     if (p.prev == p)
                         return;
@@ -402,11 +401,11 @@ public class MyConcurrentLinkedDeque<E>
     /**
      * Unlinks non-null first node.
      */
-    private void unlinkFirst(MyConcurrentLinkedDeque.Node<E> first, MyConcurrentLinkedDeque.Node<E> next) {
+    private void unlinkFirst(Node<E> first, Node<E> next) {
         // assert first != null;
         // assert next != null;
         // assert first.item == null;
-        for (MyConcurrentLinkedDeque.Node<E> o = null, p = next, q;;) {
+        for (Node<E> o = null, p = next, q;;) {
             if (p.item != null || (q = p.next) == null) {
                 if (o != null && p.prev != p &&
                         NEXT.compareAndSet(first, next, p)) {
@@ -437,11 +436,11 @@ public class MyConcurrentLinkedDeque<E>
     /**
      * Unlinks non-null last node.
      */
-    private void unlinkLast(MyConcurrentLinkedDeque.Node<E> last, MyConcurrentLinkedDeque.Node<E> prev) {
+    private void unlinkLast(Node<E> last, Node<E> prev) {
         // assert last != null;
         // assert prev != null;
         // assert last.item == null;
-        for (MyConcurrentLinkedDeque.Node<E> o = null, p = prev, q;;) {
+        for (Node<E> o = null, p = prev, q;;) {
             if (p.item != null || (q = p.prev) == null) {
                 if (o != null && p.next != p &&
                         PREV.compareAndSet(last, prev, p)) {
@@ -478,7 +477,7 @@ public class MyConcurrentLinkedDeque<E>
     private final void updateHead() {
         // Either head already points to an active node, or we keep
         // trying to cas it to the first node until it does.
-        MyConcurrentLinkedDeque.Node<E> h, p, q;
+        Node<E> h, p, q;
         restartFromHead:
         while ((h = head).item == null && (p = h.prev) != null) {
             for (;;) {
@@ -508,7 +507,7 @@ public class MyConcurrentLinkedDeque<E>
     private final void updateTail() {
         // Either tail already points to an active node, or we keep
         // trying to cas it to the last node until it does.
-        MyConcurrentLinkedDeque.Node<E> t, p, q;
+        Node<E> t, p, q;
         restartFromTail:
         while ((t = tail).item == null && (p = t.next) != null) {
             for (;;) {
@@ -529,19 +528,19 @@ public class MyConcurrentLinkedDeque<E>
         }
     }
 
-    private void skipDeletedPredecessors(MyConcurrentLinkedDeque.Node<E> x) {
+    private void skipDeletedPredecessors(Node<E> x) {
         whileActive:
         do {
-            MyConcurrentLinkedDeque.Node<E> prev = x.prev;
+            Node<E> prev = x.prev;
             // assert prev != null;
             // assert x != NEXT_TERMINATOR;
             // assert x != PREV_TERMINATOR;
-            MyConcurrentLinkedDeque.Node<E> p = prev;
+            Node<E> p = prev;
             findActive:
             for (;;) {
                 if (p.item != null)
                     break findActive;
-                MyConcurrentLinkedDeque.Node<E> q = p.prev;
+                Node<E> q = p.prev;
                 if (q == null) {
                     if (p.next == p)
                         continue whileActive;
@@ -560,19 +559,19 @@ public class MyConcurrentLinkedDeque<E>
         } while (x.item != null || x.next == null);
     }
 
-    private void skipDeletedSuccessors(MyConcurrentLinkedDeque.Node<E> x) {
+    private void skipDeletedSuccessors(Node<E> x) {
         whileActive:
         do {
-            MyConcurrentLinkedDeque.Node<E> next = x.next;
+            Node<E> next = x.next;
             // assert next != null;
             // assert x != NEXT_TERMINATOR;
             // assert x != PREV_TERMINATOR;
-            MyConcurrentLinkedDeque.Node<E> p = next;
+            Node<E> p = next;
             findActive:
             for (;;) {
                 if (p.item != null)
                     break findActive;
-                MyConcurrentLinkedDeque.Node<E> q = p.next;
+                Node<E> q = p.next;
                 if (q == null) {
                     if (p.prev == p)
                         continue whileActive;
@@ -596,7 +595,7 @@ public class MyConcurrentLinkedDeque<E>
      * linked to self, which will only be true if traversing with a
      * stale pointer that is now off the list.
      */
-    final MyConcurrentLinkedDeque.Node<E> succ(MyConcurrentLinkedDeque.Node<E> p) {
+    final Node<E> succ(Node<E> p) {
         // TODO: should we skip deleted nodes here?
         if (p == (p = p.next))
             p = first();
@@ -608,7 +607,7 @@ public class MyConcurrentLinkedDeque<E>
      * linked to self, which will only be true if traversing with a
      * stale pointer that is now off the list.
      */
-    final MyConcurrentLinkedDeque.Node<E> pred(MyConcurrentLinkedDeque.Node<E> p) {
+    final Node<E> pred(Node<E> p) {
         if (p == (p = p.prev))
             p = last();
         return p;
@@ -620,10 +619,10 @@ public class MyConcurrentLinkedDeque<E>
      * The returned node may or may not be logically deleted.
      * Guarantees that head is set to the returned node.
      */
-    MyConcurrentLinkedDeque.Node<E> first() {
+    Node<E> first() {
         restartFromHead:
         for (;;)
-            for (MyConcurrentLinkedDeque.Node<E> h = head, p = h, q;;) {
+            for (Node<E> h = head, p = h, q;;) {
                 if ((q = p.prev) != null &&
                         (q = (p = q).prev) != null)
                     // Check for head updates every other hop.
@@ -645,10 +644,10 @@ public class MyConcurrentLinkedDeque<E>
      * The returned node may or may not be logically deleted.
      * Guarantees that tail is set to the returned node.
      */
-    MyConcurrentLinkedDeque.Node<E> last() {
+    Node<E> last() {
         restartFromTail:
         for (;;)
-            for (MyConcurrentLinkedDeque.Node<E> t = tail, p = t, q;;) {
+            for (Node<E> t = tail, p = t, q;;) {
                 if ((q = p.next) != null &&
                         (q = (p = q).next) != null)
                     // Check for tail updates every other hop.
@@ -683,7 +682,7 @@ public class MyConcurrentLinkedDeque<E>
      * Constructs an empty deque.
      */
     public MyConcurrentLinkedDeque() {
-        head = tail = new MyConcurrentLinkedDeque.Node<E>();
+        head = tail = new Node<E>();
     }
 
     /**
@@ -697,9 +696,9 @@ public class MyConcurrentLinkedDeque<E>
      */
     public MyConcurrentLinkedDeque(Collection<? extends E> c) {
         // Copy c into a private chain of Nodes
-        MyConcurrentLinkedDeque.Node<E> h = null, t = null;
+        Node<E> h = null, t = null;
         for (E e : c) {
-            MyConcurrentLinkedDeque.Node<E> newNode = newNode(Objects.requireNonNull(e));
+            Node<E> newNode = newNode(Objects.requireNonNull(e));
             if (h == null)
                 h = t = newNode;
             else {
@@ -714,13 +713,13 @@ public class MyConcurrentLinkedDeque<E>
     /**
      * Initializes head and tail, ensuring invariants hold.
      */
-    private void initHeadTail(MyConcurrentLinkedDeque.Node<E> h, MyConcurrentLinkedDeque.Node<E> t) {
+    private void initHeadTail(Node<E> h, Node<E> t) {
         if (h == t) {
             if (h == null)
-                h = t = new MyConcurrentLinkedDeque.Node<E>();
+                h = t = new Node<E>();
             else {
                 // Avoid edge case of a single Node with non-null item.
-                MyConcurrentLinkedDeque.Node<E> newNode = new MyConcurrentLinkedDeque.Node<E>();
+                Node<E> newNode = new Node<E>();
                 NEXT.set(t, newNode);
                 PREV.set(newNode, t);
                 t = newNode;
@@ -783,7 +782,7 @@ public class MyConcurrentLinkedDeque<E>
     public E peekFirst() {
         restart: for (;;) {
             E item;
-            MyConcurrentLinkedDeque.Node<E> first = first(), p = first;
+            Node<E> first = first(), p = first;
             while ((item = p.item) == null) {
                 if (p == (p = p.next)) continue restart;
                 if (p == null)
@@ -798,7 +797,7 @@ public class MyConcurrentLinkedDeque<E>
     public E peekLast() {
         restart: for (;;) {
             E item;
-            MyConcurrentLinkedDeque.Node<E> last = last(), p = last;
+            Node<E> last = last(), p = last;
             while ((item = p.item) == null) {
                 if (p == (p = p.prev)) continue restart;
                 if (p == null)
@@ -826,7 +825,7 @@ public class MyConcurrentLinkedDeque<E>
 
     public E pollFirst() {
         restart: for (;;) {
-            for (MyConcurrentLinkedDeque.Node<E> first = first(), p = first;;) {
+            for (Node<E> first = first(), p = first;;) {
                 final E item;
                 if ((item = p.item) != null) {
                     // recheck for linearizability
@@ -847,7 +846,7 @@ public class MyConcurrentLinkedDeque<E>
 
     public E pollLast() {
         restart: for (;;) {
-            for (MyConcurrentLinkedDeque.Node<E> last = last(), p = last;;) {
+            for (Node<E> last = last(), p = last;;) {
                 final E item;
                 if ((item = p.item) != null) {
                     // recheck for linearizability
@@ -942,7 +941,7 @@ public class MyConcurrentLinkedDeque<E>
      */
     public boolean removeFirstOccurrence(Object o) {
         Objects.requireNonNull(o);
-        for (MyConcurrentLinkedDeque.Node<E> p = first(); p != null; p = succ(p)) {
+        for (Node<E> p = first(); p != null; p = succ(p)) {
             final E item;
             if ((item = p.item) != null
                     && o.equals(item)
@@ -955,7 +954,7 @@ public class MyConcurrentLinkedDeque<E>
     }
 
     public E removeFirstOccurrence(Predicate<E> tester) {
-        for (MyConcurrentLinkedDeque.Node<E> p = first(), succ; p != null; p = succ) {
+        for (Node<E> p = first(), succ; p != null; p = succ) {
             succ = succ(p);
             final E item;
             if ((item = p.item) != null
@@ -982,7 +981,7 @@ public class MyConcurrentLinkedDeque<E>
      */
     public boolean removeLastOccurrence(Object o) {
         Objects.requireNonNull(o);
-        for (MyConcurrentLinkedDeque.Node<E> p = last(); p != null; p = pred(p)) {
+        for (Node<E> p = last(); p != null; p = pred(p)) {
             final E item;
             if ((item = p.item) != null
                     && o.equals(item)
@@ -1004,7 +1003,7 @@ public class MyConcurrentLinkedDeque<E>
      */
     public boolean contains(Object o) {
         if (o != null) {
-            for (MyConcurrentLinkedDeque.Node<E> p = first(); p != null; p = succ(p)) {
+            for (Node<E> p = first(); p != null; p = succ(p)) {
                 final E item;
                 if ((item = p.item) != null && o.equals(item))
                     return true;
@@ -1041,7 +1040,7 @@ public class MyConcurrentLinkedDeque<E>
     public int size() {
         restart: for (;;) {
             int count = 0;
-            for (MyConcurrentLinkedDeque.Node<E> p = first(); p != null;) {
+            for (Node<E> p = first(); p != null;) {
                 if (p.item != null)
                     if (++count == Integer.MAX_VALUE)
                         break;  // @see Collection.size()
@@ -1088,9 +1087,9 @@ public class MyConcurrentLinkedDeque<E>
             throw new IllegalArgumentException();
 
         // Copy c into a private chain of Nodes
-        MyConcurrentLinkedDeque.Node<E> beginningOfTheEnd = null, last = null;
+        Node<E> beginningOfTheEnd = null, last = null;
         for (E e : c) {
-            MyConcurrentLinkedDeque.Node<E> newNode = newNode(Objects.requireNonNull(e));
+            Node<E> newNode = newNode(Objects.requireNonNull(e));
             if (beginningOfTheEnd == null)
                 beginningOfTheEnd = last = newNode;
             else {
@@ -1105,7 +1104,7 @@ public class MyConcurrentLinkedDeque<E>
         // Atomically append the chain at the tail of this collection
         restartFromTail:
         for (;;)
-            for (MyConcurrentLinkedDeque.Node<E> t = tail, p = t, q;;) {
+            for (Node<E> t = tail, p = t, q;;) {
                 if ((q = p.next) != null &&
                         (q = (p = q).next) != null)
                     // Check for tail updates every other hop.
@@ -1146,7 +1145,7 @@ public class MyConcurrentLinkedDeque<E>
         restart: for (;;) {
             int charLength = 0;
             int size = 0;
-            for (MyConcurrentLinkedDeque.Node<E> p = first(); p != null;) {
+            for (Node<E> p = first(); p != null;) {
                 final E item;
                 if ((item = p.item) != null) {
                     if (a == null)
@@ -1164,7 +1163,7 @@ public class MyConcurrentLinkedDeque<E>
             if (size == 0)
                 return "[]";
 
-            return Helpers.toString(a, size, charLength);
+            return toString(a, size, charLength);
         }
     }
 
@@ -1172,7 +1171,7 @@ public class MyConcurrentLinkedDeque<E>
         Object[] x = a;
         restart: for (;;) {
             int size = 0;
-            for (MyConcurrentLinkedDeque.Node<E> p = first(); p != null;) {
+            for (Node<E> p = first(); p != null;) {
                 final E item;
                 if ((item = p.item) != null) {
                     if (x == null)
@@ -1267,7 +1266,7 @@ public class MyConcurrentLinkedDeque<E>
      * @return an iterator over the elements in this deque in proper sequence
      */
     public Iterator<E> iterator() {
-        return new MyConcurrentLinkedDeque.Itr();
+        return new Itr();
     }
 
     /**
@@ -1281,14 +1280,14 @@ public class MyConcurrentLinkedDeque<E>
      * @return an iterator over the elements in this deque in reverse order
      */
     public Iterator<E> descendingIterator() {
-        return new MyConcurrentLinkedDeque.DescendingItr();
+        return new DescendingItr();
     }
 
     private abstract class AbstractItr implements Iterator<E> {
         /**
          * Next node to return item for.
          */
-        private MyConcurrentLinkedDeque.Node<E> nextNode;
+        private Node<E> nextNode;
 
         /**
          * nextItem holds on to item fields because once we claim
@@ -1302,10 +1301,10 @@ public class MyConcurrentLinkedDeque<E>
          * Node returned by most recent call to next. Needed by remove.
          * Reset to null if this element is deleted by a call to remove.
          */
-        private MyConcurrentLinkedDeque.Node<E> lastRet;
+        private Node<E> lastRet;
 
-        abstract MyConcurrentLinkedDeque.Node<E> startNode();
-        abstract MyConcurrentLinkedDeque.Node<E> nextNode(MyConcurrentLinkedDeque.Node<E> p);
+        abstract Node<E> startNode();
+        abstract Node<E> nextNode(Node<E> p);
 
         AbstractItr() {
             advance();
@@ -1318,7 +1317,7 @@ public class MyConcurrentLinkedDeque<E>
         private void advance() {
             lastRet = nextNode;
 
-            MyConcurrentLinkedDeque.Node<E> p = (nextNode == null) ? startNode() : nextNode(nextNode);
+            Node<E> p = (nextNode == null) ? startNode() : nextNode(nextNode);
             for (;; p = nextNode(p)) {
                 if (p == null) {
                     // might be at active end or TERMINATOR node; both are OK
@@ -1347,7 +1346,7 @@ public class MyConcurrentLinkedDeque<E>
         }
 
         public void remove() {
-            MyConcurrentLinkedDeque.Node<E> l = lastRet;
+            Node<E> l = lastRet;
             if (l == null) throw new IllegalStateException();
             l.item = null;
             unlink(l);
@@ -1356,28 +1355,28 @@ public class MyConcurrentLinkedDeque<E>
     }
 
     /** Forward iterator */
-    private class Itr extends MyConcurrentLinkedDeque.AbstractItr {
+    private class Itr extends AbstractItr {
         Itr() {}                        // prevent access constructor creation
-        MyConcurrentLinkedDeque.Node<E> startNode() { return first(); }
-        MyConcurrentLinkedDeque.Node<E> nextNode(MyConcurrentLinkedDeque.Node<E> p) { return succ(p); }
+        Node<E> startNode() { return first(); }
+        Node<E> nextNode(Node<E> p) { return succ(p); }
     }
 
     /** Descending iterator */
-    private class DescendingItr extends MyConcurrentLinkedDeque.AbstractItr {
+    private class DescendingItr extends AbstractItr {
         DescendingItr() {}              // prevent access constructor creation
-        MyConcurrentLinkedDeque.Node<E> startNode() { return last(); }
-        MyConcurrentLinkedDeque.Node<E> nextNode(MyConcurrentLinkedDeque.Node<E> p) { return pred(p); }
+        Node<E> startNode() { return last(); }
+        Node<E> nextNode(Node<E> p) { return pred(p); }
     }
 
     /** A customized variant of Spliterators.IteratorSpliterator */
     final class CLDSpliterator implements Spliterator<E> {
         static final int MAX_BATCH = 1 << 25;  // max batch array size;
-        MyConcurrentLinkedDeque.Node<E> current;    // current node; null until initialized
+        Node<E> current;    // current node; null until initialized
         int batch;          // batch size for splits
         boolean exhausted;  // true when no more nodes
 
         public Spliterator<E> trySplit() {
-            MyConcurrentLinkedDeque.Node<E> p, q;
+            Node<E> p, q;
             if ((p = current()) == null || (q = p.next) == null)
                 return null;
             int i = 0, n = batch = Math.min(batch + 1, MAX_BATCH);
@@ -1401,7 +1400,7 @@ public class MyConcurrentLinkedDeque<E>
 
         public void forEachRemaining(Consumer<? super E> action) {
             Objects.requireNonNull(action);
-            MyConcurrentLinkedDeque.Node<E> p;
+            Node<E> p;
             if ((p = current()) != null) {
                 current = null;
                 exhausted = true;
@@ -1417,7 +1416,7 @@ public class MyConcurrentLinkedDeque<E>
 
         public boolean tryAdvance(Consumer<? super E> action) {
             Objects.requireNonNull(action);
-            MyConcurrentLinkedDeque.Node<E> p;
+            Node<E> p;
             if ((p = current()) != null) {
                 E e;
                 do {
@@ -1434,13 +1433,13 @@ public class MyConcurrentLinkedDeque<E>
             return false;
         }
 
-        private void setCurrent(MyConcurrentLinkedDeque.Node<E> p) {
+        private void setCurrent(Node<E> p) {
             if ((current = p) == null)
                 exhausted = true;
         }
 
-        private MyConcurrentLinkedDeque.Node<E> current() {
-            MyConcurrentLinkedDeque.Node<E> p;
+        private Node<E> current() {
+            Node<E> p;
             if ((p = current) == null && !exhausted)
                 setCurrent(p = first());
             return p;
@@ -1472,7 +1471,7 @@ public class MyConcurrentLinkedDeque<E>
      * @since 1.8
      */
     public Spliterator<E> spliterator() {
-        return new MyConcurrentLinkedDeque.CLDSpliterator();
+        return new CLDSpliterator();
     }
 
     /**
@@ -1490,7 +1489,7 @@ public class MyConcurrentLinkedDeque<E>
         s.defaultWriteObject();
 
         // Write out all elements in the proper order.
-        for (MyConcurrentLinkedDeque.Node<E> p = first(); p != null; p = succ(p)) {
+        for (Node<E> p = first(); p != null; p = succ(p)) {
             final E item;
             if ((item = p.item) != null)
                 s.writeObject(item);
@@ -1512,10 +1511,10 @@ public class MyConcurrentLinkedDeque<E>
         s.defaultReadObject();
 
         // Read in elements until trailing null sentinel found
-        MyConcurrentLinkedDeque.Node<E> h = null, t = null;
+        Node<E> h = null, t = null;
         for (Object item; (item = s.readObject()) != null; ) {
             @SuppressWarnings("unchecked")
-            MyConcurrentLinkedDeque.Node<E> newNode = newNode((E) item);
+            Node<E> newNode = newNode((E) item);
             if (h == null)
                 h = t = newNode;
             else {
@@ -1554,7 +1553,7 @@ public class MyConcurrentLinkedDeque<E>
     /** Implementation of bulk remove methods. */
     private boolean bulkRemove(Predicate<? super E> filter) {
         boolean removed = false;
-        for (MyConcurrentLinkedDeque.Node<E> p = first(), succ; p != null; p = succ) {
+        for (Node<E> p = first(), succ; p != null; p = succ) {
             succ = succ(p);
             final E item;
             if ((item = p.item) != null
@@ -1573,9 +1572,33 @@ public class MyConcurrentLinkedDeque<E>
     public void forEach(Consumer<? super E> action) {
         Objects.requireNonNull(action);
         E item;
-        for (MyConcurrentLinkedDeque.Node<E> p = first(); p != null; p = succ(p))
+        for (Node<E> p = first(); p != null; p = succ(p))
             if ((item = p.item) != null)
                 action.accept(item);
+    }
+
+    static String toString(Object[] a, int size, int charLength) {
+        // assert a != null;
+        // assert size > 0;
+
+        // Copy each string into a perfectly sized char[]
+        // Length of [ , , , ] == 2 * size
+        final char[] chars = new char[charLength + 2 * size];
+        chars[0] = '[';
+        int j = 1;
+        for (int i = 0; i < size; i++) {
+            if (i > 0) {
+                chars[j++] = ',';
+                chars[j++] = ' ';
+            }
+            String s = (String) a[i];
+            int len = s.length();
+            s.getChars(0, len, chars, j);
+            j += len;
+        }
+        chars[j] = ']';
+        // assert j == chars.length - 1;
+        return new String(chars);
     }
 
     // VarHandle mechanics
@@ -1585,19 +1608,19 @@ public class MyConcurrentLinkedDeque<E>
     private static final VarHandle NEXT;
     private static final VarHandle ITEM;
     static {
-        PREV_TERMINATOR = new MyConcurrentLinkedDeque.Node<Object>();
+        PREV_TERMINATOR = new Node<Object>();
         PREV_TERMINATOR.next = PREV_TERMINATOR;
-        NEXT_TERMINATOR = new MyConcurrentLinkedDeque.Node<Object>();
+        NEXT_TERMINATOR = new Node<Object>();
         NEXT_TERMINATOR.prev = NEXT_TERMINATOR;
         try {
             MethodHandles.Lookup l = MethodHandles.lookup();
             HEAD = l.findVarHandle(MyConcurrentLinkedDeque.class, "head",
-                    MyConcurrentLinkedDeque.Node.class);
+                    Node.class);
             TAIL = l.findVarHandle(MyConcurrentLinkedDeque.class, "tail",
-                    MyConcurrentLinkedDeque.Node.class);
-            PREV = l.findVarHandle(MyConcurrentLinkedDeque.Node.class, "prev", MyConcurrentLinkedDeque.Node.class);
-            NEXT = l.findVarHandle(MyConcurrentLinkedDeque.Node.class, "next", MyConcurrentLinkedDeque.Node.class);
-            ITEM = l.findVarHandle(MyConcurrentLinkedDeque.Node.class, "item", Object.class);
+                    Node.class);
+            PREV = l.findVarHandle(Node.class, "prev", Node.class);
+            NEXT = l.findVarHandle(Node.class, "next", Node.class);
+            ITEM = l.findVarHandle(Node.class, "item", Object.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
