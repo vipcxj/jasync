@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
-public class BoundedStream<T> implements JStream<T> {
+public class Stream<T> implements JStream<T> {
 
     private final int capacity;
     private final MyConcurrentLinkedDeque<T> deque;
@@ -17,7 +17,7 @@ public class BoundedStream<T> implements JStream<T> {
     private final ConcurrentLinkedDeque<BooleanSupplier> consumableCallbacks;
     private final ConcurrentLinkedDeque<BooleanSupplier> producableCallbacks;
 
-    public BoundedStream(int capacity) {
+    public Stream(int capacity) {
         this.capacity = capacity;
         this.deque = new MyConcurrentLinkedDeque<>();
         this.size = new AtomicInteger(0);
@@ -120,5 +120,10 @@ public class BoundedStream<T> implements JStream<T> {
     @Override
     public int getCapacity() {
         return capacity;
+    }
+
+    @Override
+    public int getSize() {
+        return size.get();
     }
 }

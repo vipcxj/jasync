@@ -31,6 +31,8 @@ public interface JStream<T> {
 
     int getCapacity();
 
+    int getSize();
+
     default boolean isUnbound(){
         return getCapacity() <= 0;
     }

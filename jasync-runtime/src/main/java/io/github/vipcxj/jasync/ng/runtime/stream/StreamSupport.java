@@ -9,6 +9,6 @@ public class StreamSupport implements JStreamSupport {
 
     @Override
     public <T> JStream<T> create(int capacity) {
-        return new BoundedStream<>(capacity);
+        return new Stream<>(capacity);
     }
 }
