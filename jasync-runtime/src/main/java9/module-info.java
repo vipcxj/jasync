@@ -13,4 +13,5 @@ module jasync.runtime {
     provides JPromiseSupport with PromiseSupport;
     provides JSchedulerSupport with SchedulerSupport;
     provides JStreamSupport with StreamSupport;
+    exports io.github.vipcxj.jasync.ng.runtime;
 }

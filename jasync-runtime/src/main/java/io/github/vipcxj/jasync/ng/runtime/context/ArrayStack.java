@@ -25,20 +25,19 @@ public class ArrayStack<T> implements Iterable<T> {
         array[top] = value;
     }
 
+    @SuppressWarnings("unchecked")
     public T top() {
         if (top < 0) {
             throw new IllegalStateException("The stack is empty, the top operation is not possible.");
         }
-        //noinspection unchecked
         return (T) array[top];
     }
 
-    @SuppressWarnings("UnusedReturnValue")
+    @SuppressWarnings({"UnusedReturnValue", "unchecked"})
     public T pop() {
         if (top < 0) {
             throw new IllegalStateException("The stack is empty, the pop operation is not possible.");
         }
-        //noinspection unchecked
         return (T) array[top--];
     }
 
@@ -50,8 +49,8 @@ public class ArrayStack<T> implements Iterable<T> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public Stream<T> stream() {
-        //noinspection unchecked
         return (Stream<T>) Arrays.stream(array).limit(top + 1);
     }
 
@@ -60,6 +59,7 @@ public class ArrayStack<T> implements Iterable<T> {
         return new TheIterator();
     }
 
+    @SuppressWarnings("unchecked")
     class TheIterator implements Iterator<T> {
 
         private int i = 0;
@@ -71,7 +71,6 @@ public class ArrayStack<T> implements Iterable<T> {
 
         @Override
         public T next() {
-            //noinspection unchecked
             return (T) array[i++];
         }
     }

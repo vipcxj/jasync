@@ -25,9 +25,9 @@ public class Context1Map implements ContextMap {
         return 1;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> T get(Object key) {
-        //noinspection unchecked
         return hasKey(key) ? (T) value : null;
     }
 

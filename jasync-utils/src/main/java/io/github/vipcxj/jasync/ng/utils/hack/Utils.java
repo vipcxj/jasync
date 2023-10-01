@@ -30,6 +30,7 @@ import java.util.Objects;
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+@SuppressWarnings("unchecked")
 public class Utils {
 
     public static Object getOwnModule(Class<?> selfType) {
@@ -186,7 +187,6 @@ public class Utils {
             throw new NoSuchFieldException("No such field named package2certs in class ClassLoader.");
         }
         package2certs.setAccessible(true);
-        //noinspection unchecked
         return  (Map<String, Certificate[]>) package2certs.get(classLoader);
     }
 

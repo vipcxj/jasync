@@ -13,6 +13,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@SuppressWarnings("unchecked")
 public class InsnTextifier extends Textifier {
 
     private final List<AbstractInsnNode> insnNodes;
@@ -276,7 +277,6 @@ public class InsnTextifier extends Textifier {
 
     private Object tagText(Object text) {
         if (text instanceof List) {
-            //noinspection unchecked
             List<Object> list = (List<Object>) text;
             if (!list.isEmpty()) {
                 list.set(0, tagText(list.get(0)));
@@ -475,7 +475,6 @@ public class InsnTextifier extends Textifier {
 
     protected Object traverseText(Object text, Function<Object, Object> mapper) {
         if (text instanceof List) {
-            //noinspection unchecked
             List<Object> list = (List<Object>) text;
             ListIterator<Object> iterator = list.listIterator();
             while (iterator.hasNext()) {

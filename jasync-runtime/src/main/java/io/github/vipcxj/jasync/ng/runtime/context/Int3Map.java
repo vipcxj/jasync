@@ -31,6 +31,7 @@ public class Int3Map<T> implements IntMap<T> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public IntMap<T> set(int key, T value) {
         if (k0 == key) {
@@ -41,7 +42,6 @@ public class Int3Map<T> implements IntMap<T> {
             return v2 == value ? this : new Int3Map<>(k0, v0, k1, v1, k2, value);
         } else {
             int[] keys = new int[] {k0, k1, k2, key};
-            //noinspection unchecked
             T[] values = (T[]) new Object[] {v0, v1, v2, value};
             return new IntNMap<>(keys, values);
         }

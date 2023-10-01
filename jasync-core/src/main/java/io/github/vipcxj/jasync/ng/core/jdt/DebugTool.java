@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+@SuppressWarnings("unchecked")
 public class DebugTool {
 
     private static Iterable<Path> extractPathIterable(Object obj) {
@@ -16,7 +17,6 @@ public class DebugTool {
             Method getPaths = ReflectHelper.getMethod(obj.getClass(), "getPaths");
             assert getPaths != null;
             getPaths.setAccessible(true);
-            //noinspection unchecked
             return (Iterable<Path>) getPaths.invoke(obj);
         } catch (Throwable e) {
             throw new RuntimeException(e);

@@ -1,5 +1,6 @@
 package io.github.vipcxj.jasync.ng.runtime.context;
 
+@SuppressWarnings("unchecked")
 public class IntNMap<T> implements IntMap<T> {
 
     private final int[] keys;
@@ -37,7 +38,6 @@ public class IntNMap<T> implements IntMap<T> {
             int[] newKeys = new int[keys.length + 1];
             System.arraycopy(keys, 0, newKeys, 0, keys.length);
             newKeys[keys.length] = key;
-            //noinspection unchecked
             T[] newValues = (T[]) new Object[values.length + 1];
             System.arraycopy(values, 0, newValues, 0, values.length);
             newValues[values.length] = value;
@@ -46,7 +46,6 @@ public class IntNMap<T> implements IntMap<T> {
             int[] newKeys = new int[keys.length];
             System.arraycopy(keys, 0, newKeys, 0, keys.length);
             newKeys[pos] = key;
-            //noinspection unchecked
             T[] newValues = (T[]) new Object[values.length];
             System.arraycopy(values, 0, newValues, 0, values.length);
             newValues[pos] = value;
@@ -79,7 +78,6 @@ public class IntNMap<T> implements IntMap<T> {
             throw new IllegalStateException("This is impossible.");
         } else {
             int[] newKeys = new int[keys.length - 1];
-            //noinspection unchecked
             T[] newValues = (T[]) new Object[values.length - 1];
             int j = 0;
             for (int i = 0; i < keys.length; ++i) {

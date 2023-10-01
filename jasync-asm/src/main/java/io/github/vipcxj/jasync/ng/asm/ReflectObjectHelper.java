@@ -8,6 +8,7 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.Set;
 
+@SuppressWarnings("unchecked")
 public class ReflectObjectHelper {
 
     private static Method TO_URI;
@@ -125,8 +126,8 @@ public class ReflectObjectHelper {
         return FILE_OBJECT_KIND_CLASS;
     }
 
+    @SuppressWarnings("rawtypes")
     private static Set<Object> getClassKindSet(ClassLoader classLoader) throws ClassNotFoundException {
-        //noinspection unchecked
         Object classKind = Enum.valueOf((Class<Enum>) getFileObjectKindClass(classLoader), "CLASS");
         return Collections.singleton(classKind);
     }
@@ -144,7 +145,6 @@ public class ReflectObjectHelper {
         Class<?> javaFileManagerClass = getJavaFileManagerClass(fileManager);
         Method javaFileManagerListMethod = getJavaFileManagerListMethod(javaFileManagerClass);
         Object standLocation = standLocation(javaFileManagerClass.getClassLoader(), location);
-        //noinspection unchecked
         return (Iterable<Object>) javaFileManagerListMethod.invoke(fileManager, standLocation, packageName, getClassKindSet(javaFileManagerClass.getClassLoader()), false);
     }
 }

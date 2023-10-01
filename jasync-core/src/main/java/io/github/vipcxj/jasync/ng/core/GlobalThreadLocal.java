@@ -9,6 +9,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Objects;
 
+@SuppressWarnings("unchecked")
 public class GlobalThreadLocal<T> extends InheritableThreadLocal<T> {
 
     private final static String WRAPPED_JAVA_FILE_MANAGER_CLASS_NAME = "io.github.vipcxj.jasync.ng.core.WrappedJavaFileManager";
@@ -43,7 +44,6 @@ public class GlobalThreadLocal<T> extends InheritableThreadLocal<T> {
             if (map != null) {
                 Field tableField = map.getClass().getDeclaredField("table");
                 Permit.setAccessible(tableField);
-                //noinspection unchecked
                 WeakReference<ThreadLocal<?>>[] table = (WeakReference<ThreadLocal<?>>[]) tableField.get(map);
                 if (table != null) {
                     for (WeakReference<ThreadLocal<?>> reference : table) {

@@ -7,6 +7,7 @@ import org.objectweb.asm.tree.analysis.*;
 
 import java.util.*;
 
+@SuppressWarnings("unchecked")
 public class BranchAnalyzer extends Analyzer<BasicValue> {
 
     private Node<BasicValue>[] nodes;
@@ -103,7 +104,6 @@ public class BranchAnalyzer extends Analyzer<BasicValue> {
             throw new IllegalStateException("Call analyze first.");
         }
         Frame<BasicValue>[] frames = getFrames();
-        //noinspection unchecked
         nodes = new Node[frames.length];
         Set<LabelNode> labelNodes = new HashSet<>();
         Node<BasicValue> firstNode = null;

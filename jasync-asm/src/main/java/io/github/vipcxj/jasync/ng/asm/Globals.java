@@ -10,6 +10,7 @@ import java.util.Objects;
 
 import static io.github.vipcxj.jasync.ng.utils.hack.Permit.setAccessible;
 
+@SuppressWarnings("unchecked")
 public class Globals {
 
     private static final InheritableThreadLocal<Object> helperThreadLocal = new InheritableThreadLocal<>();
@@ -59,7 +60,6 @@ public class Globals {
             }
             Class<?> threadLocalMapClass = threadLocalMap.getClass();
             Field tableField = getThreadLocalMapTableField(threadLocalMapClass);
-            //noinspection unchecked
             WeakReference<ThreadLocal<?>>[] table = (WeakReference<ThreadLocal<?>>[]) tableField.get(threadLocalMap);
             if (table != null) {
                 for (WeakReference<ThreadLocal<?>> reference : table) {
@@ -86,7 +86,6 @@ public class Globals {
     }
 
     public static Map<String, String[]> getTypeInfoMap() {
-        //noinspection unchecked
         return (Map<String, String[]>) getGlobalObject("jasync-type-info-map");
     }
 }

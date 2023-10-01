@@ -41,23 +41,19 @@ public class Context5Map implements ContextMap {
         return 5;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> T get(Object key) {
         ContextMap.checkKey(key);
         if (key.equals(this.key1)) {
-            //noinspection unchecked
             return (T) value1;
         } else if (key.equals(this.key2)) {
-            //noinspection unchecked
             return (T) value2;
         } else if (key.equals(this.key3)) {
-            //noinspection unchecked
             return (T) value3;
         } else if (key.equals(this.key4)) {
-            //noinspection unchecked
             return (T) value4;
         } else if (key.equals(this.key5)) {
-            //noinspection unchecked
             return (T) value5;
         } else {
             return null;

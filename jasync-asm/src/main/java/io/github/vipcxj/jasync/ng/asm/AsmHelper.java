@@ -17,6 +17,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 
+@SuppressWarnings({"unchecked"})
 public class AsmHelper {
 
     public static boolean isStatic(MethodNode mv) {
@@ -179,7 +180,6 @@ public class AsmHelper {
             }
         }
         if (frames == null) {
-            //noinspection unchecked
             frames = new BranchAnalyzer.Node[0];
         }
         AbstractInsnNode errorNode = error != null ? error.node : null;

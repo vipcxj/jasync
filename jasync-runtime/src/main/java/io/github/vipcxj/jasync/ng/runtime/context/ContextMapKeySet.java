@@ -46,10 +46,10 @@ public class ContextMapKeySet implements Set<Object> {
         return newKeys;
     }
 
+    @SuppressWarnings({"unchecked", "NullableProblems"})
     @Override
     @NonNull
     public <T> T[] toArray(T[] a) {
-        //noinspection unchecked
         a = a != null && a.length >= keys.length ? a : (T[]) new Object[keys.length];
         System.arraycopy(keys, 0, a, 0, keys.length);
         for (int i = keys.length; i < a.length ; ++i) {

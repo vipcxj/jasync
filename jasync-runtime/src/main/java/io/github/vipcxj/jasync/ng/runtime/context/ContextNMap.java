@@ -22,9 +22,9 @@ public class ContextNMap implements ContextMap {
         return map.size();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> T get(Object key) {
-        //noinspection unchecked
         return (T) map.get(key);
     }
 

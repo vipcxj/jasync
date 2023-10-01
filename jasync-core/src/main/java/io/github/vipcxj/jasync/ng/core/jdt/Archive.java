@@ -102,6 +102,8 @@ public class Archive implements Closeable {
      * is the name of the type and the second being the module that contains the type. For a regular
      * Jar archive, the module element will be null. This is applicable only to Jimage files
      * where types are contained by multiple modules.
+     * @param packageName package name
+     * @return see above
      */
     public List<String[]> getTypes(String packageName) {
         // package name is expected to ends with '/'

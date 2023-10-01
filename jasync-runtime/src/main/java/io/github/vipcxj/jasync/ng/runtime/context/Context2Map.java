@@ -29,14 +29,13 @@ public class Context2Map implements ContextMap {
         return 2;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> T get(Object key) {
         ContextMap.checkKey(key);
         if (key.equals(this.key1)) {
-            //noinspection unchecked
             return (T) value1;
         } else if (key.equals(this.key2)) {
-            //noinspection unchecked
             return (T) value2;
         } else {
             return null;

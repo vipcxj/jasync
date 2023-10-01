@@ -151,10 +151,10 @@ public class Context implements JContext {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> JPromise<T> jump(int jumpIndex) {
         JPortal<?> portal = portalMap.get(jumpIndex);
-        //noinspection unchecked
         return portal != null ? (JPromise<T>) portal.jump() : JPromise.empty();
     }
 

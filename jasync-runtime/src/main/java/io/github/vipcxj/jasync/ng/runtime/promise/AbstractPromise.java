@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 
+@SuppressWarnings("unchecked")
 public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
 
     protected T value;
@@ -86,7 +87,6 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
                     return;
                 }
             } else if (children instanceof ImmutableDisposableStack) {
-                //noinspection unchecked
                 ImmutableDisposableStack<JPromise<?>> childrenContainer = (ImmutableDisposableStack<JPromise<?>>) children;
                 if (this.children == children && CHILDREN.weakCompareAndSet(this, children, childrenContainer.push(child))) {
                     return;
@@ -110,7 +110,6 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         if (children instanceof JPromise) {
             ((JPromise<?>) children).schedule(context);
         } else if (children instanceof ImmutableDisposableStack) {
-            //noinspection unchecked
             ImmutableDisposableStack<JPromise<?>> stack = (ImmutableDisposableStack<JPromise<?>>) children;
             do {
                 JPromise<?> promise = stack.top();
@@ -123,13 +122,11 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         while (true) {
             Object successCallbacks = this.successCallbacks;
             if (successCallbacks instanceof BiConsumer) {
-                //noinspection unchecked
                 ImmutableDisposableStack<BiConsumer<T, JContext>> callbacks = ImmutableDisposableStack.create(callback, (BiConsumer<T, JContext>) successCallbacks);
                 if (this.successCallbacks == successCallbacks && SUCCESS_CALLBACKS.weakCompareAndSet(this, successCallbacks, callbacks)) {
                     return;
                 }
             } else if (successCallbacks instanceof ImmutableDisposableStack) {
-                //noinspection unchecked
                 ImmutableDisposableStack<BiConsumer<T, JContext>> callbacks = (ImmutableDisposableStack<BiConsumer<T, JContext>>) successCallbacks;
                 if (this.successCallbacks == successCallbacks && SUCCESS_CALLBACKS.weakCompareAndSet(this, successCallbacks, callbacks.push(callback))) {
                     return;
@@ -153,14 +150,12 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         JAsyncAfterResolvedException exception = null;
         if (successCallbacks instanceof BiConsumer) {
             try {
-                //noinspection unchecked
                 ((BiConsumer<T, JContext>) successCallbacks).accept(value, context);
             } catch (Throwable t) {
                 exception = new JAsyncAfterResolvedException(value);
                 exception.addSuppressed(t);
             }
         } else if (successCallbacks instanceof ImmutableDisposableStack) {
-            //noinspection unchecked
             ImmutableDisposableStack<BiConsumer<T, JContext>> stack = (ImmutableDisposableStack<BiConsumer<T, JContext>>) successCallbacks;
             do {
                 BiConsumer<T, JContext> callback = stack.top();
@@ -213,14 +208,12 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
         JAsyncAfterRejectedException exception = null;
         if (errorCallbacks instanceof BiConsumer) {
             try {
-                //noinspection unchecked
                 ((BiConsumer<Throwable, JContext>) errorCallbacks).accept(error, context);
             } catch (Throwable t) {
                 exception = new JAsyncAfterRejectedException(error);
                 exception.addSuppressed(t);
             }
         } else if (errorCallbacks instanceof ImmutableDisposableStack) {
-            //noinspection unchecked
             ImmutableDisposableStack<BiConsumer<Throwable, JContext>> stack = (ImmutableDisposableStack<BiConsumer<Throwable, JContext>>) errorCallbacks;
             do {
                 BiConsumer<Throwable, JContext> callback = stack.top();
@@ -249,7 +242,6 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
                     return;
                 }
             } else if (finallyCallbacks instanceof ImmutableDisposableStack) {
-                //noinspection unchecked
                 ImmutableDisposableStack<TriConsumer<T, Throwable, JContext>> callbacks = (ImmutableDisposableStack<TriConsumer<T, Throwable, JContext>>) finallyCallbacks;
                 if (this.finallyCallbacks == finallyCallbacks && FINALLY_CALLBACKS.weakCompareAndSet(this, finallyCallbacks, callbacks.push(callback))) {
                     return;
@@ -281,7 +273,6 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
                 exception.addSuppressed(t);
             }
         } else if (finallyCallbacks instanceof ImmutableDisposableStack) {
-            //noinspection unchecked
             ImmutableDisposableStack<TriConsumer<T, Throwable, JContext>> stack = (ImmutableDisposableStack<TriConsumer<T, Throwable, JContext>>) finallyCallbacks;
             do {
                 TriConsumer<T, Throwable, JContext> callback = stack.top();
@@ -309,7 +300,6 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
                     return;
                 }
             } else if (requestCancelCallback instanceof ImmutableDisposableStack) {
-                //noinspection unchecked
                 ImmutableDisposableStack<Runnable> callbacks = (ImmutableDisposableStack<Runnable>) requestCancelCallback;
                 if (this.requestCancelCallback == requestCancelCallback && REQUEST_CANCEL_CALLBACK.weakCompareAndSet(this, requestCancelCallback, callbacks.push(callback))) {
                     return;
@@ -337,7 +327,6 @@ public abstract class AbstractPromise<T> implements JPromise<T>, JThunk<T> {
                 t.printStackTrace();
             }
         } else if (requestCancelCallback instanceof ImmutableDisposableStack) {
-            //noinspection unchecked
             ImmutableDisposableStack<Runnable> stack = (ImmutableDisposableStack<Runnable>) requestCancelCallback;
             do {
                 Runnable callback = stack.top();

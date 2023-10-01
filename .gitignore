@@ -7,5 +7,7 @@ target/
 .classpath
 .factorypath
 .project
+.gradle
 *.log
+build
 dependency-reduced-pom.xml

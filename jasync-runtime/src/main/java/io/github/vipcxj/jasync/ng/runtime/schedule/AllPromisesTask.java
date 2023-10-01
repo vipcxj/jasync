@@ -27,6 +27,7 @@ public class AllPromisesTask<T> implements Task<List<T>> {
         this.values = new Object[this.num];
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void schedule(JThunk<List<T>> thunk, JContext context) {
         int i = 0;
@@ -38,7 +39,6 @@ public class AllPromisesTask<T> implements Task<List<T>> {
                 if (resolvedNum == num) {
                     List<T> result = new ArrayList<>(num);
                     for (Object value : values) {
-                        //noinspection unchecked
                         result.add((T) value);
                     }
                     thunk.resolve(result, context);

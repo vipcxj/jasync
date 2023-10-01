@@ -6,8 +6,8 @@ public interface IntMap<T> {
     IntMap<T> set(int key, T value);
     IntMap<T> remove(int key);
 
+    @SuppressWarnings("unchecked")
     static <T> IntMap<T> empty() {
-        //noinspection unchecked
         return (IntMap<T>) Int0Map.EMPTY;
     }
 }
