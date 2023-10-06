@@ -3,7 +3,6 @@ package io.github.vipcxj.plugin.mrjars
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.plugins.JavaPlugin
-import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.jvm.toolchain.JavaToolchainService
 import javax.inject.Inject
 
@@ -22,8 +21,5 @@ open class MultiReleaseJarPlugin : Plugin<Project> {
                 target,
                 getToolchains(),
         )
-        target.afterEvaluate {
-            println("project ${target.name} after evaluate")
-        }
     }
 }

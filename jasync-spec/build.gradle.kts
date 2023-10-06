@@ -3,6 +3,7 @@
  */
 
 plugins {
+    id("io.github.vipcxj.plugin.sharedConfigure")
     id("io.github.vipcxj.plugin.multiRelease")
 }
 

@@ -7,10 +7,11 @@ plugins {
 
 multiRelease {
     defaultLanguageVersion(8)
+    addLanguageVersion(9, 17)
+    apiProject(":jasync-utils")
 }
 
 dependencies {
-    api("io.github.vipcxj:jasync-utils:${project.version}")
     api("org.ow2.asm:asm:9.5")
     api("org.ow2.asm:asm-tree:9.5")
     api("org.ow2.asm:asm-analysis:9.5")
@@ -35,10 +36,15 @@ val shadowJar: TaskProvider<ShadowJar> = tasks.named("shadowJar", ShadowJar::cla
     }
     relocate("org.objectweb", "io.github.vipcxj.jasync.ng.asm.shaded.org.objectweb")
     relocate("io.github.vipcxj.jasync.ng.utils", "io.github.vipcxj.jasync.ng.asm.shaded.utils")
-    val jar = tasks.named("jar", Jar::class.java).get()
-    archiveBaseName.convention(jar.archiveBaseName)
+}
+val renameJar: Copy = tasks.create("renameJar", Copy::class.java) {
+    from(shadowJar.get().outputs.files.singleFile)
+    into(shadowJar.get().outputs.files.singleFile.parentFile)
+    rename { fileName ->
+        fileName.replace("-all.jar", ".jar")
+    }
 }
 tasks.named("jar", Jar::class.java) {
     enabled = false
-    finalizedBy(shadowJar)
+    finalizedBy(renameJar)
 }

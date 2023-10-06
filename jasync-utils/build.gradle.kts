@@ -8,6 +8,7 @@ plugins {
 
 multiRelease {
     defaultLanguageVersion(8)
+    addLanguageVersion(9, 17)
 }
 
 tasks.withType(JavaCompile::class.java) {

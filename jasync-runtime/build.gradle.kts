@@ -10,10 +10,10 @@ plugins {
 multiRelease {
     defaultLanguageVersion(8)
     addLanguageVersion(9, 17)
+    apiProject(":jasync-spec")
 }
 
 dependencies {
-    api(project(":jasync-spec"))
     api("io.github.vipcxj:schedule:1.0.2")
     api("org.jctools:jctools-core:3.3.0")
     compileOnly("com.github.spotbugs:spotbugs:4.2.0")

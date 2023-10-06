@@ -8,12 +8,15 @@ val autoServiceVersion = rootProject.extra["auto_service_version"]
 
 plugins {
     id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("io.github.vipcxj.plugin.sharedConfigure")
     id("io.github.vipcxj.plugin.multiRelease")
 }
 
 multiRelease {
-    println("jasync-core multiRelease")
     defaultLanguageVersion(8)
+    addLanguageVersion(9, 17)
+    apiProject(":jasync-spec")
+    apiProject(":jasync-utils")
 }
 
 tasks.withType(JavaCompile::class.java) {
@@ -21,8 +24,6 @@ tasks.withType(JavaCompile::class.java) {
 }
 
 dependencies {
-    api(project(":jasync-spec"))
-    api(project(":jasync-utils"))
     api("org.ow2.asm:asm:9.5")
     api("org.ow2.asm:asm-tree:9.5")
     api("net.bytebuddy:byte-buddy-dep:1.14.7")
@@ -85,24 +86,40 @@ val shadowJar: TaskProvider<ShadowJar> = tasks.named("shadowJar", ShadowJar::cla
     relocate("org.objectweb.asm", "io.github.vipcxj.jasync.ng.core.shaded.org.objectweb.asm")
 }
 
+
 val jar: TaskProvider<Jar> = tasks.named("jar", Jar::class.java)
-val deleteTarget: Delete = tasks.create("deleteTarget", Delete::class.java) {
-    delete(jar)
-    shouldRunAfter(shadowJar)
-}
 val addAsm: Jar = tasks.create("addAsm", Jar::class.java) {
     dependsOn(shadowJar)
-    dependsOn(deleteTarget)
+    // dependsOn(deleteTarget)
     from(zipTree(shadowJar.get().outputs.files.singleFile))
-    val asmJar = rootProject.project(":jasync-asm").tasks.named("jar")
+    val asmJar = rootProject.project(":jasync-asm").tasks.named("renameJar")
     dependsOn(asmJar)
     from(asmJar) {
-        filesMatching("jasync-asm.jar") {
+        include("**/jasync-asm-$version.jar")
+        filesMatching("jasync-asm-$version.jar") {
             name = "asm.jar"
         }
     }
-    archiveBaseName.convention(jar.get().archiveBaseName)
+    archiveFileName.convention(jar.get().archiveFileName)
 }
- jar {
-     finalizedBy(addAsm)
- }
+jar {
+    enabled = false
+    finalizedBy(addAsm)
+}
+
+project.afterEvaluate {
+    println("main class path")
+    val mainSourceSet: SourceSet = sourceSets.findByName(SourceSet.MAIN_SOURCE_SET_NAME)!!
+    tasks.named(mainSourceSet.compileJavaTaskName, JavaCompile::class.java).configure {
+        classpath.asFileTree.files.forEach {
+            println(it)
+        }
+    }
+    println("java9 class path")
+    val java9SourceSet: SourceSet = sourceSets.findByName("java9")!!
+    tasks.named(java9SourceSet.compileJavaTaskName, JavaCompile::class.java).configure {
+        classpath.asFileTree.files.forEach {
+            println(it)
+        }
+    }
+}
