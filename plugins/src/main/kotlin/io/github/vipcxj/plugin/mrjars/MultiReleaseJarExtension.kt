@@ -18,6 +18,7 @@ import org.gradle.jvm.toolchain.JavaCompiler
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.jvm.toolchain.JavaLauncher
 import org.gradle.jvm.toolchain.JavaToolchainService
+import org.gradle.kotlin.dsl.getByType
 import org.gradle.language.base.plugins.LifecycleBasePlugin
 import spoon.Launcher
 import spoon.reflect.reference.CtPackageReference
@@ -36,6 +37,7 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
 
     var mainSourceDirectory: String = "src/main/"
     var testSourceDirectory: String = "src/test/"
+    var jarTaskName: String = "jar"
     private val configureTasks: MutableMap<Int, ConfigureTask> = HashMap()
     private val dummyMap: MutableMap<Int, Set<String>> = HashMap()
     private val dependencyProjects: MutableSet<String> = HashSet()
@@ -212,7 +214,7 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
                             println("remove project classes")
                             classpath -= s.output.classesDirs
                         }
-                        classpath += objects.fileCollection().from(dependencyProject.tasks.named("jar"))
+                        classpath += objects.fileCollection().from(dependencyProject.tasks.named(jarTaskName))
                     }
                 }
                 tasks.named(testSourceSet.compileJavaTaskName, JavaCompile::class.java) {
@@ -270,8 +272,8 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
                     dependsOn(testTask)
                 }
 
-                injectJar("jar", version, langSourceSet)
-                injectJar("shadowJar", version, langSourceSet)
+                injectJar("jar", version)
+                injectJar("shadowJar", version)
 
                 pluginManager.withPlugin("application") {
                     val javaApp = extensions.getByType(JavaApplication::class.java)
@@ -289,22 +291,10 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
     private fun injectJar(
             taskName: String,
             version: Int,
-            langSourceSet: SourceSet,
     ) {
         try {
             project.tasks.named(taskName, Jar::class.java) {
-                println("configure task $taskName for project ${project.name}")
-                into("META-INF/versions/$version") {
-                    from(langSourceSet.output) {
-                        dummyMap[version]?.forEach { dummy ->
-                            println("exclude class $dummy")
-                            exclude("**/" + dummy.replace('.', '/') + ".class")
-                        }
-                    }
-                }
-                manifest {
-                    attributes["Multi-Release"] = true
-                }
+                injectJar(project, this, version)
             }
         } catch (_: org.gradle.api.UnknownDomainObjectException) {}
     }
@@ -344,10 +334,34 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
                 javaPluginExtension.sourceSets.forEach { s ->
                     classpath -= s.output.classesDirs
                 }
-                classpath += project.objects.fileCollection().from(depProject.tasks.named("jar"))
+                classpath += project.objects.fileCollection().from(depProject.tasks.named(jarTaskName))
             }
         }
     }
 
     class ConfigureTask(val version: Int, val toolchainVersion: Int, val isDefault: Boolean)
+
+    companion object {
+        fun injectJar(project: Project, jar: Jar, version: Int) {
+            val extension = project.extensions.getByType(MultiReleaseJarExtension::class.java)
+            val langSourceSet = project
+                .extensions
+                .getByType(JavaPluginExtension::class.java)
+                .sourceSets
+                .findByName("java$version")!!
+            with(jar) {
+                into("META-INF/versions/$version") {
+                    from(langSourceSet.output) {
+                        extension.dummyMap[version]?.forEach { dummy ->
+                            println("exclude class $dummy")
+                            exclude("**/" + dummy.replace('.', '/') + ".class")
+                        }
+                    }
+                }
+                manifest {
+                    attributes["Multi-Release"] = true
+                }
+            }
+        }
+    }
 }

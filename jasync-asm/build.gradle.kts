@@ -1,4 +1,8 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import io.github.vipcxj.plugin.mrjars.MultiReleaseJarExtension
+
+val mrJarVersion = 9
+val myJarTaskName = "myJar"
 
 plugins {
     id("com.github.johnrengelman.shadow") version "8.1.1"
@@ -7,8 +11,9 @@ plugins {
 
 multiRelease {
     defaultLanguageVersion(8)
-    addLanguageVersion(9, 17)
+    addLanguageVersion(mrJarVersion, 17)
     apiProject(":jasync-utils")
+    jarTaskName = myJarTaskName
 }
 
 dependencies {
@@ -37,14 +42,14 @@ val shadowJar: TaskProvider<ShadowJar> = tasks.named("shadowJar", ShadowJar::cla
     relocate("org.objectweb", "io.github.vipcxj.jasync.ng.asm.shaded.org.objectweb")
     relocate("io.github.vipcxj.jasync.ng.utils", "io.github.vipcxj.jasync.ng.asm.shaded.utils")
 }
-val renameJar: Copy = tasks.create("renameJar", Copy::class.java) {
-    from(shadowJar.get().outputs.files.singleFile)
-    into(shadowJar.get().outputs.files.singleFile.parentFile)
-    rename { fileName ->
-        fileName.replace("-all.jar", ".jar")
-    }
+val jar: TaskProvider<Jar> = tasks.named("jar", Jar::class.java)
+val myJar: Jar = tasks.create(myJarTaskName, Jar::class.java) {
+    dependsOn(shadowJar)
+    from(zipTree(shadowJar.get().outputs.files.singleFile))
+    MultiReleaseJarExtension.injectJar(project, this, mrJarVersion)
+    archiveBaseName.set(jar.get().archiveFileName)
 }
-tasks.named("jar", Jar::class.java) {
+jar {
     enabled = false
-    finalizedBy(renameJar)
+    finalizedBy(myJar)
 }
