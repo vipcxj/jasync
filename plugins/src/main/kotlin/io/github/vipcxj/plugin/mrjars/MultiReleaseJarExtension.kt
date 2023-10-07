@@ -18,7 +18,6 @@ import org.gradle.jvm.toolchain.JavaCompiler
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.jvm.toolchain.JavaLauncher
 import org.gradle.jvm.toolchain.JavaToolchainService
-import org.gradle.kotlin.dsl.getByType
 import org.gradle.language.base.plugins.LifecycleBasePlugin
 import spoon.Launcher
 import spoon.reflect.reference.CtPackageReference
@@ -249,7 +248,7 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
                 testRuntimeClasspath.attributes
                         .attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements::class.java, LibraryElements.JAR))
 
-                val testTask = tasks.register("java$version".toString() + "Test", Test::class.java) {
+                val testTask = tasks.register("java${version}Test", Test::class.java) {
                     group = LifecycleBasePlugin.VERIFICATION_GROUP
                     javaLauncher.convention(targetLauncher)
                     val testClassesDirs = objects.fileCollection()
