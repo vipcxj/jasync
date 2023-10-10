@@ -1,6 +1,7 @@
 package io.github.vipcxj.plugin.mrjars
 
 import org.gradle.api.Project
+import org.gradle.api.UnknownDomainObjectException
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.attributes.LibraryElements
 import org.gradle.api.file.FileCollection
@@ -36,10 +37,9 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
 
     var mainSourceDirectory: String = "src/main/"
     var testSourceDirectory: String = "src/test/"
-    var jarTaskName: String = "jar"
     private val configureTasks: MutableMap<Int, ConfigureTask> = HashMap()
     private val dummyMap: MutableMap<Int, Set<String>> = HashMap()
-    private val dependencyProjects: MutableSet<String> = HashSet()
+    private val dependencyProjects: MutableMap<String, ProjectMeta> = HashMap()
     private fun existInSource(sourceSet: SourceSet, qualifiedName: String, clazz: Boolean): Boolean {
         return sourceSet.java.srcDirTrees.any {
             val target = it.dir.resolve(
@@ -206,14 +206,14 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
                         options.release.convention(version)
                         modularity.inferModulePath.convention(true)
                     }
-                    for (pName in dependencyProjects) {
-                        val dependencyProject = project(pName)
+                    for (pMeta in dependencyProjects) {
+                        val dependencyProject = project(pMeta.key)
                         val javaPluginExtension = dependencyProject.extensions.getByType(JavaPluginExtension::class.java)
                         javaPluginExtension.sourceSets.forEach { s ->
                             println("remove project classes")
                             classpath -= s.output.classesDirs
                         }
-                        classpath += objects.fileCollection().from(dependencyProject.tasks.named(jarTaskName))
+                        classpath += objects.fileCollection().from(dependencyProject.tasks.named(pMeta.value.jarTaskName))
                     }
                 }
                 tasks.named(testSourceSet.compileJavaTaskName, JavaCompile::class.java) {
@@ -319,13 +319,13 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
         doConfigure(task)
     }
 
-    fun apiProject(name: String) {
+    fun apiProject(name: String, jarTaskName: String = "jar") {
         if (dependencyProjects.contains(name)) {
             throw RuntimeException("Project dependency $name exists.")
         }
         val depProject = project.project(name)
         project.dependencies.add("api", depProject)
-        dependencyProjects.add(name)
+        dependencyProjects.put(name, ProjectMeta(name, jarTaskName))
         val javaPluginExtension = depProject.extensions.getByType(JavaPluginExtension::class.java)
         for (version in configureTasks.keys) {
             val sourceSet = sourceSets.getByName("java$version")
@@ -339,6 +339,8 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
     }
 
     class ConfigureTask(val version: Int, val toolchainVersion: Int, val isDefault: Boolean)
+
+    class ProjectMeta(val name: String, val jarTaskName: String = "jar")
 
     companion object {
         fun injectJar(project: Project, jar: Jar, version: Int) {

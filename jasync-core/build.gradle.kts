@@ -16,7 +16,6 @@ plugins {
 }
 
 multiRelease {
-    jarTaskName = myJarTaskName
     defaultLanguageVersion(8)
     addLanguageVersion(mrJarVersion, 17)
     apiProject(":jasync-spec")
@@ -96,9 +95,7 @@ val myJar: Jar = tasks.create(myJarTaskName, Jar::class.java) {
     dependsOn(shadowJar)
     // dependsOn(deleteTarget)
     from(zipTree(shadowJar.get().outputs.files.singleFile))
-    val asmProject = rootProject.project(":jasync-asm")
-    val extension = asmProject.extensions.getByType(MultiReleaseJarExtension::class.java)
-    val asmJar = rootProject.project(":jasync-asm").tasks.named(extension.jarTaskName)
+    val asmJar = rootProject.project(":jasync-asm").tasks.named("myJar")
     from(asmJar) {
         include("**/jasync-asm-$version.jar")
         filesMatching("jasync-asm-$version.jar") {

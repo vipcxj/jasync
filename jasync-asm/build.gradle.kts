@@ -13,7 +13,6 @@ multiRelease {
     defaultLanguageVersion(8)
     addLanguageVersion(mrJarVersion, 17)
     apiProject(":jasync-utils")
-    jarTaskName = myJarTaskName
 }
 
 dependencies {
