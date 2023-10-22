@@ -1,7 +1,6 @@
 package io.github.vipcxj.plugin.mrjars
 
 import org.gradle.api.Project
-import org.gradle.api.UnknownDomainObjectException
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.attributes.LibraryElements
 import org.gradle.api.file.FileCollection
@@ -143,36 +142,47 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
     private fun doConfigure(configureTask: ConfigureTask) {
         with(project) {
             val version = configureTask.version
+            val testVersion = configureTask.testVersion
             val toolchainVersion = configureTask.toolchainVersion
+            val testToolchainVersion = configureTask.testToolchainVersion
             val mainTestSourceSet = sourceSets.findByName(SourceSet.TEST_SOURCE_SET_NAME)!!
+            val compiler: Provider<JavaCompiler> = javaToolchains.compilerFor {
+                languageVersion.convention(JavaLanguageVersion.of(toolchainVersion))
+            }
+            val testCompiler: Provider<JavaCompiler> = javaToolchains.compilerFor {
+                languageVersion.convention(JavaLanguageVersion.of(testToolchainVersion))
+            }
             if (configureTask.isDefault) {
                 javaPluginExtension.toolchain.languageVersion.convention(JavaLanguageVersion.of(toolchainVersion))
-                tasks.findByName(mainSourceSet.compileJavaTaskName)!!.apply {
-                    val task = this as JavaCompile
-                    task.sourceCompatibility = "$version"
-                    task.targetCompatibility = "$version"
+                tasks.named(mainSourceSet.compileJavaTaskName, JavaCompile::class.java) {
+                    javaCompiler.convention(compiler)
+                    sourceCompatibility = "$version"
+                    targetCompatibility = "$version"
                     if (JavaLanguageVersion.of(version).asInt() > 8) {
                         options.release.convention(version)
+                        modularity.inferModulePath.convention(true)
                     }
                 }
-                tasks.findByName(mainTestSourceSet.compileJavaTaskName)!!.apply {
-                    val task = this as JavaCompile
-                    task.sourceCompatibility = "$version"
-                    task.targetCompatibility = "$version"
-                    if (JavaLanguageVersion.of(version).asInt() > 8) {
-                        options.release.convention(version)
+                tasks.named(mainTestSourceSet.compileJavaTaskName, JavaCompile::class.java) {
+                    javaCompiler.convention(testCompiler)
+                    sourceCompatibility = "$testVersion"
+                    targetCompatibility = "$testVersion"
+                    if (JavaLanguageVersion.of(testVersion).asInt() > 8) {
+                        options.release.convention(testVersion)
+                        modularity.inferModulePath.convention(true)
                     }
                 }
             } else {
                 val javaX = "java$version"
+                val testJavaX = "java${testVersion}"
                 // First, let's create a source set for this language version
                 // First, let's create a source set for this language version
                 val langSourceSet: SourceSet = sourceSets.create(javaX) {
                     java.srcDir(mainSourceDirectory + javaX)
                     compileClasspath += mainSourceSet.compileClasspath
                 }
-                val testSourceSet: SourceSet = sourceSets.create(javaX + "Test") {
-                    java.srcDir(testSourceDirectory + javaX)
+                val testSourceSet: SourceSet = sourceSets.create("${testJavaX}Test") {
+                    java.srcDir(testSourceDirectory + testJavaX)
                 }
                 dealWithModuleInfo(langSourceSet, mainSourceSet, version)
 
@@ -195,11 +205,8 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
                 // then configure the compile task so that it uses the expected Gradle version
 
                 // then configure the compile task so that it uses the expected Gradle version
-                val targetCompiler: Provider<JavaCompiler> = javaToolchains.compilerFor {
-                    languageVersion.convention(JavaLanguageVersion.of(toolchainVersion))
-                }
                 tasks.named(langSourceSet.compileJavaTaskName, JavaCompile::class.java) {
-                    javaCompiler.convention(targetCompiler)
+                    javaCompiler.convention(compiler)
                     sourceCompatibility = "$version"
                     targetCompatibility = "$version"
                     if (version > 8) {
@@ -217,20 +224,21 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
                     }
                 }
                 tasks.named(testSourceSet.compileJavaTaskName, JavaCompile::class.java) {
-                    javaCompiler.convention(targetCompiler)
-                    sourceCompatibility = "$version"
-                    targetCompatibility = "$version"
-                    if (version > 8) {
-                        options.release.convention(version)
+                    javaCompiler.convention(testCompiler)
+                    sourceCompatibility = "$testVersion"
+                    targetCompatibility = "$testVersion"
+                    if (testVersion > 8) {
+                        options.release.convention(testVersion)
                         modularity.inferModulePath.convention(true)
                     }
                 }
 
                 // let's make sure to create a "test" task
-
-                // let's make sure to create a "test" task
-                val targetLauncher: Provider<JavaLauncher> = javaToolchains.launcherFor {
+                val launcher: Provider<JavaLauncher> = javaToolchains.launcherFor {
                     languageVersion.convention(JavaLanguageVersion.of(toolchainVersion))
+                }
+                val testLauncher: Provider<JavaLauncher> = javaToolchains.launcherFor {
+                    languageVersion.convention(JavaLanguageVersion.of(testToolchainVersion))
                 }
 
                 val testImplementation: Configuration = configurations.getByName(testSourceSet.implementationConfigurationName)
@@ -250,7 +258,7 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
 
                 val testTask = tasks.register("java${version}Test", Test::class.java) {
                     group = LifecycleBasePlugin.VERIFICATION_GROUP
-                    javaLauncher.convention(targetLauncher)
+                    javaLauncher.convention(testLauncher)
                     val testClassesDirs = objects.fileCollection()
                     testClassesDirs.from(testSourceSet.output)
                     testClassesDirs.from(mainTestSourceSet.output)
@@ -278,7 +286,7 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
                     val javaApp = extensions.getByType(JavaApplication::class.java)
                     tasks.register("java$version" + "Run", JavaExec::class.java) {
                         group = ApplicationPlugin.APPLICATION_GROUP
-                        javaLauncher.convention(targetLauncher)
+                        javaLauncher.convention(launcher)
                         mainClass.convention(javaApp.mainClass)
                         this.classpath = langSourceSet.runtimeClasspath
                     }
@@ -298,25 +306,37 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
         } catch (_: org.gradle.api.UnknownDomainObjectException) {}
     }
 
-    fun addLanguageVersion(version: Int, toolchainVersion: Int) {
+    fun addLanguageVersion(version: Int, toolchainVersion: Int, testVersion: Int, testToolchainVersion: Int) {
         if (configureTasks.containsKey(version)) {
             throw RuntimeException("Language version $version exists.")
         }
-        val task = ConfigureTask(version, toolchainVersion, false)
+        val task = ConfigureTask(version, toolchainVersion, testVersion, testToolchainVersion, false)
         configureTasks[version] = task
         doConfigure(task)
     }
 
-    fun defaultLanguageVersion(version: Int) {
-        defaultLanguageVersion(version, version)
+    fun addLanguageVersion(version: Int, toolchainVersion: Int) {
+        addLanguageVersion(version, toolchainVersion, version, toolchainVersion)
     }
 
-    fun defaultLanguageVersion(version: Int, toolchainVersion: Int) {
+    fun addLanguageVersion(version: Int) {
+        addLanguageVersion(version, version)
+    }
+
+    fun defaultLanguageVersion(version: Int, toolchainVersion: Int, testVersion: Int, testToolchainVersion: Int) {
         if (configureTasks.containsKey(version)) {
             throw RuntimeException("Language version $version exists.")
         }
-        val task = ConfigureTask(version, toolchainVersion, true)
+        val task = ConfigureTask(version, toolchainVersion, testVersion, testToolchainVersion, true)
         doConfigure(task)
+    }
+
+    fun defaultLanguageVersion(version: Int, toolchainVersion: Int) {
+        defaultLanguageVersion(version, toolchainVersion, version, toolchainVersion)
+    }
+
+    fun defaultLanguageVersion(version: Int) {
+        defaultLanguageVersion(version, version)
     }
 
     fun apiProject(name: String, jarTaskName: String = "jar") {
@@ -338,7 +358,7 @@ abstract class MultiReleaseJarExtension @Inject constructor(private val project:
         }
     }
 
-    class ConfigureTask(val version: Int, val toolchainVersion: Int, val isDefault: Boolean)
+    class ConfigureTask(val version: Int, val toolchainVersion: Int, val testVersion: Int, val testToolchainVersion: Int, val isDefault: Boolean)
 
     class ProjectMeta(val name: String, val jarTaskName: String = "jar")
 
