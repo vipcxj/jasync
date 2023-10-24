@@ -21,7 +21,7 @@ dependencies {
     api("org.ow2.asm:asm-analysis:9.5")
     api("org.ow2.asm:asm-util:9.5")
     testImplementation("org.junit.jupiter:junit-jupiter:5.7.0")
-    testImplementation("org.jgrapht:jgrapht-core:1.5.1")
+    testImplementation("org.jgrapht:jgrapht-core:1.4.0")
 }
 
 description = "JAsync ASM"
