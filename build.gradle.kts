@@ -17,6 +17,9 @@ allprojects {
         options.encoding = "UTF-8"
         options.compilerArgs.add("-Xlint:unchecked")
     }
+    tasks.withType(Test::class.java) {
+        useJUnitPlatform()
+    }
 }
 
 buildscript {

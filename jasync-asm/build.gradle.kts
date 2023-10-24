@@ -30,6 +30,11 @@ java {
     withJavadocJar()
 }
 
+tasks.withType(Test::class.java) {
+    minHeapSize = "1g"
+    maxHeapSize = "2g"
+}
+
 val shadowJar: TaskProvider<ShadowJar> = tasks.named("shadowJar", ShadowJar::class.java) {
     dependencies {
         include(dependency("io.github.vipcxj:jasync-utils:.*"))
